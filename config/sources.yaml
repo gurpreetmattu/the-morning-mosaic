@@ -15,8 +15,12 @@
 #
 # Every feed URL below was checked to fetch and parse into entries on
 # 2026-09-15. Reachability is NOT permission — the terms review above is still
-# required before `enabled: true`. Some hosts reject generic user-agents, so the
-# Collector must send a descriptive browser-like UA.
+# required before `enabled: true`.
+#
+# The Collector identifies itself honestly and does not pretend to be a
+# browser. A source that blocks an identified crawler is telling us not to
+# fetch it; working around that would contradict rule 2 above. Such a source
+# stays disabled until the terms review resolves the question.
 
 sources:
   # ---------------------------------------------------------------- tier 1
@@ -218,7 +222,10 @@ sources:
     feeds:
       - url: https://venturebeat.com/category/ai/feed/
         genres: [ai]
-    notes: Returns HTTP 429 to generic user-agents; needs a browser-like UA.
+    notes: >-
+      Returned HTTP 429 to an identified crawler user-agent. We do not spoof a
+      browser to get around this, so leave disabled unless the terms review
+      establishes that crawling is permitted.
 
   - key: espncricinfo
     name: ESPNcricinfo

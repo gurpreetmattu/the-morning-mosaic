@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic feed. Every item below is invented for testing; no real publisher
+  content appears in this repository (CLAUDE.md, "Public repo hygiene").
+  Dates are placeholders substituted by the test at runtime.
+-->
+<rss version="2.0">
+  <channel>
+    <title>Example News</title>
+    <link>https://news.example</link>
+    <description>Synthetic fixture</description>
+    <item>
+      <title>Cabinet clears eastern rail corridor</title>
+      <link>https://news.example/a/rail-corridor</link>
+      <pubDate>{PUBDATE_FRESH}</pubDate>
+    </item>
+    <item>
+      <title>Report on last month's port upgrade</title>
+      <link>https://news.example/a/port-upgrade</link>
+      <pubDate>{PUBDATE_STALE}</pubDate>
+    </item>
+    <item>
+      <title>Wire copy with no timestamp</title>
+      <link>https://news.example/a/undated</link>
+    </item>
+  </channel>
+</rss>
