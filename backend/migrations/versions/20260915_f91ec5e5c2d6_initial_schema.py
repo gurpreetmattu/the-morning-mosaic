@@ -19,6 +19,30 @@ down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+# Native enum types created implicitly by the CREATE TABLE statements below.
+ENUM_TYPES: tuple[str, ...] = (
+    "call_status",
+    "check_method",
+    "claim_verdict",
+    "delivery_status",
+    "delivery_type",
+    "edition_preference",
+    "extra_kind",
+    "frequency",
+    "image_provider",
+    "job_name",
+    "notice_batch_status",
+    "revision_reason",
+    "run_status",
+    "section_status",
+    "sentence_role",
+    "story_status",
+    "subscription_status",
+    "tag_kind",
+    "token_purpose",
+    "vote",
+)
+
 
 def upgrade() -> None:
     op.create_table(
@@ -957,3 +981,9 @@ def downgrade() -> None:
     op.drop_table("extras")
     op.drop_table("editions")
     op.drop_table("cities")
+
+    # op.drop_table does not drop the native enum types the tables created, so
+    # without this a downgrade followed by an upgrade fails on "type already
+    # exists". Dropping them last keeps the migration reversible.
+    for enum_name in ENUM_TYPES:
+        op.execute(f"DROP TYPE IF EXISTS {enum_name}")

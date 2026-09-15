@@ -7,6 +7,7 @@ from pathlib import Path
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from sqlalchemy import Enum as SAEnum
 
 from app.models import Base
 
@@ -42,3 +43,27 @@ def test_migrations_do_not_create_unknown_tables() -> None:
 
     unknown = created - set(Base.metadata.tables)
     assert unknown == set(), f"migrated tables with no model: {sorted(unknown)}"
+
+
+def test_downgrade_drops_every_enum_type_it_created() -> None:
+    """op.drop_table leaves native enum types behind.
+
+    Without an explicit DROP TYPE, a downgrade followed by an upgrade fails
+    with "type already exists", so the migration would not be reversible.
+    """
+    in_models = {
+        column.type.name
+        for table in Base.metadata.tables.values()
+        for column in table.columns
+        if isinstance(column.type, SAEnum) and column.type.name
+    }
+
+    dropped: set[str] = set()
+    for path in (MIGRATIONS / "versions").glob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        block = re.search(r"ENUM_TYPES:[^=]*=\s*\((.*?)\)", source, re.DOTALL)
+        if block:
+            dropped |= set(re.findall(r"[\"']([\w]+)[\"']", block.group(1)))
+
+    missing = in_models - dropped
+    assert missing == set(), f"enum types never dropped on downgrade: {sorted(missing)}"
