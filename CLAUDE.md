@@ -322,7 +322,7 @@ Any prompt or model change requires rerunning evals; regressions block merge.
 /evals               datasets and eval runners
 /config              sources.yaml, genres.yaml, models.yaml, editions.yaml, cities.yaml
 /infra               Terraform
-/docs                architecture, ADRs, runbooks
+/docs                architecture, ADRs, runbooks, BACKLOG.md
 ```
 
 ## Coding conventions
@@ -355,3 +355,7 @@ cd infra && terraform plan
 - Do not add dependencies without stating why.
 - Ask before changing any "Product decisions" item.
 - Keep `docs/` updated when architecture changes; record significant choices as ADRs.
+- Keep `docs/BACKLOG.md` current: it is the running list of pending, provisional, and
+  known-broken items. Update it at the end of every step, in the same commit as the work,
+  and move finished items to its "Done" section with the closing commit. Anything deferred
+  or discovered mid-task goes in the file, not only in conversation.
