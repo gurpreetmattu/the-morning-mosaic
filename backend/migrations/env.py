@@ -13,6 +13,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.config.settings import get_settings
+from app.db.engine import normalise_url
 from app.models import Base
 
 config = context.config
@@ -25,10 +26,7 @@ target_metadata = Base.metadata
 def database_url() -> str:
     """Prefer a plain DATABASE_URL so migrations can run without a full .env."""
     url = os.getenv("DATABASE_URL") or get_settings().database_url.get_secret_value()
-    # SQLAlchemy defaults postgresql:// to psycopg2; this project uses psycopg 3.
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
-    return url
+    return normalise_url(url)
 
 
 def run_migrations_offline() -> None:
