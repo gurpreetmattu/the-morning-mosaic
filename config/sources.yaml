@@ -1,0 +1,295 @@
+# The source whitelist. Nothing outside this file is ever fetched.
+#
+# EVERY source ships disabled. `enabled: true` is rejected unless BOTH
+# `terms_confirmed` and `robots_checked` are true, which is a human judgement,
+# not something that can be inferred. Before flipping a source on:
+#
+#   1. Read its terms at `terms_url` and confirm they permit reproducing
+#      headlines and short original summaries in an email newsletter.
+#   2. Check its robots.txt allows fetching the article URLs.
+#   3. Record what you concluded in `notes`, then set both flags.
+#
+# tier 1 = wire services, official bodies, primary sources
+# tier 2 = established outlets
+# tier 3 = entertainment / gossip (hedged language required)
+#
+# Every feed URL below was checked to fetch and parse into entries on
+# 2026-09-15. Reachability is NOT permission — the terms review above is still
+# required before `enabled: true`. Some hosts reject generic user-agents, so the
+# Collector must send a descriptive browser-like UA.
+
+sources:
+  # ---------------------------------------------------------------- tier 1
+  - key: pib-india
+    name: Press Information Bureau
+    homepage: https://www.pib.gov.in/
+    tier: 1
+    terms_url: https://www.pib.gov.in/Disclaimer.aspx
+    feeds:
+      - url: https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3
+        genres: [india, politics]
+    notes: Primary source for Government of India announcements.
+
+  - key: rbi
+    name: Reserve Bank of India
+    homepage: https://www.rbi.org.in/
+    tier: 1
+    terms_url: https://www.rbi.org.in/Scripts/Disclaimer.aspx
+    feeds:
+      - url: https://www.rbi.org.in/pressreleases_rss.xml
+        genres: [business]
+      - url: https://www.rbi.org.in/notifications_rss.xml
+        genres: [business]
+    notes: Primary source for monetary policy and banking regulation.
+
+  # ---------------------------------------------------------------- tier 2
+  - key: the-hindu
+    name: The Hindu
+    homepage: https://www.thehindu.com/
+    tier: 2
+    terms_url: https://www.thehindu.com/terms-of-use/
+    feeds:
+      - url: https://www.thehindu.com/news/national/feeder/default.rss
+        genres: [india]
+      - url: https://www.thehindu.com/business/feeder/default.rss
+        genres: [business]
+      - url: https://www.thehindu.com/sport/feeder/default.rss
+        genres: [sports]
+
+  - key: indian-express
+    name: The Indian Express
+    homepage: https://indianexpress.com/
+    tier: 2
+    terms_url: https://indianexpress.com/terms-and-conditions/
+    feeds:
+      - url: https://indianexpress.com/section/india/feed/
+        genres: [india]
+      - url: https://indianexpress.com/section/political-pulse/feed/
+        genres: [politics]
+      - url: https://indianexpress.com/section/technology/feed/
+        genres: [technology]
+      - url: https://indianexpress.com/section/entertainment/bollywood/feed/
+        genres: [bollywood]
+
+  - key: hindustan-times
+    name: Hindustan Times
+    homepage: https://www.hindustantimes.com/
+    tier: 2
+    terms_url: https://www.hindustantimes.com/terms-of-use
+    feeds:
+      - url: https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml
+        genres: [india]
+      - url: https://www.hindustantimes.com/feeds/rss/business/rssfeed.xml
+        genres: [business]
+
+  - key: ndtv
+    name: NDTV
+    homepage: https://www.ndtv.com/
+    tier: 2
+    terms_url: https://www.ndtv.com/terms
+    feeds:
+      - url: https://feeds.feedburner.com/ndtvnews-india-news
+        genres: [india]
+      - url: https://feeds.feedburner.com/ndtvsports-cricket
+        genres: [sports]
+
+  - key: times-of-india
+    name: The Times of India
+    homepage: https://timesofindia.indiatimes.com/
+    tier: 2
+    terms_url: https://timesofindia.indiatimes.com/termsofuse.cms
+    feeds:
+      - url: https://timesofindia.indiatimes.com/rssfeedstopstories.cms
+        genres: [india]
+
+  - key: scroll-in
+    name: Scroll.in
+    homepage: https://scroll.in/
+    tier: 2
+    terms_url: https://scroll.in/terms
+    feeds:
+      - url: https://feeds.feedburner.com/ScrollinArticles
+        genres: [india, politics]
+    notes: Site path /feed serves HTML; the FeedBurner mirror is the working feed.
+
+  # The Wire was drafted here but removed: /rss, /feed and /rss/ all return the
+  # site's HTML shell, not a feed. Re-add only with a URL confirmed to parse.
+
+  - key: livemint
+    name: Mint
+    homepage: https://www.livemint.com/
+    tier: 2
+    terms_url: https://www.livemint.com/Info/TermsofUse
+    feeds:
+      - url: https://www.livemint.com/rss/news
+        genres: [business]
+
+  - key: business-standard
+    name: Business Standard
+    homepage: https://www.business-standard.com/
+    tier: 2
+    terms_url: https://www.business-standard.com/terms-conditions
+    feeds:
+      - url: https://www.business-standard.com/rss/home_page_top_stories.rss
+        genres: [business]
+
+  - key: economic-times
+    name: The Economic Times
+    homepage: https://economictimes.indiatimes.com/
+    tier: 2
+    terms_url: https://economictimes.indiatimes.com/termsofuse.cms
+    feeds:
+      - url: https://economictimes.indiatimes.com/rssfeedstopstories.cms
+        genres: [business]
+
+  - key: moneycontrol
+    name: Moneycontrol
+    homepage: https://www.moneycontrol.com/
+    tier: 2
+    terms_url: https://www.moneycontrol.com/india/termsofuse
+    feeds:
+      - url: https://www.moneycontrol.com/rss/latestnews.xml
+        genres: [business]
+
+  - key: bbc-news
+    name: BBC News
+    homepage: https://www.bbc.com/news
+    tier: 2
+    terms_url: https://www.bbc.co.uk/usingthebbc/terms/
+    feeds:
+      - url: https://feeds.bbci.co.uk/news/world/asia/india/rss.xml
+        genres: [india]
+      - url: https://feeds.bbci.co.uk/news/technology/rss.xml
+        genres: [technology]
+    notes: BBC RSS is for personal, non-commercial use — check before enabling.
+
+  - key: al-jazeera
+    name: Al Jazeera
+    homepage: https://www.aljazeera.com/
+    tier: 2
+    terms_url: https://www.aljazeera.com/terms-and-conditions/
+    feeds:
+      - url: https://www.aljazeera.com/xml/rss/all.xml
+        genres: [politics]
+
+  - key: the-verge
+    name: The Verge
+    homepage: https://www.theverge.com/
+    tier: 2
+    terms_url: https://www.voxmedia.com/legal/terms-of-use
+    feeds:
+      - url: https://www.theverge.com/rss/index.xml
+        genres: [technology, ai]
+
+  - key: ars-technica
+    name: Ars Technica
+    homepage: https://arstechnica.com/
+    tier: 2
+    terms_url: https://www.condenast.com/user-agreement
+    feeds:
+      - url: https://feeds.arstechnica.com/arstechnica/index
+        genres: [technology, ai]
+
+  - key: techcrunch
+    name: TechCrunch
+    homepage: https://techcrunch.com/
+    tier: 2
+    terms_url: https://techcrunch.com/terms-of-service/
+    feeds:
+      - url: https://techcrunch.com/feed/
+        genres: [technology]
+      - url: https://techcrunch.com/category/artificial-intelligence/feed/
+        genres: [ai]
+
+  - key: engadget
+    name: Engadget
+    homepage: https://www.engadget.com/
+    tier: 2
+    terms_url: https://guce.engadget.com/terms
+    feeds:
+      - url: https://www.engadget.com/rss.xml
+        genres: [technology, gaming]
+
+  - key: venturebeat
+    name: VentureBeat
+    homepage: https://venturebeat.com/
+    tier: 2
+    terms_url: https://venturebeat.com/terms-of-service/
+    feeds:
+      - url: https://venturebeat.com/category/ai/feed/
+        genres: [ai]
+    notes: Returns HTTP 429 to generic user-agents; needs a browser-like UA.
+
+  - key: espncricinfo
+    name: ESPNcricinfo
+    homepage: https://www.espncricinfo.com/
+    tier: 2
+    terms_url: https://www.espncricinfo.com/ci/content/site/company/terms_use.html
+    feeds:
+      - url: https://www.espncricinfo.com/rss/content/story/feeds/0.xml
+        genres: [sports]
+
+  - key: polygon
+    name: Polygon
+    homepage: https://www.polygon.com/
+    tier: 2
+    terms_url: https://www.voxmedia.com/legal/terms-of-use
+    feeds:
+      - url: https://www.polygon.com/rss/index.xml
+        genres: [gaming]
+
+  - key: eurogamer
+    name: Eurogamer
+    homepage: https://www.eurogamer.net/
+    tier: 2
+    terms_url: https://www.eurogamer.net/terms-and-conditions
+    feeds:
+      - url: https://www.eurogamer.net/feed
+        genres: [gaming]
+
+  - key: variety
+    name: Variety
+    homepage: https://variety.com/
+    tier: 2
+    terms_url: https://pmc.com/terms-of-use/
+    feeds:
+      - url: https://variety.com/feed/
+        genres: [hollywood]
+
+  - key: hollywood-reporter
+    name: The Hollywood Reporter
+    homepage: https://www.hollywoodreporter.com/
+    tier: 2
+    terms_url: https://pmc.com/terms-of-use/
+    feeds:
+      - url: https://www.hollywoodreporter.com/feed/
+        genres: [hollywood]
+
+  - key: pitchfork
+    name: Pitchfork
+    homepage: https://pitchfork.com/
+    tier: 2
+    terms_url: https://www.condenast.com/user-agreement
+    feeds:
+      - url: https://pitchfork.com/feed/feed-news/rss
+        genres: [music]
+
+  - key: rolling-stone
+    name: Rolling Stone
+    homepage: https://www.rollingstone.com/
+    tier: 2
+    terms_url: https://pmc.com/terms-of-use/
+    feeds:
+      - url: https://www.rollingstone.com/music/feed/
+        genres: [music]
+
+  # ---------------------------------------------------------------- tier 3
+  - key: bollywood-hungama
+    name: Bollywood Hungama
+    homepage: https://www.bollywoodhungama.com/
+    tier: 3
+    terms_url: https://www.bollywoodhungama.com/terms-of-use/
+    feeds:
+      - url: https://www.bollywoodhungama.com/rss/news.xml
+        genres: [bollywood]
+    notes: Tier 3 — stories sourced only here must use hedged language.

@@ -1,0 +1,50 @@
+# Model assignment per LLM agent.
+#
+# !! Every `model` below is a placeholder. LLMBuffet's catalogue has not been
+# !! read yet, and model ids must never be guessed. Replace them with real ids
+# !! from the gateway's /v1/models before the build job is run. The LLM client
+# !! refuses to call a model whose id is still REPLACE_WITH_LLMBUFFET_MODEL_ID.
+#
+# Writer and Fact-checker are pinned: their output is what gets published, so a
+# silent provider failover would change published wording without an eval run.
+# The other three may fail over, since their output is re-checked downstream.
+
+request_timeout_seconds: 90.0
+max_attempts: 3
+
+agents:
+  orchestrator:
+    model: REPLACE_WITH_LLMBUFFET_MODEL_ID
+    temperature: 0.0
+    max_output_tokens: 2048
+    pinned: false
+    fallbacks:
+      - REPLACE_WITH_LLMBUFFET_MODEL_ID
+
+  ranker:
+    model: REPLACE_WITH_LLMBUFFET_MODEL_ID
+    temperature: 0.0
+    max_output_tokens: 4096
+    pinned: false
+    fallbacks:
+      - REPLACE_WITH_LLMBUFFET_MODEL_ID
+
+  writer:
+    model: REPLACE_WITH_LLMBUFFET_MODEL_ID
+    temperature: 0.2
+    max_output_tokens: 4096
+    pinned: true
+
+  fact_checker:
+    model: REPLACE_WITH_LLMBUFFET_MODEL_ID
+    temperature: 0.0
+    max_output_tokens: 4096
+    pinned: true
+
+  image_finder:
+    model: REPLACE_WITH_LLMBUFFET_MODEL_ID
+    temperature: 0.0
+    max_output_tokens: 1024
+    pinned: false
+    fallbacks:
+      - REPLACE_WITH_LLMBUFFET_MODEL_ID

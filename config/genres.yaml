@@ -1,0 +1,265 @@
+# The ten genres. One fixed theme each; variety comes from special editions.
+#
+# `topic_tags` is the CLOSED taxonomy the Writer may choose from for this genre.
+# The Fact-checker rejects any tag outside this list, and keyword matching runs
+# against these tags, so adding or renaming a tag is a product change.
+#
+# `corroboration: strict` = needs >=2 independent tier-1/2 sources, or one
+# primary official source (CLAUDE.md, "Corroboration").
+
+genres:
+  - key: india
+    display_name: India
+    section_title: Across India
+    blurb: The day's most consequential national news.
+    corroboration: strict
+    theme:
+      accent: "#c4571b"
+      accent_soft: "#fbf0e7"
+      rule: "#e2c9b4"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - national-policy
+      - state-affairs
+      - judiciary
+      - law-and-order
+      - infrastructure
+      - public-health
+      - education
+      - environment
+      - disaster-response
+      - agriculture
+      - social-welfare
+      - defence
+      - science-and-space
+      - diaspora
+
+  - key: politics
+    display_name: Politics
+    section_title: The Political Desk
+    blurb: Parliament, parties, and policy — reported without a side.
+    corroboration: strict
+    theme:
+      accent: "#2f4858"
+      accent_soft: "#eef2f4"
+      rule: "#c3d0d6"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - parliament
+      - elections
+      - legislation
+      - party-politics
+      - coalitions
+      - foreign-policy
+      - diplomacy
+      - governance
+      - local-bodies
+      - judicial-review
+      - protests
+      - budget-and-fiscal
+
+  - key: business
+    display_name: Business
+    section_title: Business & Markets
+    blurb: Companies, markets, and the economy.
+    corroboration: strict
+    theme:
+      accent: "#1f5f4a"
+      accent_soft: "#ecf4f1"
+      rule: "#bcd7cd"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - markets
+      - banking
+      - startups
+      - funding
+      - earnings
+      - mergers-and-acquisitions
+      - regulation
+      - trade
+      - energy
+      - manufacturing
+      - real-estate
+      - employment
+      - taxation
+      - consumer
+
+  - key: technology
+    display_name: Technology
+    section_title: Technology
+    blurb: Products, platforms, and the policy around them.
+    corroboration: standard
+    theme:
+      accent: "#2b4c9b"
+      accent_soft: "#eef1f9"
+      rule: "#c2cde8"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - consumer-electronics
+      - software
+      - semiconductors
+      - telecom
+      - cybersecurity
+      - space-technology
+      - fintech
+      - social-platforms
+      - developer-tools
+      - privacy
+      - internet-policy
+      - product-launches
+
+  - key: ai
+    display_name: AI
+    section_title: Artificial Intelligence
+    blurb: Models, research, tooling, and the rules being written around them.
+    corroboration: standard
+    extras:
+      - ai_tool_of_the_day
+    theme:
+      accent: "#5b3fa8"
+      accent_soft: "#f1eefa"
+      rule: "#cec2ea"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - model-releases
+      - research
+      - ai-policy
+      - ai-safety
+      - ai-tools
+      - compute-infrastructure
+      - funding
+      - enterprise-adoption
+      - open-source
+      - benchmarks
+      - ai-ethics
+      - agents
+
+  - key: sports
+    display_name: Sports
+    section_title: Sport
+    blurb: Results, fixtures, and the stories behind them.
+    corroboration: standard
+    extras:
+      - scores_fixtures
+    theme:
+      accent: "#1b7a3e"
+      accent_soft: "#ecf6f0"
+      rule: "#bcdcc8"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - cricket
+      - football
+      - hockey
+      - badminton
+      - tennis
+      - athletics
+      - kabaddi
+      - chess
+      - motorsport
+      - olympics
+      - transfers
+      - tournaments
+
+  - key: gaming
+    display_name: Gaming
+    section_title: Gaming
+    blurb: Releases, esports, and the business of play.
+    corroboration: standard
+    extras:
+      - game_deals
+    theme:
+      accent: "#8a2749"
+      accent_soft: "#f9ecf0"
+      rule: "#e3c0cc"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - game-releases
+      - esports
+      - game-updates
+      - gaming-hardware
+      - studio-news
+      - reviews
+      - industry-business
+      - mobile-gaming
+      - storefronts
+
+  - key: bollywood
+    display_name: Bollywood
+    section_title: Bollywood
+    blurb: Indian cinema — releases, screens, and the industry.
+    corroboration: standard
+    extras:
+      - movie_releases
+    theme:
+      accent: "#b3123f"
+      accent_soft: "#fbeaef"
+      rule: "#eabcca"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - film-releases
+      - box-office
+      - casting
+      - trailers
+      - awards
+      - ott-releases
+      - music-launch
+      - production-updates
+      - regional-cinema
+      - industry-news
+
+  - key: hollywood
+    display_name: Global Entertainment
+    section_title: Screen & Stage
+    blurb: Global film and television.
+    corroboration: standard
+    extras:
+      - movie_releases
+    theme:
+      accent: "#6b4e16"
+      accent_soft: "#f7f2e6"
+      rule: "#dfd0ab"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - film-releases
+      - box-office
+      - streaming
+      - casting
+      - awards
+      - television
+      - franchises
+      - studio-business
+      - festivals
+
+  - key: music
+    display_name: Music
+    section_title: Music
+    blurb: Releases, tours, and the industry behind the charts.
+    corroboration: standard
+    extras:
+      - music_releases
+    theme:
+      accent: "#0f6e73"
+      accent_soft: "#e9f4f4"
+      rule: "#b6d8da"
+      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      body_font: "Georgia, 'Times New Roman', serif"
+    topic_tags:
+      - album-releases
+      - single-releases
+      - tours
+      - charts
+      - collaborations
+      - awards
+      - film-music
+      - independent
+      - streaming-platforms
+      - industry-business

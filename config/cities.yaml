@@ -1,0 +1,94 @@
+# Selectable cities at signup. India only; coordinates feed the weather box.
+#
+# Coordinates are approximate city-centre points, adequate for a daily forecast.
+# Verify against the OpenWeatherMap geocoding API when that key is available,
+# and add cities on request rather than shipping a long unverified list.
+
+cities:
+  - { id: mumbai, name: Mumbai, state: Maharashtra, lat: 19.0760, lon: 72.8777 }
+  - { id: delhi, name: Delhi, state: Delhi, lat: 28.6139, lon: 77.2090 }
+  - { id: bengaluru, name: Bengaluru, state: Karnataka, lat: 12.9716, lon: 77.5946 }
+  - { id: hyderabad, name: Hyderabad, state: Telangana, lat: 17.3850, lon: 78.4867 }
+  - { id: chennai, name: Chennai, state: Tamil Nadu, lat: 13.0827, lon: 80.2707 }
+  - { id: kolkata, name: Kolkata, state: West Bengal, lat: 22.5726, lon: 88.3639 }
+  - { id: pune, name: Pune, state: Maharashtra, lat: 18.5204, lon: 73.8567 }
+  - { id: ahmedabad, name: Ahmedabad, state: Gujarat, lat: 23.0225, lon: 72.5714 }
+  - { id: jaipur, name: Jaipur, state: Rajasthan, lat: 26.9124, lon: 75.7873 }
+  - { id: surat, name: Surat, state: Gujarat, lat: 21.1702, lon: 72.8311 }
+  - { id: lucknow, name: Lucknow, state: Uttar Pradesh, lat: 26.8467, lon: 80.9462 }
+  - { id: kanpur, name: Kanpur, state: Uttar Pradesh, lat: 26.4499, lon: 80.3319 }
+  - { id: nagpur, name: Nagpur, state: Maharashtra, lat: 21.1458, lon: 79.0882 }
+  - { id: indore, name: Indore, state: Madhya Pradesh, lat: 22.7196, lon: 75.8577 }
+  - { id: bhopal, name: Bhopal, state: Madhya Pradesh, lat: 23.2599, lon: 77.4126 }
+  - { id: visakhapatnam, name: Visakhapatnam, state: Andhra Pradesh, lat: 17.6868, lon: 83.2185 }
+  - { id: patna, name: Patna, state: Bihar, lat: 25.5941, lon: 85.1376 }
+  - { id: vadodara, name: Vadodara, state: Gujarat, lat: 22.3072, lon: 73.1812 }
+  - { id: ludhiana, name: Ludhiana, state: Punjab, lat: 30.9010, lon: 75.8573 }
+  - { id: agra, name: Agra, state: Uttar Pradesh, lat: 27.1767, lon: 78.0081 }
+  - { id: nashik, name: Nashik, state: Maharashtra, lat: 19.9975, lon: 73.7898 }
+  - { id: thane, name: Thane, state: Maharashtra, lat: 19.2183, lon: 72.9781 }
+  - { id: navi-mumbai, name: Navi Mumbai, state: Maharashtra, lat: 19.0330, lon: 73.0297 }
+  - { id: gurugram, name: Gurugram, state: Haryana, lat: 28.4595, lon: 77.0266 }
+  - { id: noida, name: Noida, state: Uttar Pradesh, lat: 28.5355, lon: 77.3910 }
+  - { id: ghaziabad, name: Ghaziabad, state: Uttar Pradesh, lat: 28.6692, lon: 77.4538 }
+  - { id: faridabad, name: Faridabad, state: Haryana, lat: 28.4089, lon: 77.3178 }
+  - { id: meerut, name: Meerut, state: Uttar Pradesh, lat: 28.9845, lon: 77.7064 }
+  - { id: rajkot, name: Rajkot, state: Gujarat, lat: 22.3039, lon: 70.8022 }
+  - { id: varanasi, name: Varanasi, state: Uttar Pradesh, lat: 25.3176, lon: 82.9739 }
+  - { id: prayagraj, name: Prayagraj, state: Uttar Pradesh, lat: 25.4358, lon: 81.8463 }
+  - { id: amritsar, name: Amritsar, state: Punjab, lat: 31.6340, lon: 74.8723 }
+  - { id: jalandhar, name: Jalandhar, state: Punjab, lat: 31.3260, lon: 75.5762 }
+  - { id: chandigarh, name: Chandigarh, state: Chandigarh, lat: 30.7333, lon: 76.7794 }
+  - { id: srinagar, name: Srinagar, state: Jammu and Kashmir, lat: 34.0837, lon: 74.7973 }
+  - { id: jammu, name: Jammu, state: Jammu and Kashmir, lat: 32.7266, lon: 74.8570 }
+  - { id: shimla, name: Shimla, state: Himachal Pradesh, lat: 31.1048, lon: 77.1734 }
+  - { id: dehradun, name: Dehradun, state: Uttarakhand, lat: 30.3165, lon: 78.0322 }
+  - { id: jodhpur, name: Jodhpur, state: Rajasthan, lat: 26.2389, lon: 73.0243 }
+  - { id: udaipur, name: Udaipur, state: Rajasthan, lat: 24.5854, lon: 73.7125 }
+  - { id: kota, name: Kota, state: Rajasthan, lat: 25.2138, lon: 75.8648 }
+  - { id: gwalior, name: Gwalior, state: Madhya Pradesh, lat: 26.2183, lon: 78.1828 }
+  - { id: jabalpur, name: Jabalpur, state: Madhya Pradesh, lat: 23.1815, lon: 79.9864 }
+  - { id: raipur, name: Raipur, state: Chhattisgarh, lat: 21.2514, lon: 81.6296 }
+  - { id: ranchi, name: Ranchi, state: Jharkhand, lat: 23.3441, lon: 85.3096 }
+  - { id: jamshedpur, name: Jamshedpur, state: Jharkhand, lat: 22.8046, lon: 86.2029 }
+  - { id: bhubaneswar, name: Bhubaneswar, state: Odisha, lat: 20.2961, lon: 85.8245 }
+  - { id: cuttack, name: Cuttack, state: Odisha, lat: 20.4625, lon: 85.8830 }
+  - { id: guwahati, name: Guwahati, state: Assam, lat: 26.1445, lon: 91.7362 }
+  - { id: shillong, name: Shillong, state: Meghalaya, lat: 25.5788, lon: 91.8933 }
+  - { id: imphal, name: Imphal, state: Manipur, lat: 24.8170, lon: 93.9368 }
+  - { id: aizawl, name: Aizawl, state: Mizoram, lat: 23.7271, lon: 92.7176 }
+  - { id: agartala, name: Agartala, state: Tripura, lat: 23.8315, lon: 91.2868 }
+  - { id: kohima, name: Kohima, state: Nagaland, lat: 25.6751, lon: 94.1086 }
+  - { id: itanagar, name: Itanagar, state: Arunachal Pradesh, lat: 27.0844, lon: 93.6053 }
+  - { id: gangtok, name: Gangtok, state: Sikkim, lat: 27.3314, lon: 88.6138 }
+  - { id: siliguri, name: Siliguri, state: West Bengal, lat: 26.7271, lon: 88.3953 }
+  - { id: coimbatore, name: Coimbatore, state: Tamil Nadu, lat: 11.0168, lon: 76.9558 }
+  - { id: madurai, name: Madurai, state: Tamil Nadu, lat: 9.9252, lon: 78.1198 }
+  - { id: tiruchirappalli, name: Tiruchirappalli, state: Tamil Nadu, lat: 10.7905, lon: 78.7047 }
+  - { id: salem, name: Salem, state: Tamil Nadu, lat: 11.6643, lon: 78.1460 }
+  - { id: puducherry, name: Puducherry, state: Puducherry, lat: 11.9416, lon: 79.8083 }
+  - { id: kochi, name: Kochi, state: Kerala, lat: 9.9312, lon: 76.2673 }
+  - { id: thiruvananthapuram, name: Thiruvananthapuram, state: Kerala, lat: 8.5241, lon: 76.9366 }
+  - { id: kozhikode, name: Kozhikode, state: Kerala, lat: 11.2588, lon: 75.7804 }
+  - { id: thrissur, name: Thrissur, state: Kerala, lat: 10.5276, lon: 76.2144 }
+  - { id: mysuru, name: Mysuru, state: Karnataka, lat: 12.2958, lon: 76.6394 }
+  - { id: mangaluru, name: Mangaluru, state: Karnataka, lat: 12.9141, lon: 74.8560 }
+  - { id: hubballi, name: Hubballi, state: Karnataka, lat: 15.3647, lon: 75.1240 }
+  - { id: belagavi, name: Belagavi, state: Karnataka, lat: 15.8497, lon: 74.4977 }
+  - { id: vijayawada, name: Vijayawada, state: Andhra Pradesh, lat: 16.5062, lon: 80.6480 }
+  - { id: guntur, name: Guntur, state: Andhra Pradesh, lat: 16.3067, lon: 80.4365 }
+  - { id: tirupati, name: Tirupati, state: Andhra Pradesh, lat: 13.6288, lon: 79.4192 }
+  - { id: warangal, name: Warangal, state: Telangana, lat: 17.9689, lon: 79.5941 }
+  - { id: panaji, name: Panaji, state: Goa, lat: 15.4909, lon: 73.8278 }
+  - { id: aurangabad, name: Chhatrapati Sambhajinagar, state: Maharashtra, lat: 19.8762, lon: 75.3433 }
+  - { id: solapur, name: Solapur, state: Maharashtra, lat: 17.6599, lon: 75.9064 }
+  - { id: bhavnagar, name: Bhavnagar, state: Gujarat, lat: 21.7645, lon: 72.1519 }
+  - { id: jamnagar, name: Jamnagar, state: Gujarat, lat: 22.4707, lon: 70.0577 }
+  - { id: ajmer, name: Ajmer, state: Rajasthan, lat: 26.4499, lon: 74.6399 }
+  - { id: bikaner, name: Bikaner, state: Rajasthan, lat: 28.0229, lon: 73.3119 }
+  - { id: bareilly, name: Bareilly, state: Uttar Pradesh, lat: 28.3670, lon: 79.4304 }
+  - { id: aligarh, name: Aligarh, state: Uttar Pradesh, lat: 27.8974, lon: 78.0880 }
+  - { id: gorakhpur, name: Gorakhpur, state: Uttar Pradesh, lat: 26.7606, lon: 83.3732 }
+  - { id: dhanbad, name: Dhanbad, state: Jharkhand, lat: 23.7957, lon: 86.4304 }
+  - { id: asansol, name: Asansol, state: West Bengal, lat: 23.6739, lon: 86.9524 }
+  - { id: howrah, name: Howrah, state: West Bengal, lat: 22.5958, lon: 88.2636 }

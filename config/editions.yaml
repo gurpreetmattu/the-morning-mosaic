@@ -1,0 +1,101 @@
+﻿# Special editions are driven ONLY by this calendar.
+#
+# Only observances with fixed civil dates are listed. Festivals that follow the
+# lunar calendar move every year and are NOT guessed here — they sit in
+# `awaiting_dates` until someone fills them in from an authoritative almanac or
+# the Government of India holiday notification. An absent date simply means no
+# special edition that day; it never means a wrong one.
+
+# Edition numbers are a sequential count of daily editions since launch.
+# PROVISIONAL — set this to the real first send date before going live.
+launch_date: 2026-10-01
+
+weekend:
+  saturday_features:
+    - top-stories
+    - longer-reads
+    - quiz
+  sunday_features:
+    - top-stories
+    - weekly-recap
+    - quiz
+
+special_editions:
+  - key: gandhi-jayanti-2026
+    name: Gandhi Jayanti
+    observed_on: 2026-10-02
+    note: National holiday; masthead carries a commemorative rule.
+    accent: "#7a6a3f"
+
+  - key: christmas-2026
+    name: Christmas
+    observed_on: 2026-12-25
+    note: Festive edition.
+    accent: "#9b2226"
+
+  - key: year-in-review-2026
+    name: The Year in Review
+    observed_on: 2026-12-31
+    note: Built only from stories verified and published during the year.
+    accent: "#2f4858"
+
+  - key: new-year-2027
+    name: New Year's Day
+    observed_on: 2027-01-01
+    note: Opening edition of the year.
+    accent: "#0f6e73"
+
+  - key: republic-day-2027
+    name: Republic Day
+    observed_on: 2027-01-26
+    note: National holiday.
+    accent: "#c4571b"
+
+  - key: independence-day-2027
+    name: Independence Day
+    observed_on: 2027-08-15
+    note: National holiday.
+    accent: "#c4571b"
+
+  - key: gandhi-jayanti-2027
+    name: Gandhi Jayanti
+    observed_on: 2027-10-02
+    note: National holiday; masthead carries a commemorative rule.
+    accent: "#7a6a3f"
+
+  - key: christmas-2027
+    name: Christmas
+    observed_on: 2027-12-25
+    note: Festive edition.
+    accent: "#9b2226"
+
+  - key: year-in-review-2027
+    name: The Year in Review
+    observed_on: 2027-12-31
+    note: Built only from stories verified and published during the year.
+    accent: "#2f4858"
+
+# Moving dates to confirm each year before January. Names only — no dates until
+# they are looked up.
+awaiting_dates:
+  - Makar Sankranti / Pongal
+  - Maha Shivaratri
+  - Holi
+  - Ugadi / Gudi Padwa
+  - Ram Navami
+  - Mahavir Jayanti
+  - Good Friday
+  - Eid al-Fitr
+  - Baisakhi
+  - Buddha Purnima
+  - Eid al-Adha
+  - Muharram
+  - Raksha Bandhan
+  - Janmashtami
+  - Ganesh Chaturthi
+  - Onam
+  - Dussehra
+  - Diwali
+  - Bhai Dooj
+  - Chhath Puja
+  - Guru Nanak Jayanti
