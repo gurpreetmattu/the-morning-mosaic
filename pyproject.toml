@@ -14,9 +14,9 @@ dependencies = [
     "sqlalchemy>=2.0",
     "alembic>=1.14",
     "psycopg[binary]>=3.2",
-    # Agent graphs and LLM access (LLMBuffet is OpenAI-compatible)
+    # Agent graphs. LLM access is plain httpx against the OpenAI-compatible
+    # wire format; see backend/app/llm/client.py for why not the openai SDK.
     "langgraph>=0.2",
-    "openai>=1.54",
     # Source collection and extraction
     "httpx>=0.27",
     "tenacity>=9.0",
