@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `c344542`
-- **State:** 50 commits · 74 modules · 471 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `63b2a10`
+- **State:** 51 commits · 74 modules · 471 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -323,4 +323,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       neither can be replayed as the other); reads for recent job runs, stuck
       deliveries, and held notice batches; approve/suppress for a notice
       batch; and the story-withdrawal kill switch, which publishes a new
-      revision the same way a late update does — `PENDING`
+      revision the same way a late update does — `63b2a10`
