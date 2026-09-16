@@ -10,7 +10,8 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import account, archive, pdf, public
+from app.api.admin_session import ADMIN_CSRF_HEADER
+from app.api.routes import account, admin, archive, pdf, public
 from app.api.security import SecurityHeadersMiddleware
 from app.api.session import CSRF_HEADER
 from app.config.settings import Settings, get_settings
@@ -37,13 +38,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=[str(config.base_url).rstrip("/")],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
-        allow_headers=["Content-Type", CSRF_HEADER],
+        allow_headers=["Content-Type", CSRF_HEADER, ADMIN_CSRF_HEADER],
     )
 
     app.include_router(public.router)
     app.include_router(archive.router)
     app.include_router(account.router)
     app.include_router(pdf.router)
+    app.include_router(admin.router)
 
     @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict[str, str]:

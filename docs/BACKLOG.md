@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `6345bed`
-- **State:** 48 commits · 71 modules · 446 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `c344542`
+- **State:** 50 commits · 74 modules · 471 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -53,14 +53,12 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       a table held exactly one row. Those assertions are now scoped, but the
       next "count the rows" test will hit it again. A dedicated test database,
       or a truncate fixture, is the real fix.
-- [ ] **Rows stuck in `sending` are counted but not surfaced.** Delivery
-      deliberately never retries them, and CLAUDE.md says they should be
-      "flagged for review". Nothing flags them yet; the admin dashboard does
-      not exist.
 - [ ] **No admin alerting.** CLAUDE.md wants Cloud Monitoring notifications on
       build failure, deadline miss, send failures and sharp drops in verified
-      story counts. The build job records everything needed in `pipeline_runs`
-      but tells nobody.
+      story counts. The build job records everything needed in `pipeline_runs`,
+      and `GET /admin/api/runs` now makes it visible to someone who checks —
+      but nothing pushes to anyone, which is what "alert" actually means. That
+      still needs a GCP project (see Blockers).
 - [ ] **No structured logging.** `structlog` is a dependency but unused; the
       seed job prints. CLAUDE.md requires JSON logs to Cloud Logging. Worth
       doing before more agents land, since each will want it.
@@ -190,15 +188,14 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       to RFC 3464 and tested against synthetic reports; `ImapBounceSource` has
       never spoken to an actual IMAP server. Both need a live check once the
       Gmail app password exists.
-- [ ] **A late update never withdraws a story, only adds.** CLAUDE.md's admin
-      kill switch needs the opposite: publishing a revision *without* a story.
-      `story_withdrawals` exists as a table and nothing writes to it.
+- [ ] **Whole-*section* withdrawal has no dedicated endpoint.** CLAUDE.md's
+      kill switch covers "a story or section"; only story-level withdrawal
+      exists (`POST /admin/api/stories/{id}/withdraw`). Withdrawing every
+      story in a section by hand gets the same published result, so this is
+      a convenience gap, not a capability one.
 - [ ] **"New story" is judged by source URL.** A publisher that reissues the
       same story under a fresh URL will be appended twice by the late update.
       Content-hash comparison across clusters would be the stronger check.
-- [ ] **A held notice batch cannot be approved or suppressed yet.** The job
-      honours both states, but only the admin dashboard can set them, and it
-      does not exist. Until then an abnormal batch simply expires at noon.
 - [ ] **Cross-process delivery concurrency is untested.** The claim uses
       `FOR UPDATE SKIP LOCKED` and commits before SMTP, and the at-most-once
       semantics are covered (sent skipped, `sending` never resent, failed
@@ -223,11 +220,11 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] images · [ ] quotes / "On this day"
 
 **Surfaces**
-- [~] FastAPI routes — signup, opt-in, unsubscribe, feedback, the archive,
-      magic-link login, preferences, pause/resume, DPDP export/delete, and
-      the PDF download link are all built. Still missing: the admin
-      dashboard that several items above are waiting on.
-- [ ] Next.js frontend, including privacy policy and terms pages
+- [x] FastAPI routes — signup, opt-in, unsubscribe, feedback, the archive,
+      magic-link login, preferences, pause/resume, DPDP export/delete, the
+      PDF download link, and the admin dashboard's backend are all built.
+- [ ] Next.js frontend, including privacy policy and terms pages, and an
+      actual admin dashboard UI — the API above has no client yet
 
 **Supporting**
 - [ ] Terraform in `/infra` · [ ] Evals in `/evals`
@@ -320,3 +317,10 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       same-day update cannot change what an old link produces, and an
       `ObjectStorage` protocol (disk in dev, Cloud Storage behind a lazy
       import in prod) — `6345bed`
+- [x] Admin dashboard (backend): magic-link login restricted to
+      `ADMIN_EMAIL`, its own session cookie and CSRF pair kept fully separate
+      from a reader's (distinct cookie names, distinct token purpose, so
+      neither can be replayed as the other); reads for recent job runs, stuck
+      deliveries, and held notice batches; approve/suppress for a notice
+      batch; and the story-withdrawal kill switch, which publishes a new
+      revision the same way a late update does — `PENDING`

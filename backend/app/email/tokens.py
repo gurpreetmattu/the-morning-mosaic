@@ -39,6 +39,11 @@ from app.models.users import Token
 # the stored ones.
 FEEDBACK = "feedback"
 PDF = "pdf"
+# The admin's sign-in link. Stateless like the two above: there is no admin
+# row to hang a stored, revocable token off, only the allowlisted address in
+# ADMIN_EMAIL. Short-lived to make up for not being revocable.
+ADMIN_LOGIN = "admin_login"
+ADMIN_LOGIN_TTL = timedelta(minutes=15)
 
 DEFAULT_TTL = {
     TokenPurpose.OPT_IN: timedelta(days=7),
