@@ -273,10 +273,12 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       six eval categories score for real today; two (groundedness, tag
       accuracy) and half of a third (fact-checker catch rate, clustering)
       are built but need the LLM gateway to actually run.
-- [ ] GitHub Actions (lint, type-check, tests, eval subset on PRs) — also
-      the thing that would build and push the two Docker images; today
-      that's a manual `docker build`/`docker push`, documented in
-      `infra/README.md`.
+- [x] GitHub Actions — `ci.yml` (lint, type-check, tests, the eval suite),
+      `evals-nightly.yml`, `deploy.yml` (build+push both images, then
+      `terraform apply`). See the Done entry: every job's commands were run
+      locally exactly as the workflow specifies and pass; nothing has run
+      on GitHub's own infrastructure, since there is no git remote for a
+      workflow to run in yet.
 - [ ] `docs/`: architecture doc, DPDP incident runbook, operational runbooks
 - [ ] **`terraform plan`/`apply` have never run against a real project.**
       No GCP project exists yet (Blockers). `terraform validate` passes;
@@ -284,6 +286,13 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       further and actually building+running both Docker images the config
       deploys (see the WeasyPrint and `CONFIG_DIR` entries above/below) —
       `plan`/`apply` could still turn up more once real credentials exist.
+- [ ] **`deploy.yml` has never executed, on GitHub or anywhere else.**
+      `actionlint` passes on all three workflows, and every command each
+      job runs was run locally exactly as written and passes, but a GitHub
+      Actions runner is still a different environment than this one, and
+      Workload Identity Federation specifically (the `google-github-actions/auth`
+      step) can only be exercised against a real GCP project with the pool
+      and provider set up — nothing to test it against yet.
 - [ ] **Monitoring covers two conditions, not the four CLAUDE.md lists.**
       Job-execution failure and api 5xx rate are wired (Cloud Run's own
       built-in metrics); a build's deadline miss and a sharp drop in
@@ -443,3 +452,17 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       itself — the deterministic scoring logic, the LLM-reachability probe,
       and the report/exit-code behaviour — independent of live model
       access — `0ca53b9`
+- [x] GitHub Actions: `ci.yml` (backend lint/typecheck/pytest with a
+      Postgres service container, frontend lint/typecheck/vitest/build,
+      `terraform fmt`/`validate`, and the eval suite — all run in parallel
+      except evals, which waits on backend for the same Python
+      environment), `evals-nightly.yml` (the same suite on a schedule, with
+      room to grow once the LLM gateway blocker is resolved), and
+      `deploy.yml` (build+push both images, then `terraform apply`, gated
+      on a `GCP_PROJECT_ID` repository variable so it's a safe no-op today
+      rather than a workflow that fails loudly on every push). All three
+      pass `actionlint` cleanly; every command each job runs was executed
+      locally with the job's exact environment (including the eval job's
+      dummy-secret recipe) and passes — see the Done entry above for evals,
+      and the two entries in section 2 for what genuinely can't be verified
+      without a GitHub repository and a GCP project — `PENDING`

@@ -1,0 +1,46 @@
+name: Nightly evals
+
+# CLAUDE.md: "full evals nightly." Today this runs the exact same suite as
+# the PR job (ci.yml) — the suite is small enough that there is no
+# meaningful "subset" to carve out of it yet — but it exists as its own
+# workflow so a genuinely larger nightly-only run (bigger fixtures, or a
+# real LLM gateway once the blocker in docs/BACKLOG.md is resolved) has
+# somewhere to grow without touching what PRs wait on. If LLMBUFFET_URL and
+# LLMBUFFET_API_KEY are ever set as repository secrets/variables pointing
+# at a reachable gateway, the LLM-dependent evals (see evals/README.md)
+# start scoring for real here with no workflow change needed.
+
+on:
+  schedule:
+    - cron: "30 21 * * *" # 03:00 IST
+  workflow_dispatch:
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: dev
+      BASE_URL: http://localhost:3000
+      DATABASE_URL: postgresql://user:pass@localhost/unused
+      SMTP_HOST: smtp.example.com
+      SENDER_EMAIL: news@example.com
+      SENDER_NAME: The Morning Mosaic
+      GMAIL_APP_PASSWORD: unused-in-ci
+      IMAP_HOST: imap.example.com
+      ADMIN_EMAIL: admin@example.com
+      LLMBUFFET_URL: ${{ vars.LLMBUFFET_URL || 'http://127.0.0.1:8080/v1' }}
+      LLMBUFFET_API_KEY: ${{ secrets.LLMBUFFET_API_KEY || 'unused-in-ci' }}
+      TOKEN_SIGNING_KEY: unused-in-ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.11"
+          enable-cache: true
+
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+
+      - name: eval suite
+        run: uv run python -m evals.run --verbose

@@ -44,8 +44,11 @@ cp terraform.tfvars.example terraform.tfvars   # fill in project_id, sender_emai
 
 ## Images
 
-Terraform deploys images; it does not build them (there is no CI yet — see
-`docs/BACKLOG.md`). Before the first real apply, build and push both by
+Terraform deploys images; it does not build them. `.github/workflows/deploy.yml`
+builds and pushes both on every push to `main`, but only once a `GCP_PROJECT_ID`
+repository variable exists — until then it's a no-op, since there's no GCP
+project for it to push to (see `docs/BACKLOG.md`). Before the first real
+apply, or any time before that variable is set, build and push both by
 hand:
 
 ```
@@ -108,8 +111,17 @@ but won't become ready. That's expected until the four above are set.
 
 ## What isn't here
 
-- **CI** to build and push images on every change — not built yet
-  (`docs/BACKLOG.md`); until then, images are pushed by hand as above.
+- **CI actually running.** `.github/workflows/{ci,deploy,evals-nightly}.yml`
+  exist and lint/typecheck/test/validate on every PR (verified — see
+  `docs/BACKLOG.md`), but nothing has ever executed on GitHub's own
+  infrastructure: there is no git remote yet, so no repository for a
+  workflow to run in.
+- **`deploy.yml`'s Workload Identity Federation setup.** The workflow
+  authenticates via WIF rather than a downloaded service account key, but
+  the WIF pool/provider/service-account binding it expects
+  (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT` repository
+  variables) don't exist yet either — another thing that needs the GCP
+  project first.
 - **A custom domain / load balancer** — deliberately not needed for this
   architecture; see above.
 - **Alerting beyond two conditions** (a failed job execution, api 5xx

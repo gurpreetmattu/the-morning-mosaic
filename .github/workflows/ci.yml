@@ -1,0 +1,143 @@
+name: CI
+
+# CLAUDE.md: "GitHub Actions — lint, type-check, tests, and a small eval
+# set on PRs." Three independent jobs (backend, frontend, terraform) run in
+# parallel; a fourth (evals) runs after backend passes, since it needs the
+# same Python environment. Nothing here deploys anything — see deploy.yml.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.5.11"
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: mosaic
+          POSTGRES_DB: mosaic
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      # Tests build their own Settings per fixture — see backend/tests/conftest.py
+      # — so this is the only env var the backend job as a whole needs.
+      TEST_DATABASE_URL: postgresql://postgres:mosaic@localhost:5432/mosaic
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+
+      - name: ruff check
+        run: uv run ruff check .
+      - name: ruff format --check
+        run: uv run ruff format --check .
+      - name: mypy --strict
+        run: uv run mypy backend evals
+      - name: pytest
+        run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - name: eslint
+        run: npm run lint
+      - name: prettier --check
+        run: npm run format:check
+      - name: tsc --noEmit
+        run: npm run typecheck
+      - name: vitest
+        run: npm test
+      - name: next build
+        run: npm run build
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: terraform fmt -check
+        run: terraform fmt -check -recursive
+      # No GCS backend and no real project exist yet (docs/BACKLOG.md), so
+      # this validates the config's own correctness without touching state
+      # or calling Google's API — the same thing done by hand before every
+      # infra commit (see infra/README.md).
+      - name: terraform init (no backend)
+        run: terraform init -backend=false
+      - name: terraform validate
+        run: terraform validate
+
+  evals:
+    needs: backend
+    runs-on: ubuntu-latest
+    env:
+      # The "small eval set" CLAUDE.md asks for on PRs. Every value below
+      # is a placeholder, not a credential: the eval suite's own
+      # reachability probe (evals/llm_probe.py) finds no LLM gateway at
+      # this address from a GitHub-hosted runner and skips the LLM-dependent
+      # evals rather than failing — see evals/README.md for exactly which
+      # ones that is. Nothing here talks to a database either; every eval
+      # runs against fixtures.
+      APP_ENV: dev
+      BASE_URL: http://localhost:3000
+      DATABASE_URL: postgresql://user:pass@localhost/unused
+      SMTP_HOST: smtp.example.com
+      SENDER_EMAIL: news@example.com
+      SENDER_NAME: The Morning Mosaic
+      GMAIL_APP_PASSWORD: unused-in-ci
+      IMAP_HOST: imap.example.com
+      ADMIN_EMAIL: admin@example.com
+      LLMBUFFET_URL: ${{ vars.LLMBUFFET_URL || 'http://127.0.0.1:8080/v1' }}
+      LLMBUFFET_API_KEY: ${{ secrets.LLMBUFFET_API_KEY || 'unused-in-ci' }}
+      TOKEN_SIGNING_KEY: unused-in-ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+
+      - name: eval suite
+        run: uv run python -m evals.run --verbose
