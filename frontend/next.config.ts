@@ -1,28 +1,26 @@
 import type { NextConfig } from "next";
 
 /**
- * In production, this frontend and the FastAPI backend are meant to sit
- * behind one public hostname (a load balancer routing /api/*, /admin/api/*,
- * and the emailed-link paths to the API service — see docs/BACKLOG.md under
- * the frontend entry). That is what makes the backend's session and CSRF
- * cookies, which are first-party and same-origin by design, actually work:
- * the browser never sees two origins.
+ * This app and the FastAPI backend must share one public origin: the
+ * backend's session and CSRF cookies (app/api/session.py,
+ * app/api/admin_session.py) are first-party by design, and every emailed
+ * link (opt-in, unsubscribe, feedback, PDF, magic-link login) is built from
+ * `BASE_URL` as if it were a single hostname shared by both.
  *
- * Locally there is no load balancer, so this rewrite stands in for it: the
- * browser only ever talks to this Next.js server, which proxies API calls
- * to BACKEND_ORIGIN server-side. Cookies the backend sets flow through
- * untouched, becoming first-party to this origin exactly as they will once
- * the real routing exists.
+ * Rather than standing up a load balancer to unify two Cloud Run services
+ * under a custom domain — infrastructure this project doesn't have yet, and
+ * a domain nobody has bought — this app IS that single origin, in prod as
+ * well as in dev: `src/proxy.ts` forwards everything the backend needs to
+ * serve server-side to BACKEND_ORIGIN, and Cloud Run's own `.run.app` URL
+ * for *this* service is `BASE_URL`. When a custom domain exists later,
+ * mapping it to this service is the only change required — see
+ * infra/README.md.
  */
-const backendOrigin = process.env.BACKEND_ORIGIN ?? "http://127.0.0.1:8000";
 
 const nextConfig: NextConfig = {
-  async rewrites() {
-    return [
-      { source: "/api/:path*", destination: `${backendOrigin}/api/:path*` },
-      { source: "/admin/api/:path*", destination: `${backendOrigin}/admin/api/:path*` },
-    ];
-  },
+  // A self-contained `server.js` plus only the dependencies actually used,
+  // for a minimal production image (see Dockerfile).
+  output: "standalone",
   async headers() {
     return [
       {

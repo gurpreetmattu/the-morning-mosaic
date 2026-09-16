@@ -105,6 +105,14 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       have only run against local PostgreSQL.
 - [ ] **Seed job requires every env var** just to read `DATABASE_URL`. Fine in
       Cloud Run, friction in dev. Undecided whether to loosen.
+- [x] ~~`app/config/loader.py` finds `/config` by walking up from its own
+      file, which only lands on the repo root in an editable dev
+      checkout.~~ Confirmed by actually building and running the backend
+      image: installed into site-packages, the same walk lands inside
+      `.venv/lib/python3.12/`, not the repo. Fixed with the existing
+      `CONFIG_DIR` override — `backend/Dockerfile` sets it to `/app/config`
+      and copies `/config` there — rather than changing the loader, since
+      the override already existed for exactly this.
 - [ ] **`premailer` is an unused dependency.** Sections are written with inline
       styles directly, so nothing inlines a stylesheet. Either the full email
       template will need it, or it should be dropped.
@@ -242,33 +250,53 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       PDF download link, and the admin dashboard's backend are all built.
 - [x] Next.js frontend — landing, signup (genre picker, Turnstile), the
       archive, preferences (sign-in, edit, pause/resume, export, delete),
-      the admin dashboard, and draft privacy/terms pages. See item below on
-      production routing this depends on.
+      the admin dashboard, and draft privacy/terms pages. Is the single
+      public origin in prod too (`src/proxy.ts`); see `infra/README.md`.
+- [x] Terraform in `/infra` and both Dockerfiles — never applied (no GCP
+      project yet); see the note below and the Done entry for what was
+      actually verified.
 
 **Supporting**
-- [ ] **Terraform must route web and api under one hostname.** The backend's
-      session and CSRF cookies (`app/api/session.py`, `app/api/admin_session.py`)
-      are first-party by design, and the emailed-link paths (`/opt-in/*`,
-      `/unsubscribe/*`, `/feedback/*`, `/pdf/*`, `/login/*`, `/admin/login/*`)
-      use `BASE_URL` as if it were one public origin shared by both Cloud Run
-      services. In prod that requires a load balancer (or equivalent) sending
-      `/api/*`, `/admin/api/*`, and those emailed-link paths to the api
-      service, everything else to web. Locally, `frontend/next.config.ts`
-      proxies the two `/api` prefixes as a stand-in — see the frontend
-      README — but the emailed-link paths are opened directly against the
-      backend's own dev URL, since there's no load balancer to route them.
-- [ ] Terraform in `/infra` · [ ] Evals in `/evals`
-- [ ] GitHub Actions (lint, type-check, tests, eval subset on PRs)
+- [ ] Evals in `/evals`
+- [ ] GitHub Actions (lint, type-check, tests, eval subset on PRs) — also
+      the thing that would build and push the two Docker images; today
+      that's a manual `docker build`/`docker push`, documented in
+      `infra/README.md`.
 - [ ] `docs/`: architecture doc, DPDP incident runbook, operational runbooks
+- [ ] **`terraform plan`/`apply` have never run against a real project.**
+      No GCP project exists yet (Blockers). `terraform validate` passes;
+      `fmt` is clean. Two real bugs were only found by going one step
+      further and actually building+running both Docker images the config
+      deploys (see the WeasyPrint and `CONFIG_DIR` entries above/below) —
+      `plan`/`apply` could still turn up more once real credentials exist.
+- [ ] **Monitoring covers two conditions, not the four CLAUDE.md lists.**
+      Job-execution failure and api 5xx rate are wired (Cloud Run's own
+      built-in metrics); a build's deadline miss and a sharp drop in
+      verified story counts are not — both need either structured logging
+      or a custom metric exporting something from `pipeline_runs`, neither
+      of which exists yet.
+- [ ] **`api` is publicly invokable, not restricted to `web`.** The web
+      service's own proxy calls it over the public internet without
+      minting an identity token, so IAM can't be tightened to
+      `web`'s service account alone without adding that — real work, not a
+      Terraform flag. Noted directly in `infra/cloud_run_api.tf`.
+- [ ] **Cloud Run jobs retry zero times (`max_retries = 0`).** Deliberate —
+      several jobs (build, late update) aren't safe to blindly rerun
+      mid-failure the way Cloud Run's own retry would — but it means a
+      transient failure (a cold dependency, a network blip) gets no
+      automatic second attempt either. The admin dashboard's manual rerun
+      path is the intended recovery, per CLAUDE.md's build-job description.
 
 ## 5. Environment
 
-- [ ] **WeasyPrint cannot run on this machine** (no GTK/Pango), so the PDF
-      route's real renderer (`app/render/pdf.py:weasyprint_renderer`) has
-      never produced an actual page — only its swapped-out fake has been
-      exercised. Everything around it (caching, merge via `pypdf`, the
-      revision-binding, the route) is genuinely tested; only the layout
-      step itself needs a container to verify.
+- [x] ~~WeasyPrint cannot run on this machine~~ It can't, but
+      `backend/Dockerfile` installs the GTK/Pango/Cairo libraries it needs,
+      and `weasyprint_renderer` was verified for real inside the built
+      image: `HTML(string=...).write_pdf()` produces genuine PDF bytes.
+      Fixed one real bug in the process — the runtime user's `$HOME` wasn't
+      writable, so fontconfig couldn't cache, which the image now sets to
+      `/tmp`. Unverified: the actual layout of a real section's HTML
+      (tested with a trivial string, not `page_html()`'s real output).
 - [ ] **`GcsObjectStorage` has never touched real Cloud Storage.** No GCP
       project exists yet (see Blockers). It mirrors `LocalObjectStorage`'s
       interface exactly, so the PDF route needs no change once a bucket
@@ -367,3 +395,21 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `/api/*` and `/admin/api/*` to the backend so the backend's
       same-origin session/CSRF cookies work without a load balancer —
       `d686297`
+- [x] Terraform (`/infra`) for everything CLAUDE.md's Deployment section
+      names: two Cloud Run services, six Cloud Run jobs, Cloud Scheduler
+      triggers at CLAUDE.md's exact times, Secret Manager containers (never
+      populated by Terraform — values are set by hand, so no secret ever
+      touches state), Artifact Registry, the PDF cache bucket (30-day
+      lifecycle), and two Cloud Monitoring alerts. `terraform validate` and
+      `fmt` pass; `plan`/`apply` need a real GCP project that doesn't exist
+      yet. Redesigned the web/api origin problem along the way: rather than
+      a load balancer unifying two Cloud Run URLs under a custom domain
+      nobody has bought, `web` became the single public origin outright —
+      `frontend/src/proxy.ts` (Next 16 renamed Middleware to Proxy) forwards
+      everything FastAPI needs to serve to `BACKEND_ORIGIN`. Also added:
+      `backend/Dockerfile` and `frontend/Dockerfile`, both actually built
+      and run (not just written) — see the WeasyPrint and `CONFIG_DIR`
+      entries above for what that caught, and the multi-container network
+      test that exercised the whole chain (browser → web's proxy → api →
+      real Postgres, and separately the CSRF-protected write path) end to
+      end — `PENDING`

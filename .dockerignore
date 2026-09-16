@@ -1,0 +1,16 @@
+.git
+.venv
+.mypy_cache
+.ruff_cache
+.pytest_cache
+**/__pycache__
+**/*.pyc
+frontend/node_modules
+frontend/.next
+infra/.terraform
+*.tfstate*
+.env
+.env.*
+!.env.example
+mailsink/
+*.log
