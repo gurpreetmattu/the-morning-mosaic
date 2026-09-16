@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `240c142`
-- **State:** 47 commits · 71 modules · 446 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `6345bed`
+- **State:** 48 commits · 71 modules · 446 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -313,10 +313,10 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Account API: magic-link login (double-submit CSRF session cookie),
       preferences (genres, keywords, city, slot, frequency, edition
       preference), pause/resume, and DPDP data export and erasure —
-      `PENDING`
+      `3c640b1`
 - [x] PDF route: two-tier caching (a genre page renders once per revision;
       a reader's file is a cache-or-assemble concatenation of theirs, via
       `pypdf`), bound to the exact revision a link was issued for so a later
       same-day update cannot change what an old link produces, and an
       `ObjectStorage` protocol (disk in dev, Cloud Storage behind a lazy
-      import in prod) — `PENDING`
+      import in prod) — `6345bed`
