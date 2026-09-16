@@ -1,4 +1,4 @@
-# Backlog
+﻿# Backlog
 
 Running list of what is pending, what is provisional, and what is known to be
 broken. Kept in the repo so it survives between sessions.
@@ -137,4 +137,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Project installed as a real package, so `python -m app.jobs.*` runs
       without `PYTHONPATH` — `1b76915`
 - [x] Ranker: LLM clustering, deterministic corroboration gate and scoring,
-      versioned prompts — this commit
+      versioned prompts — `1c39d4a`
