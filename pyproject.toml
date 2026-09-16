@@ -70,6 +70,9 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "ANN", "RUF"]
 # E501: test fixtures contain realistic prose; wrapping it mid-sentence makes
 # the expectations harder to read than the long line.
 "backend/tests/**" = ["ANN", "E501"]
+"evals/tests/**" = ["ANN", "E501"]
+# Fixture prose (planted-error sentences, article text) reads better whole.
+"evals/datasets/**" = ["E501"]
 # Migration bodies are generated; they are reviewed, not hand-styled.
 "backend/migrations/versions/*" = ["E501"]
 
@@ -86,7 +89,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 # No pythonpath entry: the project is installed, so tests import the same
 # `app` package the jobs do rather than a second copy found via sys.path.
-testpaths = ["backend/tests"]
+testpaths = ["backend/tests", "evals/tests"]
 asyncio_mode = "auto"
 markers = [
     "integration: needs a live PostgreSQL; set TEST_DATABASE_URL or it skips",

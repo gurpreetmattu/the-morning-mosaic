@@ -85,11 +85,12 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       invented "SBI" or "IMF" would pass to the model check alone. Raising the
       floor would flood it with false positives; a known-acronym list is the
       likely fix.
-- [ ] **Planted-error catch rate is measured by hand, not by an eval.** A live
-      run caught 6 of 6 planted errors (wrong figure, wrong day, wrong person,
-      invented fact, reversed meaning, unstated causation) with the control
-      passing. That belongs in `/evals` as a regression test, not in a
-      scratchpad script.
+- [x] ~~Planted-error catch rate is measured by hand, not by an eval.~~ Now
+      `evals/fact_checker_catch_rate.py`: 10 deterministic cases (control +
+      4 error categories, across 2 base stories) pass today at 100%; the
+      other 3 categories (invented prose fact, reversed meaning, unstated
+      causation) are built and ready but need a live model to actually
+      score — see `evals/README.md`.
 - [ ] **Entity tags accept generic noun phrases.** The check is only that the
       tag appears in the passages, so "central bank" and "two Mumbai
       brokerages" pass alongside "Reserve Bank of India". Harmless for
@@ -102,6 +103,14 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       source keys, so two outlets running lightly rewritten wire copy count as
       two. Identical text is caught by the Collector's content hash; a rewrite
       is not. Treat the corroboration count as an upper bound.
+- [ ] **The deterministic clustering fallback measurably misses paraphrased
+      duplicates.** `evals/clustering.py`'s title-baseline eval scores it at
+      80% pairwise accuracy on a small labelled fixture: it correctly never
+      invents a false merge, but the two genuinely-duplicate pairs, whose
+      headlines were paraphrased rather than near-identical, don't clear
+      the 0.5 Jaccard-similarity threshold and stay unmerged. Only reachable
+      when the LLM clustering step itself fails and this fallback takes
+      over, but that's exactly when it matters most.
 - [ ] **Neon-specific engine settings untested against Neon.** `pool_pre_ping`
       and `prepare_threshold=None` were reasoned from PgBouncer behaviour and
       have only run against local PostgreSQL.
@@ -259,7 +268,10 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       actually verified.
 
 **Supporting**
-- [ ] Evals in `/evals`
+- [x] Evals in `/evals` — see the Done entry and `evals/README.md`. Four of
+      six eval categories score for real today; two (groundedness, tag
+      accuracy) and half of a third (fact-checker catch rate, clustering)
+      are built but need the LLM gateway to actually run.
 - [ ] GitHub Actions (lint, type-check, tests, eval subset on PRs) — also
       the thing that would build and push the two Docker images; today
       that's a manual `docker build`/`docker push`, documented in
@@ -415,3 +427,18 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       test that exercised the whole chain (browser → web's proxy → api →
       real Postgres, and separately the CSRF-protected write path) end to
       end — `4ae281e`
+- [x] Evals (`/evals`) for all six categories CLAUDE.md names, split into a
+      deterministic tier (always runs) and an LLM-dependent tier (skipped,
+      not failed, when `freellmpool` is unreachable — see `llm_probe.py`).
+      Real, current scores today: freshness 100%, fact-checker deterministic
+      catch rate 100% (10 cases), neutrality 100% (4 cases), title-only
+      clustering fallback 80% (a genuine, previously-unmeasured gap — see
+      the Defects entry above). Groundedness, tag accuracy, the full
+      fact-checker pipeline, and full clustering are built and unit-tested
+      but have never scored a live result — moved the "planted-error catch
+      rate measured by hand" item from a standing complaint to actual,
+      rerunnable code. `uv run python -m evals.run`; 29 new tests under
+      `evals/tests/` (added to pytest's testpaths) cover the eval harness
+      itself — the deterministic scoring logic, the LLM-reachability probe,
+      and the report/exit-code behaviour — independent of live model
+      access — `PENDING`
