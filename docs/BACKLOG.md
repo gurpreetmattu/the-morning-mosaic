@@ -47,6 +47,12 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       right, but the exception escapes `run_build` as a traceback rather than
       a recorded failed run. Only reachable while `launch_date` is in the
       future — which it is today.
+- [ ] **Integration tests share a database with manual runs.** Tests roll back
+      their own transactions, but a real `python -m app.jobs.build` commits,
+      and one already left a `pipeline_runs` row that broke two tests asserting
+      a table held exactly one row. Those assertions are now scoped, but the
+      next "count the rows" test will hit it again. A dedicated test database,
+      or a truncate fixture, is the real fix.
 - [ ] **No admin alerting.** CLAUDE.md wants Cloud Monitoring notifications on
       build failure, deadline miss, send failures and sharp drops in verified
       story counts. The build job records everything needed in `pipeline_runs`
@@ -145,9 +151,12 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `fact_checker_v1` are written; the Orchestrator needs none)
 
 **Delivery path**
-- [ ] Email sender, tokens, `List-Unsubscribe` one-click, link-scanner-safe GETs
-- [ ] Jinja templates: per genre, special, weekend, system notices
+- [ ] Link-scanner-safe GET endpoints (opt-in, magic link, unsubscribe,
+      feedback must not change state on GET)
+- [ ] Jinja templates: full email shell with masthead, special, weekend,
+      system notices
 - [ ] PDF assembly and Cloud Storage caching
+- [ ] Bounce handling over IMAP
 
 **Services**
 - [ ] weather · [ ] markets · [ ] sports · [ ] releases · [ ] deals
@@ -203,6 +212,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `74d3add`
 - [x] Genre sections rendered to email-safe HTML and plain text, and edition
       revisions published immutably with their sections — `5bcaabc`
+- [x] Email layer: signed stateless tokens, hashed stored tokens, SMTP sender
+      with the dev allowlist and one-click unsubscribe — this commit
 - [x] Build job: the full pipeline behind one command, single-instance job
       lock, pipeline_runs tracking — `43adec4`. Run end to end against the
       live database: it correctly refused to publish, because no source has

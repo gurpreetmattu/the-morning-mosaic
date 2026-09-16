@@ -13,10 +13,11 @@ timeout, an OOM — never leaves a stale lock that blocks tomorrow.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app.db.engine import get_sessionmaker
 
@@ -30,14 +31,17 @@ def lock_key(name: str) -> int:
 
 
 @contextmanager
-def job_lock(name: str) -> Iterator[bool]:
+def job_lock(name: str, *, session_factory: Callable[[], Session] | None = None) -> Iterator[bool]:
     """Yields True if this process holds the lock for `name`.
 
     The caller decides what to do when it does not; for a scheduled job that
     means exiting quietly, because another instance is already doing the work.
+
+    The lock needs its own connection, held for the life of the job, so it
+    cannot share the caller's session.
     """
     key = lock_key(name)
-    session = get_sessionmaker()()
+    session = (session_factory or get_sessionmaker())()
     acquired = False
     try:
         acquired = bool(session.scalar(select(func.pg_try_advisory_lock(key))))

@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine, func, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.agents.orchestrator import CollectorLike, Orchestrator, VerifyFn
 from app.agents.schemas import (
@@ -144,6 +144,16 @@ def count(session: Session, model: type) -> int:
     return session.scalar(select(func.count()).select_from(model)) or 0
 
 
+def this_run(session: Session) -> PipelineRun | None:
+    """The run this test created.
+
+    Scoped by started_at rather than taking the only row: the database is also
+    used by hand, so a real `python -m app.jobs.build` can leave committed runs
+    behind.
+    """
+    return session.scalar(select(PipelineRun).where(PipelineRun.started_at == NOW))
+
+
 @pytest.fixture(autouse=True)
 def _sources(session: Session) -> None:
     seed_sources(session)
@@ -188,7 +198,7 @@ def test_the_audit_trail_is_written_alongside_the_revision(session: Session) -> 
 def test_the_run_is_recorded_as_succeeded(session: Session) -> None:
     build(session)
 
-    run = session.scalar(select(PipelineRun))
+    run = this_run(session)
     assert run is not None
     assert run.job is JobName.BUILD
     assert run.status is RunStatus.SUCCEEDED
@@ -212,7 +222,7 @@ def test_a_build_with_nothing_verifiable_publishes_nothing(session: Session) -> 
 def test_a_failed_build_is_recorded_as_failed(session: Session) -> None:
     build(session, subject=orchestrator(verify=verify_none))
 
-    run = session.scalar(select(PipelineRun))
+    run = this_run(session)
     assert run is not None
     assert run.status is RunStatus.FAILED
 
@@ -269,7 +279,7 @@ def test_a_deadline_miss_is_recorded_without_losing_the_edition(
 
     assert report.deadline_missed is True
     assert report.succeeded  # two stories verified is enough to publish
-    run = session.scalar(select(PipelineRun))
+    run = this_run(session)
     assert run is not None
     assert run.status is RunStatus.DEADLINE_MISSED
 
@@ -284,15 +294,18 @@ def test_the_lock_key_is_stable_and_fits_a_signed_64_bit_int() -> None:
     assert -(2**63) <= key < 2**63
 
 
-def test_a_second_holder_cannot_take_the_same_job_lock() -> None:
-    with job_lock("test-build-guard") as first:
+def test_a_second_holder_cannot_take_the_same_job_lock(engine: Engine) -> None:
+    """A manual rerun during the scheduled run must not publish twice."""
+    factory = sessionmaker(bind=engine)
+    with job_lock("test-build-guard", session_factory=factory) as first:
         assert first is True
-        with job_lock("test-build-guard") as second:
+        with job_lock("test-build-guard", session_factory=factory) as second:
             assert second is False
 
 
-def test_the_lock_is_released_when_the_block_exits() -> None:
-    with job_lock("test-build-release") as first:
+def test_the_lock_is_released_when_the_block_exits(engine: Engine) -> None:
+    factory = sessionmaker(bind=engine)
+    with job_lock("test-build-release", session_factory=factory) as first:
         assert first is True
-    with job_lock("test-build-release") as again:
+    with job_lock("test-build-release", session_factory=factory) as again:
         assert again is True
