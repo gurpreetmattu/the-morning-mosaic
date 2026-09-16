@@ -7,10 +7,11 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `4ae281e`
-- **State:** 57 commits · 76 backend modules, 22 frontend files, 15 Terraform files, 2 Dockerfiles ·
-  473 backend tests, 8 frontend tests (all green, database included) · ruff, `mypy --strict`,
-  eslint, prettier, tsc, and `terraform validate`/`fmt` all clean
+- **Last updated:** 2026-09-17, at commit `0ca53b9`
+- **State:** 58 commits · 76 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+  files, 2 Dockerfiles · 502 Python tests (473 backend + 29 evals), 8 frontend tests (all green,
+  database included) · ruff, `mypy --strict`, eslint, prettier, tsc, and `terraform validate`/`fmt`
+  all clean
 
 ---
 
@@ -441,4 +442,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `evals/tests/` (added to pytest's testpaths) cover the eval harness
       itself — the deterministic scoring logic, the LLM-reachability probe,
       and the report/exit-code behaviour — independent of live model
-      access — `PENDING`
+      access — `0ca53b9`
