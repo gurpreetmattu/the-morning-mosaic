@@ -7,8 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `d686297`
-- **State:** 55 commits · 76 backend modules, 21 frontend files · 473 backend tests, 8 frontend tests (all green, database included) · ruff, `mypy --strict`, eslint, prettier, and tsc clean
+- **Last updated:** 2026-09-17, at commit `4ae281e`
+- **State:** 57 commits · 76 backend modules, 22 frontend files, 15 Terraform files, 2 Dockerfiles ·
+  473 backend tests, 8 frontend tests (all green, database included) · ruff, `mypy --strict`,
+  eslint, prettier, tsc, and `terraform validate`/`fmt` all clean
 
 ---
 
@@ -412,4 +414,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       entries above for what that caught, and the multi-container network
       test that exercised the whole chain (browser → web's proxy → api →
       real Postgres, and separately the CSRF-protected write path) end to
-      end — `PENDING`
+      end — `4ae281e`
