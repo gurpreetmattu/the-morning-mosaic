@@ -227,6 +227,22 @@ def test_a_failed_build_is_recorded_as_failed(session: Session) -> None:
     assert run.status is RunStatus.FAILED
 
 
+def test_a_build_before_launch_date_fails_cleanly_instead_of_raising(
+    session: Session,
+) -> None:
+    subject = orchestrator()
+    subject._editions = launch_on(EDITION + timedelta(days=1))
+
+    report = build(session, subject=subject)
+
+    assert not report.succeeded
+    assert report.error is not None
+    assert "precedes launch_date" in report.error
+    run = this_run(session)
+    assert run is not None
+    assert run.status is RunStatus.FAILED
+
+
 def test_a_quiet_genre_alongside_a_good_one_still_publishes(session: Session) -> None:
     class OnlyIndia(FakeCollector):
         def collect(self, genre: GenreKey, *, now: datetime | None = None) -> CollectionResult:

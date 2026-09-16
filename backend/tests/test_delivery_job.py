@@ -164,8 +164,8 @@ def settings() -> Settings:
             "gmail_app_password": "x",
             "imap_host": "imap.example.com",
             "admin_email": "admin@example.com",
-            "llmbuffet_url": "https://llm.example.com",
-            "llmbuffet_api_key": "x",
+            "freellmpool_url": "https://llm.example.com",
+            "freellmpool_api_key": "x",
             "token_signing_key": "signing-key-for-tests",
             "app_env": "prod",
         }

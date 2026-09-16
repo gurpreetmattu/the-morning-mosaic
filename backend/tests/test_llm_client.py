@@ -38,8 +38,8 @@ def settings(**overrides: Any) -> Settings:
         "gmail_app_password": "x",
         "imap_host": "imap.example.com",
         "admin_email": "admin@example.com",
-        "llmbuffet_url": PRIMARY,
-        "llmbuffet_api_key": "primary-key",
+        "freellmpool_url": PRIMARY,
+        "freellmpool_api_key": "primary-key",
         "token_signing_key": "x",
     }
     return Settings.model_validate(base | overrides)

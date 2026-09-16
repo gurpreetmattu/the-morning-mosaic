@@ -7,12 +7,13 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `a2aecc7`
-- **State:** 61 commits · 76 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `738ec2a`
+- **State:** 64 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 502 Python tests (473 backend + 29 evals), 8 frontend tests (all green, database
-  included) · ruff, `mypy --strict`, eslint, prettier, tsc, `terraform validate`/`fmt`, and
-  `actionlint` all clean
+  runbook · 513 Python tests (484 backend + 29 evals), 8 frontend tests (all green, database
+  included) · ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and
+  `actionlint` all clean (`terraform validate` needs `terraform init`'s cached providers, not
+  available in this environment)
 
 ---
 
@@ -45,11 +46,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 2. Defects and gaps in code that already exists
 
-- [ ] **A build before `launch_date` crashes instead of failing cleanly.**
-      `edition_number` raises so the day is never numbered zero, which is
-      right, but the exception escapes `run_build` as a traceback rather than
-      a recorded failed run. Only reachable while `launch_date` is in the
-      future — which it is today.
 - [ ] **Integration tests share a database with manual runs.** Tests roll back
       their own transactions, but a real `python -m app.jobs.build` commits,
       and one already left a `pipeline_runs` row that broke two tests asserting
@@ -70,9 +66,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       and `GET /admin/api/runs` now makes it visible to someone who checks —
       but nothing pushes to anyone, which is what "alert" actually means. That
       still needs a GCP project (see Blockers).
-- [ ] **No structured logging.** `structlog` is a dependency but unused; the
-      seed job prints. CLAUDE.md requires JSON logs to Cloud Logging. Worth
-      doing before more agents land, since each will want it.
 - [ ] **No Langfuse tracing** wired, though it is a dependency and in the spec.
 - [ ] **`llm_calls` logging is built but never wired in.** `DatabaseCallRecorder`
       (`app/llm/recorder.py`) fully implements CLAUDE.md's "log token usage,
@@ -86,11 +79,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       or deletes the text — there's no 7th job, and none of the six
       existing ones touch it either. CLAUDE.md's specific retention promise
       has a column, not code, behind it.
-- [ ] **No crawl throttling or `Crawl-delay` support.** `RobotsPolicy` honours
-      allow/disallow and caches per run, but nothing rate-limits requests to a
-      single host. With feeds enabled this could hammer a publisher.
-- [ ] **`Fetcher` retry/backoff is not directly tested.** Exercised indirectly
-      by the collector tests, never asserted.
 - [ ] **Ranker cannot ask the Collector for more coverage.** CLAUDE.md gives it
       that ability ("may ask the Collector for more coverage, whitelisted
       sources only"); it is not implemented. Matters most for strict genres,
@@ -190,13 +178,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       SQL insert and a manually-sent note) for exactly this reason.
 - [ ] **The archive lists at most 60 editions** and has no pagination. Fine
       for two months; a decision by January.
-- [ ] **`LLMBUFFET_*` naming lags upstream.** The package was renamed to
-      `freellmpool`; settings, `.env.example` and CLAUDE.md still say
-      LLMBuffet. Cosmetic, but it spreads with every new reference.
-- [ ] **The frontend has no Content-Security-Policy.** `next.config.ts` sets
-      `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`, but
-      a CSP was left out rather than fought into shape around the Turnstile
-      script it needs to load from `challenges.cloudflare.com`.
 - [ ] **Preferences can edit genres, city, and delivery slot, but not
       frequency, edition preference, or followed keywords**, even though
       `PATCH /api/me` supports all of them. A frontend gap, not a backend
@@ -553,3 +534,34 @@ noticing the count was wrong.)
       corrected in the archive, note it in the next edition) has no code
       behind it at all, not even the archive-display half already on
       record — `a2aecc7`
+- [x] A build before `launch_date` now fails cleanly: `run_build` checks
+      `Orchestrator.edition_number` before doing any pipeline work and
+      records a `FAILED` `PipelineRun` with the real error, instead of
+      letting the `ValueError` escape as an unrecorded traceback — new
+      test in `test_build_job.py`.
+- [x] Structured JSON logging: `app/logging_config.py` wraps stdlib
+      `logging` through `structlog`'s `ProcessorFormatter`, to stdout (Cloud
+      Logging parses stdout JSON automatically). All six jobs' `main()` and
+      the API's `create_app()` now call it instead of
+      `logging.basicConfig(stream=sys.stderr)`; every existing
+      `logging.getLogger(__name__)` call site is unchanged.
+- [x] Per-host crawl throttling: `Fetcher` now enforces a minimum interval
+      between requests to the same host (default 1s), and `RobotsPolicy`
+      reads a site's declared `Crawl-delay` and raises that floor via
+      `Fetcher.set_crawl_delay`. Direct `Fetcher` retry/backoff and
+      throttling tests added in `test_fetch.py` (previously only exercised
+      indirectly through the collector tests); `test_robots.py` covers the
+      crawl-delay wiring.
+- [x] `LLMBUFFET_*` → `FREELLMPOOL_*` rename finished everywhere it lagged:
+      `Settings` fields, `.env.example`, Terraform variables/secrets/locals,
+      all three GitHub Actions workflows, CLAUDE.md, and every test fixture
+      — 30 files, one mechanical rename, `terraform fmt` and the full test
+      suite both clean afterward.
+- [x] Frontend Content-Security-Policy added in `next.config.ts`:
+      same-origin by default, Turnstile's `challenges.cloudflare.com`
+      allowlisted for `script-src`/`connect-src`/`frame-src` (the reason a
+      CSP was skipped before), `'unsafe-eval'` scoped to dev only for React
+      Refresh. Verified: `next build` succeeds, `tsc`/`eslint`/vitest all
+      clean, and the header renders correctly against a running dev server.
+      Not verified in a real browser against a live Turnstile site key —
+      that still needs the Cloudflare account (Blockers).

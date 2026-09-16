@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -35,6 +34,7 @@ from app.clock import edition_date_for, now_utc
 from app.config.settings import get_settings
 from app.db.engine import dispose_engine, session_scope
 from app.jobs.locking import job_lock
+from app.logging_config import configure_logging
 from app.models.content import Story, StoryTag
 from app.models.editions import Feedback
 from app.models.enums import JobName, RunStatus, TagKind, Vote
@@ -179,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.parse_args(argv)
 
     settings = get_settings()
-    logging.basicConfig(level=settings.log_level, stream=sys.stderr)
+    configure_logging(settings.log_level)
 
     try:
         with job_lock(JobName.FEEDBACK.value) as acquired:

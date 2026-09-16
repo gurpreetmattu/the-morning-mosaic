@@ -16,11 +16,13 @@ from app.api.routes import config as config_routes
 from app.api.security import SecurityHeadersMiddleware
 from app.api.session import CSRF_HEADER
 from app.config.settings import Settings, get_settings
+from app.logging_config import configure_logging
 from app.render.email import BRAND
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     config = settings or get_settings()
+    configure_logging(config.log_level)
 
     app = FastAPI(
         title=f"{BRAND} API",

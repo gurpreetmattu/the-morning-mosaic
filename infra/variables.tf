@@ -109,7 +109,7 @@ variable "failure_notice_auto_limit" {
   default = 50
 }
 
-variable "llmbuffet_url" {
+variable "freellmpool_url" {
   description = "The LLM gateway's URL. Not reachable from Cloud Run while it only serves 127.0.0.1 — see the blocker in docs/BACKLOG.md."
   type        = string
 }

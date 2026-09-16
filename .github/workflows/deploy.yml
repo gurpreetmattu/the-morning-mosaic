@@ -105,6 +105,6 @@ jobs:
             -var="region=${{ env.REGION }}" \
             -var="sender_email=${{ vars.SENDER_EMAIL }}" \
             -var="admin_email=${{ vars.ADMIN_EMAIL }}" \
-            -var="llmbuffet_url=${{ vars.LLMBUFFET_URL }}" \
+            -var="freellmpool_url=${{ vars.FREELLMPOOL_URL }}" \
             -var="backend_image=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/the-morning-mosaic/backend:${{ env.IMAGE_TAG }}" \
             -var="web_image=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/the-morning-mosaic/web:${{ env.IMAGE_TAG }}"

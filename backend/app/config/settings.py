@@ -48,8 +48,8 @@ class Settings(BaseSettings):
     failure_notice_auto_limit: int = Field(default=50, gt=0)
 
     # --- LLM access ---
-    llmbuffet_url: AnyHttpUrl
-    llmbuffet_api_key: SecretStr
+    freellmpool_url: AnyHttpUrl
+    freellmpool_api_key: SecretStr
     llm_fallback_url: AnyHttpUrl | None = None
     llm_fallback_api_key: SecretStr | None = None
 

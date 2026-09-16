@@ -31,8 +31,8 @@ AGENT_KEYS: tuple[AgentKey, ...] = get_args(AgentKey)
 # Agents whose model must be pinned rather than failed over (see CLAUDE.md).
 PINNED_AGENTS: frozenset[AgentKey] = frozenset({"writer", "fact_checker"})
 
-# Placeholder in models.yaml until the LLMBuffet catalogue has been read.
-UNSET_MODEL = "REPLACE_WITH_LLMBUFFET_MODEL_ID"
+# Placeholder in models.yaml until the freellmpool catalogue has been read.
+UNSET_MODEL = "REPLACE_WITH_FREELLMPOOL_MODEL_ID"
 
 ExtraKind = Literal[
     "scores_fixtures",

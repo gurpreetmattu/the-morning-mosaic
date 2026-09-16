@@ -1,7 +1,7 @@
 # Model assignment per LLM agent.
 #
-# Ids come from the freellmpool gateway (formerly llmbuffet), listed with
-# `freellmpool models` and served at http://127.0.0.1:8080/v1.
+# Ids come from the freellmpool gateway, listed with `freellmpool models` and
+# served at http://127.0.0.1:8080/v1.
 #
 # Every id below was verified on 2026-09-16 by sending a Writer-shaped task
 # through backend/app/llm/client.py: rewrite from numbered passages, cite the

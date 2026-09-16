@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
@@ -40,6 +39,7 @@ from app.db.publish import latest_revision
 from app.email.sender import Message, Sender, SendError, SendOutcome
 from app.email.tokens import PDF, ensure_unsubscribe_token, sign
 from app.jobs.locking import job_lock
+from app.logging_config import configure_logging
 from app.models.editions import Delivery, Edition, EditionRevision
 from app.models.enums import (
     DeliveryStatus,
@@ -342,7 +342,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     settings = get_settings()
-    logging.basicConfig(level=settings.log_level, stream=sys.stderr)
+    configure_logging(settings.log_level)
 
     edition_date = args.edition_date or edition_date_for(now_utc())
     slot = args.slot or current_ist_slot()

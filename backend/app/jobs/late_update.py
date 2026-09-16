@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -40,6 +39,7 @@ from app.db.publish import PublishError, latest_revision, publish_revision
 from app.jobs.build import build_orchestrator
 from app.jobs.locking import job_lock
 from app.llm.client import LlmClient
+from app.logging_config import configure_logging
 from app.models.editions import Edition, EditionSection
 from app.models.enums import JobName, RevisionReason, RunStatus, SectionStatus
 from app.models.operations import PipelineRun
@@ -235,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     settings = get_settings()
-    logging.basicConfig(level=settings.log_level, stream=sys.stderr)
+    configure_logging(settings.log_level)
 
     edition_date = args.edition_date or edition_date_for(now_utc())
     deadline = now_utc() + timedelta(minutes=args.deadline_minutes)

@@ -37,6 +37,7 @@ from app.db.persist import persist_genre
 from app.db.publish import PublishError, publish_revision
 from app.jobs.locking import job_lock
 from app.llm.client import LlmClient
+from app.logging_config import configure_logging
 from app.models.enums import JobName, RunStatus
 from app.models.operations import PipelineRun
 from app.render.sections import RenderedSection, SectionRenderer
@@ -92,6 +93,15 @@ def run_build(
     )
     session.add(run)
     session.flush()
+
+    try:
+        orchestrator.edition_number(edition_date)
+    except ValueError as exc:
+        # edition_date precedes launch_date. Fail the run cleanly instead of
+        # letting the exception escape as an unrecorded traceback.
+        report.error = str(exc)
+        _finish(run, RunStatus.FAILED, report)
+        return report
 
     build: EditionBuild = orchestrator.build(
         edition_date=edition_date, deadline=deadline, genres=genres, now=started
@@ -168,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    logging.basicConfig(level=get_settings().log_level, stream=sys.stderr)
+    configure_logging(get_settings().log_level)
     edition_date = args.edition_date or edition_date_for(now_utc())
     deadline = (
         now_utc() + timedelta(minutes=args.deadline_minutes)

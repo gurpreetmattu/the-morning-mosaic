@@ -125,8 +125,8 @@ jobs:
       GMAIL_APP_PASSWORD: unused-in-ci
       IMAP_HOST: imap.example.com
       ADMIN_EMAIL: admin@example.com
-      LLMBUFFET_URL: ${{ vars.LLMBUFFET_URL || 'http://127.0.0.1:8080/v1' }}
-      LLMBUFFET_API_KEY: ${{ secrets.LLMBUFFET_API_KEY || 'unused-in-ci' }}
+      FREELLMPOOL_URL: ${{ vars.FREELLMPOOL_URL || 'http://127.0.0.1:8080/v1' }}
+      FREELLMPOOL_API_KEY: ${{ secrets.FREELLMPOOL_API_KEY || 'unused-in-ci' }}
       TOKEN_SIGNING_KEY: unused-in-ci
     steps:
       - uses: actions/checkout@v4

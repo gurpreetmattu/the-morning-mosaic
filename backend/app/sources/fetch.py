@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from urllib.parse import urlsplit
 
 import httpx
 from tenacity import (
@@ -22,6 +23,10 @@ from tenacity import (
 
 DEFAULT_TIMEOUT_SECONDS = 20.0
 DEFAULT_MAX_ATTEMPTS = 3
+
+# Floor on requests to a single host, so an enabled source with many feeds
+# and articles is never hammered even without a declared Crawl-delay.
+DEFAULT_MIN_HOST_INTERVAL_SECONDS = 1.0
 
 # Transient; worth another attempt.
 RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
@@ -55,13 +60,21 @@ class Fetcher:
         user_agent: str,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         max_attempts: int = DEFAULT_MAX_ATTEMPTS,
+        min_host_interval: float = DEFAULT_MIN_HOST_INTERVAL_SECONDS,
         client: httpx.Client | None = None,
         sleep: Callable[[float], None] = time.sleep,
+        monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._user_agent = user_agent
         self._max_attempts = max_attempts
+        self._min_host_interval = min_host_interval
         self._sleep = sleep
+        self._monotonic = monotonic
         self._client = client or httpx.Client(timeout=timeout, follow_redirects=True)
+        self._last_request_at: dict[str, float] = {}
+        # A host's own declared Crawl-delay, when RobotsPolicy has read one;
+        # never lower than min_host_interval.
+        self._host_delay: dict[str, float] = {}
 
     def close(self) -> None:
         self._client.close()
@@ -72,8 +85,24 @@ class Fetcher:
     def __exit__(self, *exc: object) -> None:
         self.close()
 
+    def set_crawl_delay(self, host: str, seconds: float) -> None:
+        """Record a host's declared robots.txt Crawl-delay, in seconds."""
+        self._host_delay[host] = seconds
+
+    def _throttle(self, host: str) -> None:
+        delay = max(self._min_host_interval, self._host_delay.get(host, 0.0))
+        if delay <= 0:
+            return
+        last = self._last_request_at.get(host)
+        if last is not None:
+            wait = delay - (self._monotonic() - last)
+            if wait > 0:
+                self._sleep(wait)
+        self._last_request_at[host] = self._monotonic()
+
     def get(self, url: str) -> httpx.Response:
         """Fetch a URL, retrying transient failures. Raises FetchError."""
+        self._throttle(urlsplit(url).netloc)
         try:
             for attempt in Retrying(
                 stop=stop_after_attempt(self._max_attempts),

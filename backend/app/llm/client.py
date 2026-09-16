@@ -9,7 +9,7 @@ Routing rules, from CLAUDE.md:
   `fallbacks`, then to the configured fallback provider. Their output is
   re-checked downstream, so a substitution is recoverable.
 
-LLMBuffet is an OpenAI-compatible gateway, and this talks to that wire format
+freellmpool is an OpenAI-compatible gateway, and this talks to that wire format
 directly over httpx rather than through the `openai` SDK. The SDK is built on
 httpx2, a parallel stack our test tooling cannot intercept, which would leave
 the routing rules above untested.
@@ -140,8 +140,8 @@ class LlmClient:
                 "set a real model id in config/models.yaml"
             )
 
-        primary_url = str(self._settings.llmbuffet_url)
-        primary_key = self._settings.llmbuffet_api_key.get_secret_value()
+        primary_url = str(self._settings.freellmpool_url)
+        primary_key = self._settings.freellmpool_api_key.get_secret_value()
 
         if spec.pinned:
             # Exactly one route, by design. No model and no provider failover.

@@ -51,4 +51,7 @@ class RobotsPolicy:
             return None  # rules unknown: deny
 
         parser.parse(response.text.splitlines())
+        delay = parser.crawl_delay(self._user_agent)
+        if delay is not None:
+            self._fetcher.set_crawl_delay(urlsplit(origin).netloc, float(delay))
         return parser

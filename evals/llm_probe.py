@@ -24,11 +24,11 @@ PROBE_TIMEOUT_SECONDS = 3.0
 
 
 def llm_gateway_reachable(settings: Settings) -> bool:
-    url = f"{str(settings.llmbuffet_url).rstrip('/')}/models"
+    url = f"{str(settings.freellmpool_url).rstrip('/')}/models"
     try:
         response = httpx.get(
             url,
-            headers={"Authorization": f"Bearer {settings.llmbuffet_api_key.get_secret_value()}"},
+            headers={"Authorization": f"Bearer {settings.freellmpool_api_key.get_secret_value()}"},
             timeout=PROBE_TIMEOUT_SECONDS,
         )
     except httpx.HTTPError:

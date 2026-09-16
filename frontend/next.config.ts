@@ -17,6 +17,25 @@ import type { NextConfig } from "next";
  * infra/README.md.
  */
 
+// Turnstile (see components/TurnstileWidget.tsx) is the only third party this
+// app ever loads a script from or frames; everything else is same-origin.
+// `unsafe-eval` is dev-only, for React Refresh's use of eval — the production
+// build never needs it.
+const CLOUDFLARE_CHALLENGES = "https://challenges.cloudflare.com";
+const isDev = process.env.NODE_ENV !== "production";
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ""}${CLOUDFLARE_CHALLENGES}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  `connect-src 'self' ${CLOUDFLARE_CHALLENGES}`,
+  `frame-src ${CLOUDFLARE_CHALLENGES}`,
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
 const nextConfig: NextConfig = {
   // A self-contained `server.js` plus only the dependencies actually used,
   // for a minimal production image (see Dockerfile).
@@ -29,6 +48,7 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Content-Security-Policy", value: contentSecurityPolicy },
         ],
       },
     ];

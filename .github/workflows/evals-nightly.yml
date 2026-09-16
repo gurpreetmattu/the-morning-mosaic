@@ -5,8 +5,8 @@ name: Nightly evals
 # meaningful "subset" to carve out of it yet — but it exists as its own
 # workflow so a genuinely larger nightly-only run (bigger fixtures, or a
 # real LLM gateway once the blocker in docs/BACKLOG.md is resolved) has
-# somewhere to grow without touching what PRs wait on. If LLMBUFFET_URL and
-# LLMBUFFET_API_KEY are ever set as repository secrets/variables pointing
+# somewhere to grow without touching what PRs wait on. If FREELLMPOOL_URL and
+# FREELLMPOOL_API_KEY are ever set as repository secrets/variables pointing
 # at a reachable gateway, the LLM-dependent evals (see evals/README.md)
 # start scoring for real here with no workflow change needed.
 
@@ -28,8 +28,8 @@ jobs:
       GMAIL_APP_PASSWORD: unused-in-ci
       IMAP_HOST: imap.example.com
       ADMIN_EMAIL: admin@example.com
-      LLMBUFFET_URL: ${{ vars.LLMBUFFET_URL || 'http://127.0.0.1:8080/v1' }}
-      LLMBUFFET_API_KEY: ${{ secrets.LLMBUFFET_API_KEY || 'unused-in-ci' }}
+      FREELLMPOOL_URL: ${{ vars.FREELLMPOOL_URL || 'http://127.0.0.1:8080/v1' }}
+      FREELLMPOOL_API_KEY: ${{ secrets.FREELLMPOOL_API_KEY || 'unused-in-ci' }}
       TOKEN_SIGNING_KEY: unused-in-ci
     steps:
       - uses: actions/checkout@v4

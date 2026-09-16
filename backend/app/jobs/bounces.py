@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
@@ -30,6 +29,7 @@ from app.config.settings import get_settings
 from app.db.engine import dispose_engine, session_scope
 from app.email.bounces import BounceSource, ImapBounceSource, parse_bounce
 from app.jobs.locking import job_lock
+from app.logging_config import configure_logging
 from app.models.enums import JobName, RunStatus, SubscriptionStatus
 from app.models.operations import PipelineRun
 from app.models.users import User
@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     settings = get_settings()
-    logging.basicConfig(level=settings.log_level, stream=sys.stderr)
+    configure_logging(settings.log_level)
     since = edition_date_for(now_utc()) - timedelta(days=args.since_days)
 
     source = ImapBounceSource(

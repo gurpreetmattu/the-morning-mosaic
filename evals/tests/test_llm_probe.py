@@ -17,8 +17,8 @@ def settings(**overrides: object) -> Settings:
         "gmail_app_password": "x",
         "imap_host": "imap.example.com",
         "admin_email": "admin@example.com",
-        "llmbuffet_url": "http://127.0.0.1:8080/v1",
-        "llmbuffet_api_key": "x",
+        "freellmpool_url": "http://127.0.0.1:8080/v1",
+        "freellmpool_api_key": "x",
         "token_signing_key": "x",
     }
     return Settings.model_validate(base | overrides)
@@ -53,4 +53,4 @@ def test_unreachable_on_a_connection_failure() -> None:
 
 def test_unreachable_when_nothing_is_listening() -> None:
     # No mock at all: a real connection attempt to a closed port.
-    assert llm_gateway_reachable(settings(llmbuffet_url="http://127.0.0.1:1")) is False
+    assert llm_gateway_reachable(settings(freellmpool_url="http://127.0.0.1:1")) is False
