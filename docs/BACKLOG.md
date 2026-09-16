@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `0e1ac18`
-- **State:** 11 commits · 34 modules · 105 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `c7cd32b`
+- **State:** 14 commits · 37 modules · 135 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -46,6 +46,16 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       sources only"); it is not implemented. Matters most for strict genres,
       where a story dropped for thin sourcing might be rescued by looking
       wider before giving up on it.
+- [ ] **A copied sentence is dropped mid-summary, which can leave the prose
+      disjointed.** Verified against a live model, the Writer produced a
+      17-word copy in one summary sentence; the check removed that sentence
+      and kept the rest. The problem is recorded, so when the Orchestrator
+      exists it must treat `copied_text` as retry-worthy *even when a story
+      was returned*, rather than publishing the gap.
+- [ ] **Entity tags accept generic noun phrases.** The check is only that the
+      tag appears in the passages, so "central bank" and "two Mumbai
+      brokerages" pass alongside "Reserve Bank of India". Harmless for
+      grounding, noisy for keyword matching; may want a proper-noun heuristic.
 - [ ] **Conflicting key facts are not detected.** The rule is "state that
       reports differ, or drop". Nothing compares figures or claims across the
       articles in a cluster yet. Probably belongs with the Fact-checker, but it
@@ -81,8 +91,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 4. Not built yet
 
-**Agents** (2 of 10 done — Collector, Ranker)
-- [ ] Orchestrator (1) · [ ] Writer (4) · [ ] Fact-checker (5)
+**Agents** (3 of 10 done — Collector, Ranker, Writer)
+- [ ] Orchestrator (1) · [ ] Fact-checker (5)
 - [ ] Image finder (6) · [ ] Weather (7) · [ ] Layout (8) · [ ] Delivery (9)
 - [ ] Feedback (10)
 
@@ -90,8 +100,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] LangGraph build graph · [ ] late-update graph
 - [ ] Jobs: build, late_update, delivery, failure_notice, bounces (only `seed`
       exists)
-- [ ] Prompts for Orchestrator, Writer, Fact-checker, Image finder (the
-      versioned-prompt mechanism exists; only `ranker_v1` is written)
+- [ ] Prompts for Orchestrator, Fact-checker, Image finder (`ranker_v1` and
+      `writer_v1` are written)
 
 **Delivery path**
 - [ ] Email sender, tokens, `List-Unsubscribe` one-click, link-scanner-safe GETs
@@ -139,3 +149,5 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       without `PYTHONPATH` — `1b76915`
 - [x] Ranker: LLM clustering, deterministic corroboration gate and scoring,
       versioned prompts — `1c39d4a`
+- [x] Writer: cited sentences, copy detection, tag taxonomy, code-computed
+      india_relevance, hedging for tier-3 — this commit

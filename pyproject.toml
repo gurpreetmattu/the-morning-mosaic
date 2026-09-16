@@ -61,7 +61,9 @@ src = ["backend", "evals"]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "ANN", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-"backend/tests/**" = ["ANN"]
+# E501: test fixtures contain realistic prose; wrapping it mid-sentence makes
+# the expectations harder to read than the long line.
+"backend/tests/**" = ["ANN", "E501"]
 # Migration bodies are generated; they are reviewed, not hand-styled.
 "backend/migrations/versions/*" = ["E501"]
 

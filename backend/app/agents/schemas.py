@@ -69,3 +69,82 @@ class StoryPool(Base):
     # True when clustering fell back to the deterministic path because the
     # model was unavailable or returned nothing usable.
     used_fallback_clustering: bool = False
+
+
+# --------------------------------------------------------------------- writer
+
+
+class WriterIssue(StrEnum):
+    """Why a piece of the Writer's output was rejected or removed.
+
+    Fatal issues drop the story. The rest remove only the offending element,
+    per CLAUDE.md: "if only an optional element fails ... drop just that
+    element".
+    """
+
+    # Fatal — the core of the story cannot be trusted.
+    UNPARSEABLE = "unparseable"
+    EMPTY_HEADLINE = "empty_headline"
+    EMPTY_SUMMARY = "empty_summary"
+    UNKNOWN_CITATION = "unknown_citation"
+    MISSING_CITATION = "missing_citation"
+    COPIED_TEXT = "copied_text"
+    MISSING_HEDGE = "missing_hedge"
+
+    # Recoverable — the element is dropped, the story survives.
+    DROPPED_ONE_LINER = "dropped_one_liner"
+    DROPPED_WHY_THIS_MATTERS = "dropped_why_this_matters"
+    DROPPED_TOPIC_TAG = "dropped_topic_tag"
+    DROPPED_ENTITY_TAG = "dropped_entity_tag"
+
+
+class PassageRef(Base):
+    """One citable passage, addressed as "a1:p3" within a story."""
+
+    citation_id: str
+    article_index: int
+    source_key: str
+    url: str
+    text: str
+
+
+class DraftSentence(Base):
+    text: str = Field(min_length=1)
+    passage_ids: list[str] = Field(default_factory=list)
+
+
+class WrittenStory(Base):
+    """Validated Writer output. Everything here is cited and checked."""
+
+    headline: DraftSentence
+    summary: list[DraftSentence] = Field(min_length=1)
+    # Optional: dropped rather than invented when it fails validation.
+    one_liner: DraftSentence | None = None
+    why_this_matters: list[DraftSentence] = Field(default_factory=list)
+    topic_tags: list[str] = Field(default_factory=list)
+    entity_tags: list[str] = Field(default_factory=list)
+    # Computed in code from the passages, never taken from the model.
+    india_relevance: bool = False
+    hedged: bool = False
+
+    def sentences(self) -> list[DraftSentence]:
+        parts = [self.headline, *self.summary, *self.why_this_matters]
+        if self.one_liner is not None:
+            parts.append(self.one_liner)
+        return parts
+
+
+class WriterProblem(Base):
+    issue: WriterIssue
+    detail: str
+
+
+class WriterResult(Base):
+    """A written story, or nothing plus the reasons why."""
+
+    story: WrittenStory | None = None
+    problems: list[WriterProblem] = Field(default_factory=list)
+
+    @property
+    def dropped(self) -> bool:
+        return self.story is None
