@@ -1,0 +1,20 @@
+{#- Plain-text twin of section.html.j2. Sent as the multipart alternative, so
+    it carries the same facts and the same source links, not a stub. -#}
+{{ section_title | upper }}
+{{ '=' * section_title | length }}
+{{ blurb }}
+{% if status == 'ok' %}
+{% for story in stories %}
+* {{ story.headline }}
+{% if story.hedged %}
+  [Reported by entertainment sources only. Treat as unconfirmed.]
+{% endif %}
+  {{ story.summary }}
+{% if story.why_this_matters %}
+  Why this matters: {{ story.why_this_matters }}
+{% endif %}
+  {{ 'Sources' if story.sources | length > 1 else 'Source' }}: {% for source in story.sources %}{{ source.name }} <{{ source.url }}>{% if not loop.last %}, {% endif %}{% endfor %}
+{% endfor %}
+{%- else %}
+{{ note }}
+{%- endif %}

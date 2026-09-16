@@ -89,6 +89,13 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       have only run against local PostgreSQL.
 - [ ] **Seed job requires every env var** just to read `DATABASE_URL`. Fine in
       Cloud Run, friction in dev. Undecided whether to loosen.
+- [ ] **`premailer` is an unused dependency.** Sections are written with inline
+      styles directly, so nothing inlines a stylesheet. Either the full email
+      template will need it, or it should be dropped.
+- [ ] **Section HTML has never been seen in a real mail client.** It is built
+      to the email-safe rules (inline styles, no classes, no flexbox) and tests
+      assert those, but CLAUDE.md requires checking Gmail web and mobile plus
+      Outlook. Nothing has been sent anywhere.
 - [ ] **`LLMBUFFET_*` naming lags upstream.** The package was renamed to
       `freellmpool`; settings, `.env.example` and CLAUDE.md still say
       LLMBuffet. Cosmetic, but it spreads with every new reference.
@@ -112,19 +119,18 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 ## 4. Not built yet
 
 **Agents** (5 of 10 done — Orchestrator, Collector, Ranker, Writer, Fact-checker)
-- [ ] Image finder (6) · [ ] Weather (7) · [ ] Layout (8) · [ ] Delivery (9)
-- [ ] Feedback (10)
+- [ ] Image finder (6) · [ ] Weather (7) · [ ] Delivery (9) · [ ] Feedback (10)
+- [~] Layout (8) — genre sections render to HTML and plain text. Still to do:
+      per-user assembly (masthead, "Today in 60 seconds", extras, ordering,
+      correction notes) and PDF pages via WeasyPrint.
 
 **Pipeline**
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
       per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
       Decide whether to wrap it or amend the spec.
-- [ ] **Editions, revisions and sections are still not written.** Stories and
-      their audit trail now persist, but `editions`, `edition_revisions` and
-      `edition_sections` do not. `edition_sections` cannot be written yet at
-      all: its CHECK requires rendered HTML and plain text for an `ok` section,
-      and the Layout module does not exist. Publishing a revision is therefore
-      blocked on Layout, not on persistence.
+- [ ] **Nothing runs the pipeline end to end yet.** Collect, rank, write,
+      verify, persist, render and publish all exist and are tested, but no job
+      calls them in sequence. That is the build job's work.
 - [ ] Late update: re-collection of breaking stories and publishing a new
       revision
 - [ ] Jobs: build, late_update, delivery, failure_notice, bounces (only `seed`
@@ -189,3 +195,5 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Persistence of the audit trail: articles, passages, clusters, stories,
       sentences, citations with frozen excerpts, tags and fact checks —
       `74d3add`
+- [x] Genre sections rendered to email-safe HTML and plain text, and edition
+      revisions published immutably with their sections — this commit
