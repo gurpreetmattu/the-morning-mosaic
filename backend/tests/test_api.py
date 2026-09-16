@@ -594,3 +594,33 @@ def test_the_docs_are_closed_in_prod() -> None:
 
     assert prod.openapi_url is None
     assert prod.docs_url is None
+
+
+class TestConfig:
+    def test_exposes_genres_cities_and_fixed_choices(
+        self, client: TestClient, session: Session
+    ) -> None:
+        response = client.get("/api/config")
+
+        assert response.status_code == 200
+        body = response.json()
+        genre_keys = {genre["key"] for genre in body["genres"]}
+        assert "india" in genre_keys
+        assert len(body["genres"]) == 10
+        city_ids = {city["id"] for city in body["cities"]}
+        assert "mumbai" in city_ids
+        assert "06:00:00" in body["delivery_slots"]
+        assert body["frequencies"] == ["daily", "weekdays"]
+        assert body["edition_preferences"] == ["india", "global", "mixed"]
+
+    def test_an_inactive_city_is_not_listed(self, client: TestClient, session: Session) -> None:
+        from app.models.users import City
+
+        mumbai = session.get(City, "mumbai")
+        assert mumbai is not None
+        mumbai.active = False
+        session.flush()
+
+        response = client.get("/api/config")
+
+        assert "mumbai" not in {city["id"] for city in response.json()["cities"]}

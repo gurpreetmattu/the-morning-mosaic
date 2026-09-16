@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin_session import ADMIN_CSRF_HEADER
 from app.api.routes import account, admin, archive, pdf, public
+from app.api.routes import config as config_routes
 from app.api.security import SecurityHeadersMiddleware
 from app.api.session import CSRF_HEADER
 from app.config.settings import Settings, get_settings
@@ -42,6 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.include_router(public.router)
+    app.include_router(config_routes.router)
     app.include_router(archive.router)
     app.include_router(account.router)
     app.include_router(pdf.router)
