@@ -148,8 +148,11 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
       per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
       Decide whether to wrap it or amend the spec.
-- [ ] Jobs still to write: bounces, feedback aggregation (`seed`, `build`,
-      `delivery`, `failure_notice` and `late_update` exist)
+- [ ] Feedback aggregation job (agent 10) — the last of the six scheduled jobs
+- [ ] **Bounce parsing has never seen a real Gmail DSN.** The parser is built
+      to RFC 3464 and tested against synthetic reports; `ImapBounceSource` has
+      never spoken to an actual IMAP server. Both need a live check once the
+      Gmail app password exists.
 - [ ] **A late update never withdraws a story, only adds.** CLAUDE.md's admin
       kill switch needs the opposite: publishing a revision *without* a story.
       `story_withdrawals` exists as a table and nothing writes to it.
@@ -245,6 +248,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Late-update job: appends new stories without mutating published
       revisions, carries unchanged sections forward byte for byte, publishes
       nothing when the deadline passes — `f032aa0`
+- [x] Bounce job: read-only mailbox access, narrowed IMAP search, permanent
+      failures only — this commit
 - [x] Build job: the full pipeline behind one command, single-instance job
       lock, pipeline_runs tracking — `43adec4`. Run end to end against the
       live database: it correctly refused to publish, because no source has
