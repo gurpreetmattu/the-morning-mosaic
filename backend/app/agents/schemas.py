@@ -127,6 +127,10 @@ class WrittenStory(Base):
     # Computed in code from the passages, never taken from the model.
     india_relevance: bool = False
     hedged: bool = False
+    # Audit trail: which model and prompt produced this wording. CLAUDE.md
+    # requires both to be persisted with every published sentence.
+    model: str | None = None
+    prompt_version: str | None = None
 
     def sentences(self) -> list[DraftSentence]:
         parts = [self.headline, *self.summary, *self.why_this_matters]
@@ -189,9 +193,17 @@ class CheckResult(Base):
 
 
 class VerifiedStory(Base):
-    """A story that survived the write-and-verify loop."""
+    """A story that survived the write-and-verify loop.
+
+    Carries its source articles: citation ids like "a1:p3" are positional
+    within this article list, so the list is what makes them resolvable when
+    the story is persisted.
+    """
 
     story: WrittenStory
+    articles: list[CollectedArticle] = Field(min_length=1)
+    # Rank within the genre pool, before per-user reordering.
+    pool_rank: int = Field(ge=1)
     findings: list[CheckFinding] = Field(default_factory=list)
     attempts: int = Field(ge=1)
 

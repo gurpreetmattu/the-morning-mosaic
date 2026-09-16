@@ -49,6 +49,8 @@ def write_and_verify(
             return VerificationOutcome(
                 verified=VerifiedStory(
                     story=checked.story,
+                    articles=list(pooled.articles),
+                    pool_rank=pooled.rank,
                     findings=checked.findings,
                     attempts=attempt,
                 ),

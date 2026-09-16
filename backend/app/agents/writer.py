@@ -56,7 +56,7 @@ class Writer:
         require_hedge = story.corroboration == Corroboration.TIER3_ONLY
 
         try:
-            payload = self._draft(passages, allowed, require_hedge, feedback)
+            payload, model = self._draft(passages, allowed, require_hedge, feedback)
         except (LlmError, ValueError, TypeError) as exc:
             return WriterResult(
                 problems=[
@@ -71,6 +71,8 @@ class Writer:
             passages=passages,
             allowed_topic_tags=allowed,
             require_hedge=require_hedge,
+            model=model,
+            prompt_version=writer_v1.VERSION,
         )
 
     def _draft(
@@ -79,7 +81,7 @@ class Writer:
         allowed_tags: frozenset[str],
         require_hedge: bool,
         feedback: str | None,
-    ) -> object:
+    ) -> tuple[object, str]:
         rendered = "\n".join(
             writer_v1.render_passage(citation_id, redact_identifiers(ref.text))
             for citation_id, ref in passages.items()
@@ -103,7 +105,7 @@ class Writer:
             json_object=True,
             prompt_version=writer_v1.VERSION,
         )
-        return json.loads(_strip_fence(result.text))
+        return json.loads(_strip_fence(result.text)), result.model
 
 
 def _strip_fence(text: str) -> str:

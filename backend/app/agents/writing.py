@@ -213,6 +213,8 @@ def validate_draft(
     passages: Mapping[str, PassageRef],
     allowed_topic_tags: frozenset[str],
     require_hedge: bool,
+    model: str | None = None,
+    prompt_version: str | None = None,
 ) -> WriterResult:
     problems: list[WriterProblem] = []
 
@@ -317,5 +319,7 @@ def validate_draft(
         entity_tags=entity_tags,
         india_relevance=mentions_india(passage_texts),
         hedged=require_hedge,
+        model=model,
+        prompt_version=prompt_version,
     )
     return WriterResult(story=story, problems=problems)

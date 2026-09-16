@@ -172,7 +172,8 @@ class Story(Base):
     genre: Mapped[GenreKeyColumn]
     headline: Mapped[str] = mapped_column(Text, nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
-    one_liner: Mapped[str] = mapped_column(Text, nullable=False)
+    # Optional: dropped when it cannot be verified, rather than invented.
+    one_liner: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Omitted when the sources give no such context.
     why_this_matters: Mapped[str | None] = mapped_column(Text, nullable=True)
     # True only if a source passage names an Indian entity or place.

@@ -58,6 +58,8 @@ def verified(index: int) -> VerifiedStory:
             headline=DraftSentence(text=f"Headline {index}", passage_ids=["a1:p1"]),
             summary=[DraftSentence(text=f"Summary {index}.", passage_ids=["a1:p1"])],
         ),
+        articles=[article(index)],
+        pool_rank=max(index, 1),
         attempts=1,
     )
 

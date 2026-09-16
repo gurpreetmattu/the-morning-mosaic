@@ -119,11 +119,12 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
       per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
       Decide whether to wrap it or amend the spec.
-- [ ] **Nothing is persisted yet.** The Orchestrator returns an `EditionBuild`
-      in memory; no `editions`, `edition_revisions`, `edition_sections`,
-      `stories`, `story_sentences` or `sentence_citations` rows are written.
-      The audit trail exists as a schema and as validated objects, but the two
-      have never met.
+- [ ] **Editions, revisions and sections are still not written.** Stories and
+      their audit trail now persist, but `editions`, `edition_revisions` and
+      `edition_sections` do not. `edition_sections` cannot be written yet at
+      all: its CHECK requires rendered HTML and plain text for an `ok` section,
+      and the Layout module does not exist. Publishing a revision is therefore
+      blocked on Layout, not on persistence.
 - [ ] Late update: re-collection of breaking stories and publishing a new
       revision
 - [ ] Jobs: build, late_update, delivery, failure_notice, bounces (only `seed`
@@ -185,3 +186,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Orchestrator: per-genre pipeline, deadline enforcement, failure
       isolation, quiet-day rule, edition numbering and special editions —
       `9064362`
+- [x] Persistence of the audit trail: articles, passages, clusters, stories,
+      sentences, citations with frozen excerpts, tags and fact checks —
+      this commit
