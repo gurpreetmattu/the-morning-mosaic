@@ -42,6 +42,15 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 2. Defects and gaps in code that already exists
 
+- [ ] **A build before `launch_date` crashes instead of failing cleanly.**
+      `edition_number` raises so the day is never numbered zero, which is
+      right, but the exception escapes `run_build` as a traceback rather than
+      a recorded failed run. Only reachable while `launch_date` is in the
+      future — which it is today.
+- [ ] **No admin alerting.** CLAUDE.md wants Cloud Monitoring notifications on
+      build failure, deadline miss, send failures and sharp drops in verified
+      story counts. The build job records everything needed in `pipeline_runs`
+      but tells nobody.
 - [ ] **No structured logging.** `structlog` is a dependency but unused; the
       seed job prints. CLAUDE.md requires JSON logs to Cloud Logging. Worth
       doing before more agents land, since each will want it.
@@ -128,13 +137,10 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
       per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
       Decide whether to wrap it or amend the spec.
-- [ ] **Nothing runs the pipeline end to end yet.** Collect, rank, write,
-      verify, persist, render and publish all exist and are tested, but no job
-      calls them in sequence. That is the build job's work.
+- [ ] Jobs still to write: late_update, delivery, failure_notice, bounces
+      (`seed` and `build` exist)
 - [ ] Late update: re-collection of breaking stories and publishing a new
       revision
-- [ ] Jobs: build, late_update, delivery, failure_notice, bounces (only `seed`
-      exists)
 - [ ] Prompt for the Image finder (`ranker_v1`, `writer_v1` and
       `fact_checker_v1` are written; the Orchestrator needs none)
 
@@ -197,3 +203,7 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `74d3add`
 - [x] Genre sections rendered to email-safe HTML and plain text, and edition
       revisions published immutably with their sections — `5bcaabc`
+- [x] Build job: the full pipeline behind one command, single-instance job
+      lock, pipeline_runs tracking — this commit. Run end to end against the
+      live database: it correctly refused to publish, because no source has
+      confirmed terms yet, and recorded the failure with diagnostics.
