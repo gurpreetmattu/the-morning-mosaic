@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `0139e3b`
-- **State:** 9 commits · 28 modules · 82 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `0e1ac18`
+- **State:** 11 commits · 34 modules · 105 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -41,6 +41,19 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       single host. With feeds enabled this could hammer a publisher.
 - [ ] **`Fetcher` retry/backoff is not directly tested.** Exercised indirectly
       by the collector tests, never asserted.
+- [ ] **Ranker cannot ask the Collector for more coverage.** CLAUDE.md gives it
+      that ability ("may ask the Collector for more coverage, whitelisted
+      sources only"); it is not implemented. Matters most for strict genres,
+      where a story dropped for thin sourcing might be rescued by looking
+      wider before giving up on it.
+- [ ] **Conflicting key facts are not detected.** The rule is "state that
+      reports differ, or drop". Nothing compares figures or claims across the
+      articles in a cluster yet. Probably belongs with the Fact-checker, but it
+      has no owner today.
+- [ ] **Syndication is not detected.** "Independent sources" counts distinct
+      source keys, so two outlets running lightly rewritten wire copy count as
+      two. Identical text is caught by the Collector's content hash; a rewrite
+      is not. Treat the corroboration count as an upper bound.
 - [ ] **Neon-specific engine settings untested against Neon.** `pool_pre_ping`
       and `prepare_threshold=None` were reasoned from PgBouncer behaviour and
       have only run against local PostgreSQL.
@@ -68,8 +81,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 4. Not built yet
 
-**Agents** (1 of 10 done — Collector)
-- [ ] Orchestrator (1) · [ ] Ranker (3) · [ ] Writer (4) · [ ] Fact-checker (5)
+**Agents** (2 of 10 done — Collector, Ranker)
+- [ ] Orchestrator (1) · [ ] Writer (4) · [ ] Fact-checker (5)
 - [ ] Image finder (6) · [ ] Weather (7) · [ ] Layout (8) · [ ] Delivery (9)
 - [ ] Feedback (10)
 
@@ -123,3 +136,5 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Collector: whitelist, freshness, robots, passage extraction — `99c944f`
 - [x] Project installed as a real package, so `python -m app.jobs.*` runs
       without `PYTHONPATH` — `1b76915`
+- [x] Ranker: LLM clustering, deterministic corroboration gate and scoring,
+      versioned prompts — this commit

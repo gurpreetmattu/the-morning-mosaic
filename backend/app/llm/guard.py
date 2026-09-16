@@ -34,6 +34,22 @@ def find_identifiers(text: str) -> list[str]:
     return [*EMAIL_RE.findall(text), *UUID_RE.findall(text)]
 
 
+def redact_identifiers(text: str) -> str:
+    """Strip identifiers from text that came from a source, not from us.
+
+    Article copy legitimately contains email addresses — reporter contact
+    lines, press office addresses — and passing one through would trip the
+    guard on a perfectly normal story. Source text is therefore redacted on
+    its way into a prompt.
+
+    This redacts only the prompt copy. Stored passages keep their original
+    text, so the audit trail still matches what the publisher printed. The
+    guard stays strict, as a backstop for a future change that wrongly routes
+    a user row into a prompt.
+    """
+    return UUID_RE.sub("[id removed]", EMAIL_RE.sub("[email removed]", text))
+
+
 def assert_free_of_personal_data(texts: Iterable[str]) -> None:
     for text in texts:
         found = find_identifiers(text)
