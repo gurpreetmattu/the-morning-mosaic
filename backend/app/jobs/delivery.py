@@ -50,7 +50,7 @@ from app.models.enums import (
     SubscriptionStatus,
 )
 from app.models.operations import PipelineRun
-from app.models.users import FollowedKeyword, User, UserGenre, UserPreference
+from app.models.users import FollowedKeyword, OutageState, User, UserGenre, UserPreference
 from app.render.email import EmailRenderer, Links
 from app.render.selection import Reader, load_candidates, select_for_reader
 
@@ -104,7 +104,13 @@ def due_readers(session: Session, *, slot: time, on: date) -> list[User]:
 # --------------------------------------------------------------- the claim
 
 
-def claim(session: Session, *, user_id: uuid.UUID, edition_date: date) -> Delivery | None:
+def claim(
+    session: Session,
+    *,
+    user_id: uuid.UUID,
+    edition_date: date,
+    delivery_type: DeliveryType = DeliveryType.NEWSLETTER,
+) -> Delivery | None:
     """Take exclusive ownership of this reader's delivery, or return None.
 
     None means another run holds it, it already went out, it is stuck in
@@ -115,7 +121,7 @@ def claim(session: Session, *, user_id: uuid.UUID, edition_date: date) -> Delive
         .where(
             Delivery.user_id == user_id,
             Delivery.edition_date == edition_date,
-            Delivery.type == DeliveryType.NEWSLETTER,
+            Delivery.type == delivery_type,
         )
         .with_for_update(skip_locked=True)
     ).one_or_none()
@@ -131,7 +137,7 @@ def claim(session: Session, *, user_id: uuid.UUID, edition_date: date) -> Delive
     delivery = Delivery(
         user_id=user_id,
         edition_date=edition_date,
-        type=DeliveryType.NEWSLETTER,
+        type=delivery_type,
         status=DeliveryStatus.PENDING,
     )
     session.add(delivery)
@@ -142,6 +148,16 @@ def claim(session: Session, *, user_id: uuid.UUID, edition_date: date) -> Delive
         session.rollback()
         return None
     return delivery
+
+
+def clear_outage(session: Session, user_id: uuid.UUID) -> None:
+    """Reset the consecutive-failure count after a successful delivery."""
+    state = session.get(OutageState, user_id)
+    if state is None:
+        return
+    state.consecutive_failed_days = 0
+    state.paused_notice_sent_on = None
+    state.last_failed_on = None
 
 
 # ------------------------------------------------------------ assembling one
@@ -289,6 +305,10 @@ def run_delivery(
             delivery.status = DeliveryStatus.SENT
             delivery.sent_at = now_utc()
             report.sent += 1
+            # A delivered edition ends any outage for this reader, so the
+            # notice job starts counting again from zero and a paused reader
+            # resumes without anyone intervening.
+            clear_outage(session, user.id)
         session.commit()
 
     _finish(run, RunStatus.SUCCEEDED, report)

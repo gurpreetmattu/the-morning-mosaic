@@ -1,0 +1,38 @@
+{#
+  Sent once, on the third consecutive day a reader's edition fails.
+
+  A daily apology through a prolonged outage is worse than silence, so this
+  replaces the failure notice and nothing further is sent until an edition is
+  actually delivered. It is a system state, not the reader's subscription
+  status: their subscription is untouched and delivery resumes on its own.
+#}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f2ee;margin:0;padding:0;">
+<tr><td align="center" style="padding:20px 10px;">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:100%;background:#ffffff;">
+  <tr><td style="padding:26px 28px 14px 28px;border-bottom:3px double #141414;">
+    <h1 style="margin:0;font-family:'Playfair Display', Georgia, serif;font-size:28px;line-height:1.1;color:#141414;">
+      {{ brand }}
+    </h1>
+  </td></tr>
+  <tr><td style="padding:22px 28px 26px 28px;">
+    <p style="margin:0 0 14px 0;font-family:Georgia, serif;font-size:15px;line-height:1.6;color:#242424;">
+      {{ first_name }},
+    </p>
+    <p style="margin:0 0 14px 0;font-family:Georgia, serif;font-size:15px;line-height:1.6;color:#242424;">
+      Your edition hasn't arrived for a few days now, and we'd rather tell you
+      once than apologise every morning.
+    </p>
+    <p style="margin:0 0 14px 0;font-family:Georgia, serif;font-size:15px;line-height:1.6;color:#242424;">
+      We've paused these notices while we sort it out. Your subscription is
+      unchanged, and your edition will simply start arriving again — you don't
+      need to do anything.
+    </p>
+    <p style="margin:24px 0 0 0;font-family:Georgia, serif;font-size:11px;line-height:1.5;color:#8a8a8a;">
+      <a href="{{ preferences_url }}" style="color:#8a8a8a;">Manage your preferences</a>
+      &nbsp;·&nbsp;
+      <a href="{{ unsubscribe_url }}" style="color:#8a8a8a;">Unsubscribe</a>
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
