@@ -90,7 +90,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] LangGraph build graph · [ ] late-update graph
 - [ ] Jobs: build, late_update, delivery, failure_notice, bounces (only `seed`
       exists)
-- [ ] Versioned prompts — none exist, so `prompt_version` has no source yet
+- [ ] Prompts for Orchestrator, Writer, Fact-checker, Image finder (the
+      versioned-prompt mechanism exists; only `ranker_v1` is written)
 
 **Delivery path**
 - [ ] Email sender, tokens, `List-Unsubscribe` one-click, link-scanner-safe GETs
