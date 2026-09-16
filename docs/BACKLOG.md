@@ -53,6 +53,10 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       a table held exactly one row. Those assertions are now scoped, but the
       next "count the rows" test will hit it again. A dedicated test database,
       or a truncate fixture, is the real fix.
+- [ ] **Rows stuck in `sending` are counted but not surfaced.** Delivery
+      deliberately never retries them, and CLAUDE.md says they should be
+      "flagged for review". Nothing flags them yet; the admin dashboard does
+      not exist.
 - [ ] **No admin alerting.** CLAUDE.md wants Cloud Monitoring notifications on
       build failure, deadline miss, send failures and sharp drops in verified
       story counts. The build job records everything needed in `pipeline_runs`
@@ -144,8 +148,13 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
       per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
       Decide whether to wrap it or amend the spec.
-- [ ] Jobs still to write: late_update, delivery, failure_notice, bounces
-      (`seed` and `build` exist)
+- [ ] Jobs still to write: late_update, failure_notice, bounces, feedback
+      aggregation (`seed`, `build` and `delivery` exist)
+- [ ] **Cross-process delivery concurrency is untested.** The claim uses
+      `FOR UPDATE SKIP LOCKED` and commits before SMTP, and the at-most-once
+      semantics are covered (sent skipped, `sending` never resent, failed
+      retried). But two real processes racing for the same reader has never
+      been exercised, because the test suite runs in one transaction.
 - [ ] Late update: re-collection of breaking stories and publishing a new
       revision
 - [ ] Prompt for the Image finder (`ranker_v1`, `writer_v1` and
@@ -218,6 +227,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Per-user selection and full email assembly: keyword, preference and
       edition-preference ordering, masthead, "Today in 60 seconds", computed
       reading time — `8dbc689`
+- [x] Delivery job: at-most-once claim, per-reader assembly, retry of failed
+      sends, weekday/weekend frequency, dev-suppression recorded as skipped —
+      this commit
 - [x] Build job: the full pipeline behind one command, single-instance job
       lock, pipeline_runs tracking — `43adec4`. Run end to end against the
       live database: it correctly refused to publish, because no source has

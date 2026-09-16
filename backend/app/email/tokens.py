@@ -159,6 +159,39 @@ def issue(
     return raw
 
 
+def unsubscribe_token(user_id: uuid.UUID) -> str:
+    """The reader's unsubscribe value, derived rather than drawn at random.
+
+    Only a token's hash is stored, so a random unsubscribe token could not be
+    rebuilt for tomorrow's email — every send would have to issue another row,
+    leaving hundreds of live tokens per reader.
+
+    Deriving it from the signing key and the user id keeps the stored row (so
+    it can still be revoked by deleting it) while making the same link
+    reproducible for every edition, which is what "unsubscribe tokens do not
+    expire" actually requires.
+    """
+    digest = hmac.new(_key(), f"unsubscribe:{user_id}".encode(), hashlib.sha256).digest()
+    return _b64(digest)
+
+
+def ensure_unsubscribe_token(session: Session, user_id: uuid.UUID) -> str:
+    """Return the reader's unsubscribe value, recording it the first time."""
+    raw = unsubscribe_token(user_id)
+    existing = session.scalar(select(Token).where(Token.token_hash == hash_token(raw)))
+    if existing is None:
+        session.add(
+            Token(
+                user_id=user_id,
+                purpose=TokenPurpose.UNSUBSCRIBE,
+                token_hash=hash_token(raw),
+                expires_at=None,
+            )
+        )
+        session.flush()
+    return raw
+
+
 def redeem(
     session: Session,
     raw: str,
