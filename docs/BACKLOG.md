@@ -163,4 +163,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       india_relevance, hedging for tier-3 — `5273cc0`
 - [x] Fact-checker and the write-and-verify loop: deterministic number/date/
       name checks plus model claim verdicts, retry with specific feedback,
-      drop after two retries — this commit
+      drop after two retries — `b4e2c01`
