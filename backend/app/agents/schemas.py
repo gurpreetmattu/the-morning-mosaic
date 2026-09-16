@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.config.schemas import GenreKey
-from app.models.enums import CheckMethod, ClaimVerdict
+from app.models.enums import CheckMethod, ClaimVerdict, SectionStatus
 from app.sources.schemas import CollectedArticle
 
 
@@ -201,3 +201,48 @@ class VerificationOutcome(Base):
     attempts: int = Field(ge=1)
     # Why it was abandoned, when it was.
     reason: str | None = None
+
+
+# --------------------------------------------------------------- orchestrator
+
+
+class GenreOutcome(Base):
+    """What the build produced for one genre."""
+
+    genre: GenreKey
+    status: SectionStatus
+    stories: list[VerifiedStory] = Field(default_factory=list)
+    # Counters for the monitoring CLAUDE.md asks for: a sharp drop in verified
+    # story counts is the earliest sign a source or a model has changed.
+    collected: int = 0
+    pooled: int = 0
+    attempted: int = 0
+    # Short, publishable-safe explanation when the section is not `ok`.
+    note: str | None = None
+    # True when the deadline stopped this genre before it finished.
+    deadline_hit: bool = False
+
+    @property
+    def verified_count(self) -> int:
+        return len(self.stories)
+
+
+class EditionBuild(Base):
+    """One run of the build job, across every genre attempted."""
+
+    edition_date: date
+    edition_number: int = Field(ge=1)
+    special_edition_key: str | None = None
+    is_weekend: bool = False
+    genres: list[GenreOutcome] = Field(default_factory=list)
+    # True when the hard deadline stopped work before every genre was tried.
+    deadline_missed: bool = False
+
+    @property
+    def usable_sections(self) -> list[GenreOutcome]:
+        return [outcome for outcome in self.genres if outcome.status is SectionStatus.OK]
+
+    @property
+    def failed(self) -> bool:
+        """The whole build failed: nothing publishable came out of it."""
+        return not self.usable_sections

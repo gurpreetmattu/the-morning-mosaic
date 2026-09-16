@@ -29,6 +29,16 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       coverage, TMDB, Unsplash/Pexels, Cloudflare Turnstile, Langfuse.
       Longest lead time of anything on this list.
 - [ ] **No git remote.** Nothing is pushed anywhere.
+- [ ] **CLAUDE.md's agent table and the Orchestrator disagree.** The table
+      lists agent 1 as "Yes + code" (uses an LLM), but every responsibility it
+      names — supervising, routing retries, enforcing deadlines, applying the
+      calendar — is control flow, and `app/agents/orchestrator.py` is built
+      with no LLM call. Routing a build through a model would make it
+      non-reproducible and would make deadline enforcement depend on a call
+      that can itself hang. CLAUDE.md says "keep this honest in docs", so
+      either the table moves agent 1 to the code-only list, or there is an LLM
+      role here that has not been described. Owner's call; not changed
+      unilaterally.
 
 ## 2. Defects and gaps in code that already exists
 
@@ -101,17 +111,25 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 4. Not built yet
 
-**Agents** (4 of 10 done — Collector, Ranker, Writer, Fact-checker)
-- [ ] Orchestrator (1)
+**Agents** (5 of 10 done — Orchestrator, Collector, Ranker, Writer, Fact-checker)
 - [ ] Image finder (6) · [ ] Weather (7) · [ ] Layout (8) · [ ] Delivery (9)
 - [ ] Feedback (10)
 
 **Pipeline**
-- [ ] LangGraph build graph · [ ] late-update graph
+- [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
+      per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
+      Decide whether to wrap it or amend the spec.
+- [ ] **Nothing is persisted yet.** The Orchestrator returns an `EditionBuild`
+      in memory; no `editions`, `edition_revisions`, `edition_sections`,
+      `stories`, `story_sentences` or `sentence_citations` rows are written.
+      The audit trail exists as a schema and as validated objects, but the two
+      have never met.
+- [ ] Late update: re-collection of breaking stories and publishing a new
+      revision
 - [ ] Jobs: build, late_update, delivery, failure_notice, bounces (only `seed`
       exists)
-- [ ] Prompts for Orchestrator and Image finder (`ranker_v1`, `writer_v1` and
-      `fact_checker_v1` are written)
+- [ ] Prompt for the Image finder (`ranker_v1`, `writer_v1` and
+      `fact_checker_v1` are written; the Orchestrator needs none)
 
 **Delivery path**
 - [ ] Email sender, tokens, `List-Unsubscribe` one-click, link-scanner-safe GETs
@@ -164,3 +182,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Fact-checker and the write-and-verify loop: deterministic number/date/
       name checks plus model claim verdicts, retry with specific feedback,
       drop after two retries — `b4e2c01`
+- [x] Orchestrator: per-genre pipeline, deadline enforcement, failure
+      isolation, quiet-day rule, edition numbering and special editions —
+      this commit
