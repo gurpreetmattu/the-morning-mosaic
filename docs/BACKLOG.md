@@ -52,6 +52,16 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       and kept the rest. The problem is recorded, so when the Orchestrator
       exists it must treat `copied_text` as retry-worthy *even when a story
       was returned*, rather than publishing the gap.
+- [ ] **Acronyms shorter than four characters are not name-checked.** The
+      deterministic name check skips candidates under four characters, so an
+      invented "SBI" or "IMF" would pass to the model check alone. Raising the
+      floor would flood it with false positives; a known-acronym list is the
+      likely fix.
+- [ ] **Planted-error catch rate is measured by hand, not by an eval.** A live
+      run caught 6 of 6 planted errors (wrong figure, wrong day, wrong person,
+      invented fact, reversed meaning, unstated causation) with the control
+      passing. That belongs in `/evals` as a regression test, not in a
+      scratchpad script.
 - [ ] **Entity tags accept generic noun phrases.** The check is only that the
       tag appears in the passages, so "central bank" and "two Mumbai
       brokerages" pass alongside "Reserve Bank of India". Harmless for
@@ -91,8 +101,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 4. Not built yet
 
-**Agents** (3 of 10 done — Collector, Ranker, Writer)
-- [ ] Orchestrator (1) · [ ] Fact-checker (5)
+**Agents** (4 of 10 done — Collector, Ranker, Writer, Fact-checker)
+- [ ] Orchestrator (1)
 - [ ] Image finder (6) · [ ] Weather (7) · [ ] Layout (8) · [ ] Delivery (9)
 - [ ] Feedback (10)
 
@@ -100,8 +110,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] LangGraph build graph · [ ] late-update graph
 - [ ] Jobs: build, late_update, delivery, failure_notice, bounces (only `seed`
       exists)
-- [ ] Prompts for Orchestrator, Fact-checker, Image finder (`ranker_v1` and
-      `writer_v1` are written)
+- [ ] Prompts for Orchestrator and Image finder (`ranker_v1`, `writer_v1` and
+      `fact_checker_v1` are written)
 
 **Delivery path**
 - [ ] Email sender, tokens, `List-Unsubscribe` one-click, link-scanner-safe GETs
@@ -151,3 +161,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       versioned prompts — `1c39d4a`
 - [x] Writer: cited sentences, copy detection, tag taxonomy, code-computed
       india_relevance, hedging for tier-3 — `5273cc0`
+- [x] Fact-checker and the write-and-verify loop: deterministic number/date/
+      name checks plus model claim verdicts, retry with specific feedback,
+      drop after two retries — this commit

@@ -8,6 +8,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.config.schemas import GenreKey
+from app.models.enums import CheckMethod, ClaimVerdict
 from app.sources.schemas import CollectedArticle
 
 
@@ -148,3 +149,55 @@ class WriterResult(Base):
     @property
     def dropped(self) -> bool:
         return self.story is None
+
+
+# --------------------------------------------------------------- fact-checker
+
+
+class CheckFinding(Base):
+    """One verified claim. Recorded whether it passed or failed."""
+
+    element: str
+    claim: str
+    verdict: ClaimVerdict
+    method: CheckMethod
+    detail: str = ""
+
+    @property
+    def failed(self) -> bool:
+        # "partial" is treated as a failure: a half-supported claim published
+        # as fact is exactly the error this project refuses to make.
+        return self.verdict is not ClaimVerdict.SUPPORTED
+
+
+class CheckResult(Base):
+    """The outcome of verifying one written story."""
+
+    # The story as it survives verification: optional elements that failed are
+    # removed. None when the headline or summary could not be verified.
+    story: WrittenStory | None = None
+    findings: list[CheckFinding] = Field(default_factory=list)
+    # Populated when the Writer should try again, naming what to fix.
+    feedback: str | None = None
+
+    @property
+    def passed(self) -> bool:
+        return self.story is not None and self.feedback is None
+
+    def failures(self) -> list[CheckFinding]:
+        return [finding for finding in self.findings if finding.failed]
+
+
+class VerifiedStory(Base):
+    """A story that survived the write-and-verify loop."""
+
+    story: WrittenStory
+    findings: list[CheckFinding] = Field(default_factory=list)
+    attempts: int = Field(ge=1)
+
+
+class VerificationOutcome(Base):
+    verified: VerifiedStory | None = None
+    attempts: int = Field(ge=1)
+    # Why it was abandoned, when it was.
+    reason: str | None = None
