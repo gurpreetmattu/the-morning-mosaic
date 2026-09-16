@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `f2eb000`
-- **State:** 40 commits · 59 modules · 374 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `9398dc9`
+- **State:** 41 commits · 66 modules · 411 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -115,6 +115,30 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       to the email-safe rules (inline styles, no classes, no flexbox) and tests
       assert those, but CLAUDE.md requires checking Gmail web and mobile plus
       Outlook. Nothing has been sent anywhere.
+- [ ] **Rate limiting is per process, not per deployment.** `RateLimiter` keeps
+      its windows in memory, so with N Cloud Run instances the real signup
+      limit is 5 × N per five minutes. Enough to blunt a script, useless
+      against a distributed flood. A shared counter (Redis, or a database
+      table) is the honest fix if abuse ever appears.
+- [ ] **Turnstile has never been exercised against Cloudflare.** Without a
+      secret configured the check is skipped outside prod and raises in prod,
+      and the verify call itself is covered only by its own error paths. It
+      needs one real token round trip once the account exists.
+- [ ] **No CSRF protection yet, and none needed yet.** Every state-changing
+      POST today is authorised by a signed or stored token in the URL, not by
+      a cookie, so there is no ambient authority to forge. The moment the
+      magic-link session cookie lands, the preferences and admin routes need
+      CSRF tokens, and this note stops being reassuring.
+- [ ] **`CURRENT_POLICY_VERSION` is a constant in `routes/public.py`.** Every
+      consent row records `2026-09-01`, a policy that has not been written.
+      DPDP wants consent tied to the text the reader actually saw, so this has
+      to move next to the published policy, not live beside the route.
+- [ ] **The archive shows no corrections.** CLAUDE.md requires a corrected
+      story to be marked in the archive with the correction shown; the route
+      serves the pre-rendered section HTML as published and the `corrections`
+      table is never read.
+- [ ] **The archive lists at most 60 editions** and has no pagination. Fine
+      for two months; a decision by January.
 - [ ] **`LLMBUFFET_*` naming lags upstream.** The package was renamed to
       `freellmpool`; settings, `.env.example` and CLAUDE.md still say
       LLMBuffet. Cosmetic, but it spreads with every new reference.
@@ -175,8 +199,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `fact_checker_v1` are written; the Orchestrator needs none)
 
 **Delivery path**
-- [ ] Link-scanner-safe GET endpoints (opt-in, magic link, unsubscribe,
-      feedback must not change state on GET)
+- [~] Link-scanner-safe GET endpoints — opt-in, unsubscribe and feedback are
+      built and tested; the magic link is not, because there is no session
+      layer to log in to yet.
 - [ ] Jinja templates: full email shell with masthead, special, weekend,
       system notices
 - [ ] PDF assembly and Cloud Storage caching
@@ -187,8 +212,11 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] images · [ ] quotes / "On this day"
 
 **Surfaces**
-- [ ] FastAPI routes (signup, opt-in, preferences, magic link, unsubscribe,
-      feedback, archive, PDF, admin)
+- [~] FastAPI routes — signup, opt-in, unsubscribe, feedback and the archive
+      are built. Still missing: magic-link login and the session cookie it
+      implies, preferences (change genres, slot, frequency, pause), account
+      deletion and data export (DPDP requires both), the PDF route, and the
+      admin dashboard that several items above are waiting on.
 - [ ] Next.js frontend, including privacy policy and terms pages
 
 **Supporting**
@@ -258,3 +286,7 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       lock, pipeline_runs tracking — `43adec4`. Run end to end against the
       live database: it correctly refused to publish, because no source has
       confirmed terms yet, and recorded the failure with diagnostics.
+- [x] Public API: signup with double opt-in and the waitlist cap, the
+      link-scanner-safe opt-in/unsubscribe/feedback pair of GET and POST,
+      one-click unsubscribe, the archive gated until 09:00 IST, security
+      headers and rate limiting — `PENDING`
