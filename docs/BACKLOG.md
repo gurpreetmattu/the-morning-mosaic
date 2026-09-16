@@ -150,4 +150,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Ranker: LLM clustering, deterministic corroboration gate and scoring,
       versioned prompts — `1c39d4a`
 - [x] Writer: cited sentences, copy detection, tag taxonomy, code-computed
-      india_relevance, hedging for tier-3 — this commit
+      india_relevance, hedging for tier-3 — `5273cc0`
