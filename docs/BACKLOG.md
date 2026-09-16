@@ -150,6 +150,24 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] **`LLMBUFFET_*` naming lags upstream.** The package was renamed to
       `freellmpool`; settings, `.env.example` and CLAUDE.md still say
       LLMBuffet. Cosmetic, but it spreads with every new reference.
+- [ ] **The frontend has no Content-Security-Policy.** `next.config.ts` sets
+      `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`, but
+      a CSP was left out rather than fought into shape around the Turnstile
+      script it needs to load from `challenges.cloudflare.com`.
+- [ ] **Preferences can edit genres, city, and delivery slot, but not
+      frequency, edition preference, or followed keywords**, even though
+      `PATCH /api/me` supports all of them. A frontend gap, not a backend
+      one.
+- [ ] **Turnstile has a real widget now but no real site key to test it
+      against.** `TurnstileWidget` renders nothing without
+      `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, matching the backend's own "skip
+      outside prod" behaviour — so signup works end to end in dev, but the
+      actual challenge flow has never run.
+- [ ] **Privacy and terms are drafts with bracketed placeholders**
+      (`[operator name]`, `[date]`, grievance contact), flagged as such on the
+      pages themselves. `CURRENT_POLICY_VERSION` (see above) still names a
+      policy text that doesn't really exist yet; writing the real policy and
+      wiring the two together is one piece of work, not two.
 
 ## 3. Provisional values that will cause harm if forgotten
 
@@ -223,10 +241,23 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] FastAPI routes — signup, opt-in, unsubscribe, feedback, the archive,
       magic-link login, preferences, pause/resume, DPDP export/delete, the
       PDF download link, and the admin dashboard's backend are all built.
-- [ ] Next.js frontend, including privacy policy and terms pages, and an
-      actual admin dashboard UI — the API above has no client yet
+- [x] Next.js frontend — landing, signup (genre picker, Turnstile), the
+      archive, preferences (sign-in, edit, pause/resume, export, delete),
+      the admin dashboard, and draft privacy/terms pages. See item below on
+      production routing this depends on.
 
 **Supporting**
+- [ ] **Terraform must route web and api under one hostname.** The backend's
+      session and CSRF cookies (`app/api/session.py`, `app/api/admin_session.py`)
+      are first-party by design, and the emailed-link paths (`/opt-in/*`,
+      `/unsubscribe/*`, `/feedback/*`, `/pdf/*`, `/login/*`, `/admin/login/*`)
+      use `BASE_URL` as if it were one public origin shared by both Cloud Run
+      services. In prod that requires a load balancer (or equivalent) sending
+      `/api/*`, `/admin/api/*`, and those emailed-link paths to the api
+      service, everything else to web. Locally, `frontend/next.config.ts`
+      proxies the two `/api` prefixes as a stand-in — see the frontend
+      README — but the emailed-link paths are opened directly against the
+      backend's own dev URL, since there's no load balancer to route them.
 - [ ] Terraform in `/infra` · [ ] Evals in `/evals`
 - [ ] GitHub Actions (lint, type-check, tests, eval subset on PRs)
 - [ ] `docs/`: architecture doc, DPDP incident runbook, operational runbooks
@@ -324,3 +355,16 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       deliveries, and held notice batches; approve/suppress for a notice
       batch; and the story-withdrawal kill switch, which publishes a new
       revision the same way a late update does — `63b2a10`
+- [x] Public `/api/config`: genres and the fixed delivery-slot/frequency/
+      edition-preference choices from config, active cities from the
+      database — the one place the frontend learns what a valid signup or
+      preferences payload looks like — `73ebfd6`
+- [x] Next.js frontend: landing, signup (genre picker, Turnstile widget),
+      the archive, preferences (magic-link sign-in, edit, pause/resume,
+      export, delete), the admin dashboard (runs, stuck deliveries, notice
+      approve/suppress, story withdrawal), and draft privacy/terms pages.
+      TypeScript strict, ESLint + Prettier, a handful of Vitest unit tests
+      for the CSRF cookie-parsing logic. In dev, `next.config.ts` proxies
+      `/api/*` and `/admin/api/*` to the backend so the backend's
+      same-origin session/CSRF cookies work without a load balancer —
+      `PENDING`
