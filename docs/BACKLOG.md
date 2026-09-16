@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `3c640b1`
-- **State:** 45 commits · 68 modules · 435 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `240c142`
+- **State:** 47 commits · 71 modules · 446 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -173,10 +173,11 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 **Agents** (5 of 10 done — Orchestrator, Collector, Ranker, Writer, Fact-checker)
 - [ ] Image finder (6) · [ ] Weather (7) · [ ] Delivery (9) · [ ] Feedback (10)
-- [~] Layout (8) — sections, per-user selection and full email assembly are
-      done. Still to do: PDF pages via WeasyPrint, and the extras the masthead
-      leaves room for (weather box is wired but has no Weather agent feeding
-      it; market strip, quiz, quote and "On this day" are not built).
+- [~] Layout (8) — sections, per-user selection, full email assembly, and
+      PDF pages (genre pages once per revision, merged per reader on first
+      download) are done. Still to do: the extras the masthead leaves room
+      for (weather box is wired but has no Weather agent feeding it; market
+      strip, quiz, quote and "On this day" are not built).
 
 **Pipeline**
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
@@ -213,7 +214,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       the magic link all follow the GET-renders/POST-acts shape.
 - [ ] Jinja templates: full email shell with masthead, special, weekend,
       system notices
-- [ ] PDF assembly and Cloud Storage caching
+- [x] PDF assembly and caching — `LocalObjectStorage` in dev, `GcsObjectStorage`
+      behind the same interface for prod (untested against a real bucket)
 - [ ] Bounce handling over IMAP
 
 **Services**
@@ -222,9 +224,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 **Surfaces**
 - [~] FastAPI routes — signup, opt-in, unsubscribe, feedback, the archive,
-      magic-link login, preferences, pause/resume, and DPDP export/delete are
-      all built. Still missing: the PDF route and the admin dashboard that
-      several items above are waiting on.
+      magic-link login, preferences, pause/resume, DPDP export/delete, and
+      the PDF download link are all built. Still missing: the admin
+      dashboard that several items above are waiting on.
 - [ ] Next.js frontend, including privacy policy and terms pages
 
 **Supporting**
@@ -234,8 +236,18 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 5. Environment
 
-- [ ] **WeasyPrint cannot run on this machine** (no GTK/Pango). PDF output is
-      testable only inside a container.
+- [ ] **WeasyPrint cannot run on this machine** (no GTK/Pango), so the PDF
+      route's real renderer (`app/render/pdf.py:weasyprint_renderer`) has
+      never produced an actual page — only its swapped-out fake has been
+      exercised. Everything around it (caching, merge via `pypdf`, the
+      revision-binding, the route) is genuinely tested; only the layout
+      step itself needs a container to verify.
+- [ ] **`GcsObjectStorage` has never touched real Cloud Storage.** No GCP
+      project exists yet (see Blockers). It mirrors `LocalObjectStorage`'s
+      interface exactly, so the PDF route needs no change once a bucket
+      does exist; the object-key layout (`pdf/sections/{revision}/{genre}.pdf`,
+      `pdf/readers/{revision}/{user}.pdf`) is what the 30-day lifecycle
+      rule from CLAUDE.md will need to target.
 - Local PostgreSQL for tests: `postgresql://postgres:mosaic@localhost:15432/mosaic`
   (`docker rm -f mosaic-pg` to drop it). Set `TEST_DATABASE_URL` to run the
   database tests; they skip without it.
@@ -302,3 +314,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       preferences (genres, keywords, city, slot, frequency, edition
       preference), pause/resume, and DPDP data export and erasure —
       `PENDING`
+- [x] PDF route: two-tier caching (a genre page renders once per revision;
+      a reader's file is a cache-or-assemble concatenation of theirs, via
+      `pypdf`), bound to the exact revision a link was issued for so a later
+      same-day update cannot change what an old link produces, and an
+      `ObjectStorage` protocol (disk in dev, Cloud Storage behind a lazy
+      import in prod) — `PENDING`

@@ -10,7 +10,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import account, archive, public
+from app.api.routes import account, archive, pdf, public
 from app.api.security import SecurityHeadersMiddleware
 from app.api.session import CSRF_HEADER
 from app.config.settings import Settings, get_settings
@@ -43,6 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(public.router)
     app.include_router(archive.router)
     app.include_router(account.router)
+    app.include_router(pdf.router)
 
     @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict[str, str]:

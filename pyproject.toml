@@ -26,6 +26,12 @@ dependencies = [
     "jinja2>=3.1",
     "premailer>=3.10",
     "weasyprint>=63.0",
+    # PDF assembly: pure Python, no native deps, so merging pre-rendered
+    # genre pages into one reader's file doesn't need WeasyPrint again.
+    "pypdf>=5.0",
+    # Cloud Storage caches assembled PDFs in prod; imported lazily so its
+    # absence never affects dev, which caches to local disk instead.
+    "google-cloud-storage>=2.18",
     # Config and observability
     "pyyaml>=6.0",
     "structlog>=24.4",
@@ -74,7 +80,7 @@ mypy_path = "backend"
 files = ["backend", "evals"]
 
 [[tool.mypy.overrides]]
-module = ["feedparser.*", "trafilatura.*", "weasyprint.*", "premailer.*"]
+module = ["feedparser.*", "trafilatura.*", "weasyprint.*", "premailer.*", "google.cloud.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

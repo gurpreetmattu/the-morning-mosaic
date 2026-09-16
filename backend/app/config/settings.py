@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     gcp_region: str = "asia-south1"
     gcs_pdf_bucket: str | None = None
 
+    # --- PDF caching outside prod, where there is no bucket ---
+    pdf_cache_dir: str = ".cache/pdf"
+
     @property
     def is_prod(self) -> bool:
         return self.app_env == "prod"
