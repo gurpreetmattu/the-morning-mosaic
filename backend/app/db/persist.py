@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.agents.schemas import DraftSentence, GenreOutcome, VerifiedStory
@@ -51,6 +51,64 @@ def persist_genre(session: Session, *, edition_date: date, outcome: GenreOutcome
 
     session.flush()
     return len(outcome.stories)
+
+
+def persist_new_stories(
+    session: Session, *, edition_date: date, outcome: GenreOutcome
+) -> list[Story]:
+    """Append only stories the day does not already have. Never deletes.
+
+    The late update runs after a revision has been published, so replacing
+    stories the way a build does would destroy the audit trail for content
+    readers have already received. This appends instead.
+
+    "Already have" is judged by source URL: a candidate whose every article is
+    already stored for this date and genre is the same story the build wrote.
+    A publisher that reissues a story under a new URL will slip past this and
+    appear twice; that is the known limit of the check.
+    """
+    known = _stored_urls(session, edition_date=edition_date, genre=outcome.genre)
+    next_rank = _highest_rank(session, edition_date=edition_date, genre=outcome.genre)
+
+    added: list[Story] = []
+    for verified in outcome.stories:
+        urls = {article.url for article in verified.articles}
+        if urls <= known:
+            continue
+        next_rank += 1
+        added.append(
+            _store_story(
+                session,
+                edition_date=edition_date,
+                genre=outcome.genre,
+                verified=verified,
+                pool_rank=next_rank,
+            )
+        )
+        known |= urls
+
+    session.flush()
+    return added
+
+
+def _stored_urls(session: Session, *, edition_date: date, genre: str) -> set[str]:
+    return set(
+        session.scalars(
+            select(Article.url)
+            .join(ClusterArticle, ClusterArticle.article_id == Article.id)
+            .join(StoryCluster, StoryCluster.id == ClusterArticle.cluster_id)
+            .where(StoryCluster.edition_date == edition_date, StoryCluster.genre == genre)
+        )
+    )
+
+
+def _highest_rank(session: Session, *, edition_date: date, genre: str) -> int:
+    highest = session.scalar(
+        select(func.max(Story.pool_rank)).where(
+            Story.edition_date == edition_date, Story.genre == genre
+        )
+    )
+    return highest or 0
 
 
 # ------------------------------------------------------------------- guards
@@ -90,7 +148,12 @@ def _clear_previous(session: Session, *, edition_date: date, genre: str) -> None
 
 
 def _store_story(
-    session: Session, *, edition_date: date, genre: str, verified: VerifiedStory
+    session: Session,
+    *,
+    edition_date: date,
+    genre: str,
+    verified: VerifiedStory,
+    pool_rank: int | None = None,
 ) -> Story:
     written = verified.story
     source_articles = verified.articles
@@ -121,7 +184,7 @@ def _store_story(
             else None
         ),
         india_relevance=written.india_relevance,
-        pool_rank=verified.pool_rank,
+        pool_rank=pool_rank if pool_rank is not None else verified.pool_rank,
         status=StoryStatus.VERIFIED,
         hedged=written.hedged,
         model=written.model,

@@ -148,8 +148,14 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
       per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
       Decide whether to wrap it or amend the spec.
-- [ ] Jobs still to write: late_update, bounces, feedback aggregation
-      (`seed`, `build`, `delivery` and `failure_notice` exist)
+- [ ] Jobs still to write: bounces, feedback aggregation (`seed`, `build`,
+      `delivery`, `failure_notice` and `late_update` exist)
+- [ ] **A late update never withdraws a story, only adds.** CLAUDE.md's admin
+      kill switch needs the opposite: publishing a revision *without* a story.
+      `story_withdrawals` exists as a table and nothing writes to it.
+- [ ] **"New story" is judged by source URL.** A publisher that reissues the
+      same story under a fresh URL will be appended twice by the late update.
+      Content-hash comparison across clusters would be the stronger check.
 - [ ] **A held notice batch cannot be approved or suppressed yet.** The job
       honours both states, but only the admin dashboard can set them, and it
       does not exist. Until then an abnormal batch simply expires at noon.
@@ -236,6 +242,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Failure-notice job: build-independent templates, held batches expiring
       at noon, one-off paused notice on the third failed day, abort when
       sending itself is down — `58a9982`
+- [x] Late-update job: appends new stories without mutating published
+      revisions, carries unchanged sections forward byte for byte, publishes
+      nothing when the deadline passes — this commit
 - [x] Build job: the full pipeline behind one command, single-instance job
       lock, pipeline_runs tracking — `43adec4`. Run end to end against the
       live database: it correctly refused to publish, because no source has

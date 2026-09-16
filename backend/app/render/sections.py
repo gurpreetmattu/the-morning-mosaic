@@ -11,14 +11,18 @@ with Word's engine.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 from pydantic import BaseModel, ConfigDict
 
+from app.agents.orchestrator import QUIET_DAY_NOTE
 from app.agents.schemas import GenreOutcome, VerifiedStory
 from app.config.loader import load_genres, load_sources
-from app.config.schemas import GenresConfig, SourcesConfig
+from app.config.schemas import GenreKey, GenresConfig, SourcesConfig
 from app.models.enums import SectionStatus
 from app.render import TEMPLATE_DIR
+from app.render.selection import Candidate
 
 
 class RenderedSection(BaseModel):
@@ -74,24 +78,63 @@ class SectionRenderer:
         self._env = environment or build_environment()
 
     def render(self, outcome: GenreOutcome) -> RenderedSection:
-        genre = self._genres.by_key()[outcome.genre]
-        stories = [self._story(story) for story in outcome.stories]
+        return self._render(
+            genre=outcome.genre,
+            status=outcome.status,
+            stories=[self._story(story) for story in outcome.stories],
+            note=outcome.note or "",
+        )
 
+    def render_candidates(
+        self, genre: GenreKey, candidates: Sequence[Candidate]
+    ) -> RenderedSection:
+        """Render a section from stored stories rather than fresh agent output.
+
+        The late update re-renders a section that already holds published
+        stories, and by then those exist only as database rows.
+        """
+        return self._render(
+            genre=genre,
+            status=SectionStatus.OK if candidates else SectionStatus.QUIET_DAY,
+            stories=[
+                {
+                    "headline": candidate.headline,
+                    "summary": candidate.summary,
+                    "why_this_matters": candidate.why_this_matters or "",
+                    "hedged": candidate.hedged,
+                    "sources": [
+                        {"name": source.name, "url": source.url} for source in candidate.sources
+                    ],
+                }
+                for candidate in candidates
+            ],
+            note="" if candidates else QUIET_DAY_NOTE,
+        )
+
+    def _render(
+        self,
+        *,
+        genre: str,
+        status: SectionStatus,
+        stories: list[dict[str, object]],
+        note: str,
+    ) -> RenderedSection:
+        settings = self._genres.by_key()[genre]  # type: ignore[index]
         context = {
-            "section_title": genre.section_title,
-            "blurb": genre.blurb,
-            "theme": genre.theme.model_dump(),
-            "status": outcome.status.value,
+            "section_title": settings.section_title,
+            "blurb": settings.blurb,
+            "theme": settings.theme.model_dump(),
+            "status": status.value,
             "stories": stories,
-            "note": outcome.note or "",
+            "note": note,
         }
 
         html = self._env.get_template("section.html.j2").render(**context)
         plain = text_environment().get_template("section.txt.j2").render(**context)
 
         return RenderedSection(
-            genre=outcome.genre,
-            status=outcome.status,
+            genre=genre,
+            status=status,
             html=html.strip(),
             plain_text=tidy(plain),
             story_count=len(stories),
