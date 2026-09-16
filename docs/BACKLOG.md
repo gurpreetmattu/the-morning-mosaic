@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `5bcaabc`
-- **State:** 24 commits · 46 modules · 207 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `43adec4`
+- **State:** 26 commits · 48 modules · 219 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -204,6 +204,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Genre sections rendered to email-safe HTML and plain text, and edition
       revisions published immutably with their sections — `5bcaabc`
 - [x] Build job: the full pipeline behind one command, single-instance job
-      lock, pipeline_runs tracking — this commit. Run end to end against the
+      lock, pipeline_runs tracking — `43adec4`. Run end to end against the
       live database: it correctly refused to publish, because no source has
       confirmed terms yet, and recorded the failure with diagnostics.
