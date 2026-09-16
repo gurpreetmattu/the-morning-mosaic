@@ -7,9 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `63b2a10`
-- **State:** 51 commits · 74 modules · 471 tests (all green, database included) ·
-  ruff and `mypy --strict` clean
+- **Last updated:** 2026-09-17, at commit `d686297`
+- **State:** 55 commits · 76 backend modules, 21 frontend files · 473 backend tests, 8 frontend tests (all green, database included) · ruff, `mypy --strict`, eslint, prettier, and tsc clean
 
 ---
 
@@ -367,4 +366,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       for the CSRF cookie-parsing logic. In dev, `next.config.ts` proxies
       `/api/*` and `/admin/api/*` to the backend so the backend's
       same-origin session/CSRF cookies work without a load balancer —
-      `PENDING`
+      `d686297`
