@@ -56,6 +56,14 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       a table held exactly one row. Those assertions are now scoped, but the
       next "count the rows" test will hit it again. A dedicated test database,
       or a truncate fixture, is the real fix.
+- [ ] **The test suite and CI never run the Alembic migration itself.**
+      `backend/tests/conftest.py`'s `engine` fixture builds tables straight
+      from `Base.metadata.create_all(...)`, and `ci.yml`'s Postgres service
+      container gets the same treatment — nothing runs
+      `alembic upgrade head` (or `downgrade`) as part of the automated
+      gate. The migration file was verified by hand once, against real
+      Postgres, when it was written (see the Done entry), but it could
+      drift from the models today and nothing would catch it.
 - [ ] **No admin alerting.** CLAUDE.md wants Cloud Monitoring notifications on
       build failure, deadline miss, send failures and sharp drops in verified
       story counts. The build job records everything needed in `pipeline_runs`,
@@ -186,6 +194,13 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, matching the backend's own "skip
       outside prod" behaviour — so signup works end to end in dev, but the
       actual challenge flow has never run.
+- [ ] **The frontend has no component or interaction tests.** `frontend/src/lib/api.test.ts`
+      (8 tests) covers only the CSRF cookie-parsing and error-formatting
+      logic; signup, the preferences dashboard, and the admin dashboard
+      have zero automated coverage of rendering or interaction — only the
+      manual, one-off Docker smoke test done while reviewing the frontend
+      build. A form field silently breaking would only be caught by
+      someone clicking through it.
 - [ ] **Privacy and terms are drafts with bracketed placeholders**
       (`[operator name]`, `[date]`, grievance contact), flagged as such on the
       pages themselves. `CURRENT_POLICY_VERSION` (see above) still names a
@@ -252,6 +267,14 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       the magic link all follow the GET-renders/POST-acts shape.
 - [ ] Jinja templates: full email shell with masthead, special, weekend,
       system notices
+- [ ] **The weekend edition has no content behind it, only a flag.**
+      `is_weekend` is computed (`Edition.is_weekend`, weekday >= 5) and
+      threaded through late update, but nothing reads it: CLAUDE.md's
+      Saturday "longer reads" (extended summaries of the week's most
+      significant verified stories) and Sunday "weekly recap" (built from
+      stories already verified Mon–Sat) need their own selection logic —
+      querying the week's published stories and choosing/extending
+      them — that doesn't exist anywhere yet, template or otherwise.
 - [x] PDF assembly and caching — `LocalObjectStorage` in dev, `GcsObjectStorage`
       behind the same interface for prod (untested against a real bucket)
 - [ ] Bounce handling over IMAP
@@ -259,6 +282,11 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 **Services**
 - [ ] weather · [ ] markets · [ ] sports · [ ] releases · [ ] deals
 - [ ] images · [ ] quotes / "On this day"
+- [ ] **"AI tool of the day" has no code**, distinct from the external-API
+      services above: CLAUDE.md says it's "picked from tools covered in
+      that day's verified AI stories," so it needs no new provider account
+      — just logic to select one from that day's Writer/Fact-checker
+      output, which doesn't exist yet.
 
 **Surfaces**
 - [x] FastAPI routes — signup, opt-in, unsubscribe, feedback, the archive,
