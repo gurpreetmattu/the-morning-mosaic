@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `0436f55`
-- **State:** 8 commits · 28 modules · 82 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `0139e3b`
+- **State:** 9 commits · 28 modules · 82 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -46,11 +46,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       have only run against local PostgreSQL.
 - [ ] **Seed job requires every env var** just to read `DATABASE_URL`. Fine in
       Cloud Run, friction in dev. Undecided whether to loosen.
-- [ ] **Job entry points need `PYTHONPATH=backend` set by hand.** The project
-      is not installed (`[tool.uv] package = false`), so `python -m app.jobs.*`
-      fails from a clean shell; only pytest works, via its own `pythonpath`.
-      Will hit every job and the Cloud Run image. Likely fix: make the project
-      a real package with `packages = ["backend/app"]`.
 - [ ] **`LLMBUFFET_*` naming lags upstream.** The package was renamed to
       `freellmpool`; settings, `.env.example` and CLAUDE.md still say
       LLMBuffet. Cosmetic, but it spreads with every new reference.
@@ -126,3 +121,5 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] LLM client: pinned routing, retry, personal-data guard — `8d25d3c`
 - [x] Real model ids verified against the live gateway — `a95c45c`
 - [x] Collector: whitelist, freshness, robots, passage extraction — `99c944f`
+- [x] Project installed as a real package, so `python -m app.jobs.*` runs
+      without `PYTHONPATH` — `HEAD`
