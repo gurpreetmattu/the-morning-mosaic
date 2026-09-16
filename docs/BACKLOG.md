@@ -7,9 +7,9 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-16, at commit `99c944f`
-- **State:** 6 commits · 28 modules · 82 tests (75 + 7 database-only) · ruff and
-  `mypy --strict` clean
+- **Last updated:** 2026-09-17, at commit `0436f55`
+- **State:** 8 commits · 28 modules · 82 tests (all green, database included) ·
+  ruff and `mypy --strict` clean
 
 ---
 
@@ -46,6 +46,11 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       have only run against local PostgreSQL.
 - [ ] **Seed job requires every env var** just to read `DATABASE_URL`. Fine in
       Cloud Run, friction in dev. Undecided whether to loosen.
+- [ ] **Job entry points need `PYTHONPATH=backend` set by hand.** The project
+      is not installed (`[tool.uv] package = false`), so `python -m app.jobs.*`
+      fails from a clean shell; only pytest works, via its own `pythonpath`.
+      Will hit every job and the Cloud Run image. Likely fix: make the project
+      a real package with `packages = ["backend/app"]`.
 - [ ] **`LLMBUFFET_*` naming lags upstream.** The package was renamed to
       `freellmpool`; settings, `.env.example` and CLAUDE.md still say
       LLMBuffet. Cosmetic, but it spreads with every new reference.
@@ -102,9 +107,13 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 - [ ] **WeasyPrint cannot run on this machine** (no GTK/Pango). PDF output is
       testable only inside a container.
-- Local PostgreSQL for tests: `postgresql://postgres:mosaic@localhost:55432/mosaic`
+- Local PostgreSQL for tests: `postgresql://postgres:mosaic@localhost:15432/mosaic`
   (`docker rm -f mosaic-pg` to drop it). Set `TEST_DATABASE_URL` to run the
   database tests; they skip without it.
+  Port 15432, not 55432: Windows reserves 55416–55515 for Hyper-V, and Docker
+  cannot bind inside a reserved range. Check with
+  `netsh interface ipv4 show excludedportrange protocol=tcp` before picking a
+  port, since the reserved ranges move between reboots.
 
 ---
 
