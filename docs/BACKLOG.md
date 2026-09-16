@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `9ba5a47`
-- **State:** 42 commits · 66 modules · 411 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `b5af405`
+- **State:** 44 commits · 68 modules · 435 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -124,11 +124,21 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       secret configured the check is skipped outside prod and raises in prod,
       and the verify call itself is covered only by its own error paths. It
       needs one real token round trip once the account exists.
-- [ ] **No CSRF protection yet, and none needed yet.** Every state-changing
-      POST today is authorised by a signed or stored token in the URL, not by
-      a cookie, so there is no ambient authority to forge. The moment the
-      magic-link session cookie lands, the preferences and admin routes need
-      CSRF tokens, and this note stops being reassuring.
+- [ ] **CSRF uses double-submit cookies, not a server-side store.** A
+      non-HttpOnly cookie and a request header must match; there is no per-
+      session secret, so an attacker who can set cookies on this origin at
+      all (e.g. through a subdomain takeover) could satisfy both sides. Fine
+      for a single-domain deployment with no subdomains in play; worth
+      revisiting if that ever changes.
+- [ ] **A session cookie cannot be revoked before it expires.** It is a
+      30-day stateless signed token, like a feedback link, so there is no row
+      to delete on logout — logout only clears the browser's copy. A stolen
+      cookie stays valid until it expires or the signing key is rotated
+      (which invalidates every token in the system, not just sessions).
+- [ ] **Preferences PATCH has no server-side idempotency key**, unlike
+      signup and the delivery claim. Two identical requests both apply
+      cleanly (last write wins), so this is a style gap, not a correctness
+      one — flagged in case a retrying frontend ever races itself.
 - [ ] **`CURRENT_POLICY_VERSION` is a constant in `routes/public.py`.** Every
       consent row records `2026-09-01`, a policy that has not been written.
       DPDP wants consent tied to the text the reader actually saw, so this has
@@ -199,9 +209,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `fact_checker_v1` are written; the Orchestrator needs none)
 
 **Delivery path**
-- [~] Link-scanner-safe GET endpoints — opt-in, unsubscribe and feedback are
-      built and tested; the magic link is not, because there is no session
-      layer to log in to yet.
+- [x] Link-scanner-safe GET endpoints — opt-in, unsubscribe, feedback and now
+      the magic link all follow the GET-renders/POST-acts shape.
 - [ ] Jinja templates: full email shell with masthead, special, weekend,
       system notices
 - [ ] PDF assembly and Cloud Storage caching
@@ -212,11 +221,10 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] images · [ ] quotes / "On this day"
 
 **Surfaces**
-- [~] FastAPI routes — signup, opt-in, unsubscribe, feedback and the archive
-      are built. Still missing: magic-link login and the session cookie it
-      implies, preferences (change genres, slot, frequency, pause), account
-      deletion and data export (DPDP requires both), the PDF route, and the
-      admin dashboard that several items above are waiting on.
+- [~] FastAPI routes — signup, opt-in, unsubscribe, feedback, the archive,
+      magic-link login, preferences, pause/resume, and DPDP export/delete are
+      all built. Still missing: the PDF route and the admin dashboard that
+      several items above are waiting on.
 - [ ] Next.js frontend, including privacy policy and terms pages
 
 **Supporting**
@@ -290,3 +298,7 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       link-scanner-safe opt-in/unsubscribe/feedback pair of GET and POST,
       one-click unsubscribe, the archive gated until 09:00 IST, security
       headers and rate limiting — `9ba5a47`
+- [x] Account API: magic-link login (double-submit CSRF session cookie),
+      preferences (genres, keywords, city, slot, frequency, edition
+      preference), pause/resume, and DPDP data export and erasure —
+      `PENDING`
