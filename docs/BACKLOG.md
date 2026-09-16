@@ -122,4 +122,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Real model ids verified against the live gateway — `a95c45c`
 - [x] Collector: whitelist, freshness, robots, passage extraction — `99c944f`
 - [x] Project installed as a real package, so `python -m app.jobs.*` runs
-      without `PYTHONPATH` — `HEAD`
+      without `PYTHONPATH` — `1b76915`
