@@ -148,7 +148,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
       per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
       Decide whether to wrap it or amend the spec.
-- [ ] Feedback aggregation job (agent 10) — the last of the six scheduled jobs
+- [ ] **Preference decay is per run, not per day.** A day with two runs decays
+      twice; a skipped day does not decay at all. Keying the decay to elapsed
+      days rather than invocations would be the honest version.
 - [ ] **Bounce parsing has never seen a real Gmail DSN.** The parser is built
       to RFC 3464 and tested against synthetic reports; `ImapBounceSource` has
       never spoken to an actual IMAP server. Both need a live check once the
@@ -250,6 +252,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       nothing when the deadline passes — `f032aa0`
 - [x] Bounce job: read-only mailbox access, narrowed IMAP search, permanent
       failures only — `79726bd`
+- [x] Feedback aggregation: bounded and decaying topic preferences, counted
+      exactly once — this commit. **All six scheduled jobs now exist.**
 - [x] Build job: the full pipeline behind one command, single-instance job
       lock, pipeline_runs tracking — `43adec4`. Run end to end against the
       live database: it correctly refused to publish, because no source has
