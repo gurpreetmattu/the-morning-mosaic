@@ -8,9 +8,9 @@ as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
 - **Last updated:** 2026-09-17, at commit `b5a2a77`
-- **State:** 63 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **State:** 65 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 513 Python tests (484 backend + 29 evals), 8 frontend tests (all green, database
+  runbook · 527 Python tests (498 backend + 29 evals), 8 frontend tests (all green, database
   included) · ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and
   `actionlint` all clean (`terraform validate` needs `terraform init`'s cached providers, not
   available in this environment)
@@ -67,12 +67,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       but nothing pushes to anyone, which is what "alert" actually means. That
       still needs a GCP project (see Blockers).
 - [ ] **No Langfuse tracing** wired, though it is a dependency and in the spec.
-- [ ] **`llm_calls` logging is built but never wired in.** `DatabaseCallRecorder`
-      (`app/llm/recorder.py`) fully implements CLAUDE.md's "log token usage,
-      latency, and failures per agent per run," but `build.py` and
-      `late_update.py` both construct `LlmClient()` with no `recorder=`
-      argument — the table exists and is never written to in real use.
-      Likely a one-line fix in each job once someone notices.
 - [ ] **Raw article text is never actually purged after 30 days.**
       `Article.raw_text_purged_at` is a column ready for it
       (`app/models/content.py`), but no job or scheduled task ever sets it
@@ -90,11 +84,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       and kept the rest. The problem is recorded, so when the Orchestrator
       exists it must treat `copied_text` as retry-worthy *even when a story
       was returned*, rather than publishing the gap.
-- [ ] **Acronyms shorter than four characters are not name-checked.** The
-      deterministic name check skips candidates under four characters, so an
-      invented "SBI" or "IMF" would pass to the model check alone. Raising the
-      floor would flood it with false positives; a known-acronym list is the
-      likely fix.
 - [x] ~~Planted-error catch rate is measured by hand, not by an eval.~~ Now
       `evals/fact_checker_catch_rate.py`: 10 deterministic cases (control +
       4 error categories, across 2 base stories) pass today at 100%; the
@@ -255,14 +244,6 @@ noticing the count was wrong.)
       to RFC 3464 and tested against synthetic reports; `ImapBounceSource` has
       never spoken to an actual IMAP server. Both need a live check once the
       Gmail app password exists.
-- [ ] **Whole-*section* withdrawal has no dedicated endpoint.** CLAUDE.md's
-      kill switch covers "a story or section"; only story-level withdrawal
-      exists (`POST /admin/api/stories/{id}/withdraw`). Withdrawing every
-      story in a section by hand gets the same published result, so this is
-      a convenience gap, not a capability one.
-- [ ] **"New story" is judged by source URL.** A publisher that reissues the
-      same story under a fresh URL will be appended twice by the late update.
-      Content-hash comparison across clusters would be the stronger check.
 - [ ] **Cross-process delivery concurrency is untested.** The claim uses
       `FOR UPDATE SKIP LOCKED` and commits before SMTP, and the at-most-once
       semantics are covered (sent skipped, `sending` never resent, failed
@@ -565,3 +546,32 @@ noticing the count was wrong.)
       clean, and the header renders correctly against a running dev server.
       Not verified in a real browser against a live Turnstile site key —
       that still needs the Cloudflare account (Blockers).
+- [x] `llm_calls` logging finally wired in: the build and late-update jobs
+      now pre-create and commit a `PipelineRun` row before any LLM call, so
+      `DatabaseCallRecorder` — given its id — can write from its own
+      independent session (each `record()` opens and commits its own tiny
+      transaction) without a foreign-key race against the main job's own,
+      still-open transaction. `DatabaseCallRecorder` itself gained a
+      `session_factory` seam and its first tests, in `test_llm_recorder.py`
+      — it had none before.
+- [x] Acronyms shorter than four characters are now name-checked against a
+      curated list (`RBI`, `SBI`, `IMF`, `ISRO`, `GST`, `BCCI`, and 30-odd
+      others in `app/agents/checking.py`), including at a sentence's start,
+      which the existing "drop the leading word" heuristic used to discard
+      unconditionally. Fixing this caught a real, previously-silent gap in
+      `test_fact_checker.py`'s own fixture: its passage text never actually
+      said "RBI", only "Reserve Bank of India" — invisible while every
+      short acronym was skipped, now fixed by writing the passage the way
+      real wire copy does, with the abbreviation introduced in parentheses.
+- [x] Late update now recognises a reissued story by content hash instead
+      of source URL (`app/db/persist.py`'s `persist_new_stories`), so a
+      publisher that reissues the same story under a fresh URL is no longer
+      appended a second time. The Collector already computed this hash for
+      every article; nothing new needed computing it, only comparing it.
+- [x] Whole-section withdrawal: `POST /admin/api/editions/{edition_date}/sections/{genre}/withdraw`
+      withdraws every active story in a section and publishes one new
+      revision — the same published result as withdrawing each story by
+      hand, in one call instead of one per story. Reuses the existing
+      story-withdrawal machinery (`_carry_forward`, `publish_revision`)
+      rather than duplicating it; the section itself renders as a genuine
+      `quiet_day`, not an empty `ok` section.

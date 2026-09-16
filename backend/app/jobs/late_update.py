@@ -39,6 +39,7 @@ from app.db.publish import PublishError, latest_revision, publish_revision
 from app.jobs.build import build_orchestrator
 from app.jobs.locking import job_lock
 from app.llm.client import LlmClient
+from app.llm.recorder import DatabaseCallRecorder
 from app.logging_config import configure_logging
 from app.models.editions import Edition, EditionSection
 from app.models.enums import JobName, RevisionReason, RunStatus, SectionStatus
@@ -77,11 +78,16 @@ def run_late_update(
     genres: list[GenreKey] | None = None,
     now: datetime | None = None,
     clock: Callable[[], datetime] = now_utc,
+    run_id: uuid.UUID | None = None,
 ) -> LateUpdateReport:
+    """Run and publish one late update. `run_id`, when given, becomes the
+    committed `PipelineRun` id — needed before any LLM call so the recorder's
+    own session can reference it (see `main()` and `app/jobs/build.py`)."""
     started = now or clock()
     report = LateUpdateReport(edition_date=edition_date)
 
     run = PipelineRun(
+        id=run_id or uuid.uuid4(),
         job=JobName.LATE_UPDATE,
         edition_date=edition_date,
         status=RunStatus.RUNNING,
@@ -246,9 +252,11 @@ def main(argv: list[str] | None = None) -> int:
                 logger.warning("another late update is in progress; exiting")
                 return 0
             user_agent = user_agent_for(str(settings.base_url))
+            run_id = uuid.uuid4()
+            recorder = DatabaseCallRecorder(pipeline_run_id=run_id)
             with (
                 Fetcher(user_agent=user_agent) as fetcher,
-                LlmClient() as llm,
+                LlmClient(recorder=recorder) as llm,
                 session_scope() as session,
             ):
                 report = run_late_update(
@@ -258,6 +266,7 @@ def main(argv: list[str] | None = None) -> int:
                     orchestrator=build_orchestrator(llm, fetcher),
                     renderer=SectionRenderer(),
                     genres=args.genres,
+                    run_id=run_id,
                 )
     finally:
         dispose_engine()

@@ -27,7 +27,7 @@ from app.clock import now_utc
 from app.config.schemas import GenreKey
 from app.config.settings import Settings
 from app.db.persist import persist_genre
-from app.db.publish import publish_revision
+from app.db.publish import latest_revision, publish_revision
 from app.db.seed import seed_cities, seed_sources
 from app.email import tokens
 from app.email.sender import Message, Sender, SendOutcome, SendResult
@@ -585,3 +585,119 @@ class TestWithdraw:
         assert response.status_code == 200
         assert response.json()[0]["headline"] == "Corridor cleared"
         assert response.json()[0]["reason"] == "factual error"
+
+
+class TestWithdrawSection:
+    def test_withdrawing_a_section_publishes_a_new_revision(
+        self, client: TestClient, session: Session
+    ) -> None:
+        publish_with_stories(session)
+        sign_in_admin(client)
+
+        response = client.post(
+            f"/admin/api/editions/{EDITION.isoformat()}/sections/india/withdraw",
+            json={"reason": "both stories turned out to be duplicates"},
+            headers=admin_csrf_headers(client),
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["genre"] == "india"
+        assert body["revision"] == 2
+        assert body["stories_withdrawn"] == 2
+
+        india_stories = session.scalars(select(Story).where(Story.genre == "india")).all()
+        assert all(story.status is StoryStatus.WITHDRAWN for story in india_stories)
+        assert session.scalar(
+            select(StoryWithdrawal).where(StoryWithdrawal.story_id == india_stories[0].id)
+        )
+
+    def test_the_untouched_genre_is_carried_forward(
+        self, client: TestClient, session: Session
+    ) -> None:
+        from app.models.editions import EditionSection
+
+        publish_with_stories(session)
+        sign_in_admin(client)
+
+        client.post(
+            f"/admin/api/editions/{EDITION.isoformat()}/sections/india/withdraw",
+            json={"reason": "both stories turned out to be duplicates"},
+            headers=admin_csrf_headers(client),
+        )
+
+        latest = session.scalars(
+            select(EditionSection)
+            .join(EditionSection.revision)
+            .order_by(EditionSection.created_at.desc())
+        ).all()
+        business_sections = [row for row in latest if row.genre == "business"]
+        assert business_sections
+        assert business_sections[0].html == "<p>business</p>"
+
+    def test_the_withdrawn_section_renders_as_a_quiet_day(
+        self, client: TestClient, session: Session
+    ) -> None:
+        from app.models.editions import EditionSection
+
+        publish_with_stories(session)
+        sign_in_admin(client)
+
+        client.post(
+            f"/admin/api/editions/{EDITION.isoformat()}/sections/india/withdraw",
+            json={"reason": "both stories turned out to be duplicates"},
+            headers=admin_csrf_headers(client),
+        )
+
+        revision = latest_revision(session, EDITION)
+        assert revision is not None
+        india_section = session.scalar(
+            select(EditionSection).where(
+                EditionSection.revision_id == revision.id, EditionSection.genre == "india"
+            )
+        )
+        assert india_section is not None
+        assert india_section.status is SectionStatus.QUIET_DAY
+
+    def test_withdrawing_a_section_with_no_active_stories_is_refused(
+        self, client: TestClient, session: Session
+    ) -> None:
+        publish_with_stories(session)
+        sign_in_admin(client)
+        headers = admin_csrf_headers(client)
+
+        client.post(
+            f"/admin/api/editions/{EDITION.isoformat()}/sections/india/withdraw",
+            json={"reason": "first"},
+            headers=headers,
+        )
+        response = client.post(
+            f"/admin/api/editions/{EDITION.isoformat()}/sections/india/withdraw",
+            json={"reason": "second"},
+            headers=headers,
+        )
+
+        assert response.status_code == 400
+
+    def test_an_unknown_genre_is_rejected(self, client: TestClient, session: Session) -> None:
+        publish_with_stories(session)
+        sign_in_admin(client)
+
+        response = client.post(
+            f"/admin/api/editions/{EDITION.isoformat()}/sections/not-a-genre/withdraw",
+            json={"reason": "test"},
+            headers=admin_csrf_headers(client),
+        )
+
+        assert response.status_code == 422
+
+    def test_no_published_revision_is_a_400(self, client: TestClient) -> None:
+        sign_in_admin(client)
+
+        response = client.post(
+            f"/admin/api/editions/{EDITION.isoformat()}/sections/india/withdraw",
+            json={"reason": "test"},
+            headers=admin_csrf_headers(client),
+        )
+
+        assert response.status_code == 400

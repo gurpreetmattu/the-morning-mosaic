@@ -45,6 +45,7 @@ from app.api.deps import db_session
 from app.api.deps import settings as get_request_settings
 from app.api.security import RateLimiter, client_key
 from app.clock import now_utc
+from app.config.schemas import GenreKey
 from app.config.settings import Settings
 from app.db.publish import PublishError, latest_revision, publish_revision
 from app.email import tokens
@@ -444,6 +445,88 @@ def withdraw_story(
         genre=genre,
         revision=new_revision.revision,
         remaining_stories=len(remaining),
+    )
+
+
+class SectionWithdrawResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    genre: str
+    revision: int
+    stories_withdrawn: int
+
+
+@router.post(
+    "/api/editions/{edition_date}/sections/{genre}/withdraw",
+    response_model=SectionWithdrawResponse,
+)
+def withdraw_section(
+    edition_date: date,
+    genre: GenreKey,
+    payload: WithdrawRequest,
+    admin_email: Annotated[str, Depends(require_admin)],
+    session: Annotated[Session, Depends(db_session)],
+    _csrf: Annotated[None, Depends(require_admin_csrf)],
+) -> SectionWithdrawResponse:
+    """Withdraw every active story in one section at once: the same
+    published result as withdrawing each of its stories by hand, in one
+    call and one revision instead of one per story."""
+    revision = latest_revision(session, edition_date)
+    if revision is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No published revision to update.")
+
+    edition = session.get(Edition, revision.edition_id)
+    assert edition is not None
+
+    active = session.scalars(
+        select(Story).where(
+            Story.edition_date == edition_date,
+            Story.genre == genre,
+            Story.status != StoryStatus.WITHDRAWN,
+        )
+    ).all()
+    if not active:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That section has no active stories.")
+
+    withdrawn_at = now_utc()
+    for story in active:
+        story.status = StoryStatus.WITHDRAWN
+        session.add(
+            StoryWithdrawal(story_id=story.id, reason=payload.reason, withdrawn_at=withdrawn_at)
+        )
+    session.flush()
+
+    sections = _carry_forward(session, revision_id=revision.id, except_genre=genre)
+    sections[genre] = SectionRenderer().render_candidates(genre, [])
+
+    try:
+        new_revision = publish_revision(
+            session,
+            build=EditionBuild(
+                edition_date=edition_date,
+                edition_number=edition.edition_number,
+                special_edition_key=edition.special_edition_key,
+                is_weekend=edition.is_weekend,
+                genres=[],
+            ),
+            sections=sections,
+            reason=RevisionReason.WITHDRAWAL,
+            published_at=now_utc(),
+        )
+    except PublishError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+    logger.info(
+        "section withdrawn",
+        extra={
+            "edition_date": str(edition_date),
+            "genre": genre,
+            "admin_email": admin_email,
+            "stories_withdrawn": len(active),
+        },
+    )
+    return SectionWithdrawResponse(
+        genre=genre, revision=new_revision.revision, stories_withdrawn=len(active)
     )
 
 

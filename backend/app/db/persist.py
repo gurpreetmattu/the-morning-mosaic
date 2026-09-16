@@ -62,18 +62,20 @@ def persist_new_stories(
     stories the way a build does would destroy the audit trail for content
     readers have already received. This appends instead.
 
-    "Already have" is judged by source URL: a candidate whose every article is
-    already stored for this date and genre is the same story the build wrote.
-    A publisher that reissues a story under a new URL will slip past this and
-    appear twice; that is the known limit of the check.
+    "Already have" is judged by content hash, not source URL: a candidate
+    whose every article is already stored for this date and genre by content
+    is the same story the build wrote, even if a publisher reissued it under
+    a fresh URL — the Collector already computes this hash from the
+    extracted text (see app/sources/schemas.py), so a byte-identical
+    reissue collapses to the same hash without any new comparison logic.
     """
-    known = _stored_urls(session, edition_date=edition_date, genre=outcome.genre)
+    known = _stored_content_hashes(session, edition_date=edition_date, genre=outcome.genre)
     next_rank = _highest_rank(session, edition_date=edition_date, genre=outcome.genre)
 
     added: list[Story] = []
     for verified in outcome.stories:
-        urls = {article.url for article in verified.articles}
-        if urls <= known:
+        hashes = {article.content_hash for article in verified.articles}
+        if hashes <= known:
             continue
         next_rank += 1
         added.append(
@@ -85,16 +87,16 @@ def persist_new_stories(
                 pool_rank=next_rank,
             )
         )
-        known |= urls
+        known |= hashes
 
     session.flush()
     return added
 
 
-def _stored_urls(session: Session, *, edition_date: date, genre: str) -> set[str]:
+def _stored_content_hashes(session: Session, *, edition_date: date, genre: str) -> set[str]:
     return set(
         session.scalars(
-            select(Article.url)
+            select(Article.content_hash)
             .join(ClusterArticle, ClusterArticle.article_id == Article.id)
             .join(StoryCluster, StoryCluster.id == ClusterArticle.cluster_id)
             .where(StoryCluster.edition_date == edition_date, StoryCluster.genre == genre)

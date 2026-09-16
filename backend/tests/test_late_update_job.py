@@ -293,6 +293,34 @@ def test_only_the_genuinely_new_story_is_appended(session: Session) -> None:
     assert added[0].pool_rank == 2
 
 
+def test_a_reissue_under_a_fresh_url_is_still_recognised_by_content(session: Session) -> None:
+    """A publisher can reissue the same story under a new URL; the dedup key
+    is content hash, not URL, so it is not appended a second time."""
+    persist_genre(session, edition_date=EDITION, outcome=outcome("a"))
+
+    reissued = article("a").model_copy(update={"url": "https://example.test/a-reissued"})
+    reissued_outcome = GenreOutcome(
+        genre="india",
+        status=SectionStatus.OK,
+        stories=[
+            VerifiedStory(
+                story=WrittenStory(
+                    headline=DraftSentence(text="Headline a", passage_ids=["a1:p1"]),
+                    summary=[DraftSentence(text="Ministers approved.", passage_ids=["a1:p1"])],
+                    one_liner=DraftSentence(text="Line a", passage_ids=["a1:p1"]),
+                ),
+                articles=[reissued],
+                pool_rank=1,
+                attempts=1,
+            )
+        ],
+    )
+
+    added = persist_new_stories(session, edition_date=EDITION, outcome=reissued_outcome)
+
+    assert added == []
+
+
 # --------------------------------------------------------------- guardrails
 
 

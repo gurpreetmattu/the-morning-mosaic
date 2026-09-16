@@ -38,8 +38,8 @@ PRIMARY = "https://primary.llm"
 NOW = datetime(2026, 9, 17, 4, 30, tzinfo=UTC)
 
 P1 = (
-    "The Reserve Bank of India kept the repo rate unchanged at 6.5 percent on Friday, "
-    "the fourth consecutive hold by the monetary policy committee."
+    "The Reserve Bank of India (RBI) kept the repo rate unchanged at 6.5 percent "
+    "on Friday, the fourth consecutive hold by the monetary policy committee."
 )
 P2 = "Governor Shaktikanta Das said retail inflation had eased but stayed above target."
 
@@ -130,6 +130,21 @@ def test_sentence_initial_words_are_not_treated_as_names() -> None:
 def test_date_and_name_extraction_basics() -> None:
     assert dates_in("on Friday in March") == {"friday", "march"}
     assert "Reserve Bank of India" in names_in("The Reserve Bank of India acted.")
+
+
+def test_a_known_short_acronym_is_still_caught_as_a_candidate() -> None:
+    assert "RBI" in names_in("RBI raised rates on Friday.")
+
+
+def test_an_invented_short_acronym_is_caught() -> None:
+    problems = unsupported_facts("SBI raised rates on Friday.", [P2])
+    assert any("SBI" in problem for problem in problems)
+
+
+def test_an_unknown_short_capitalised_word_is_still_ignored() -> None:
+    """The four-character floor still applies to anything not on the list,
+    or the check would flood on ordinary short capitalised words."""
+    assert "Fed" not in names_in("The Fed raised rates on Friday.")
 
 
 def test_optional_elements_are_identified() -> None:

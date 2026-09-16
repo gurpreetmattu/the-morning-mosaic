@@ -242,6 +242,62 @@ _CAPITALISED = re.compile(
     rf"\b{_WORD_PART}(?:\s+(?:{_CONNECTORS})\s+{_WORD_PART}|\s+{_WORD_PART})*"
 )
 
+# Below the four-character floor a candidate is normally skipped, since
+# raising the floor for every short capitalised word would flood the check
+# with false positives ("Fed", "PM", ordinary words at a sentence's start).
+# These are checked anyway: a made-up "SBI" or "IMF" is exactly the kind of
+# invented entity the check exists to catch, and each is common enough
+# in India-first news to be worth naming rather than raising the floor.
+_KNOWN_SHORT_ACRONYMS = frozenset(
+    {
+        "RBI",
+        "SBI",
+        "IMF",
+        "WHO",
+        "GST",
+        "ISRO",
+        "DRDO",
+        "BJP",
+        "AAP",
+        "BCCI",
+        "ICC",
+        "NASA",
+        "FBI",
+        "CIA",
+        "NATO",
+        "WTO",
+        "IPL",
+        "SEBI",
+        "TRAI",
+        "CBI",
+        "NIA",
+        "NDA",
+        "UPA",
+        "GDP",
+        "CPI",
+        "RTI",
+        "PIL",
+        "ISI",
+        "G20",
+        "IPO",
+        "NPA",
+        "PSU",
+        "OTT",
+        "MSME",
+        "FDI",
+        "FPI",
+        "NRI",
+        "UPI",
+        "KYC",
+        "PAN",
+        "EPFO",
+        "LIC",
+        "ONGC",
+        "NTPC",
+        "CAG",
+    }
+)
+
 
 def names_in(text: str) -> set[str]:
     """Proper-noun candidates, excluding the sentence's opening word.
@@ -255,13 +311,17 @@ def names_in(text: str) -> set[str]:
             continue
         for match in _CAPITALISED.finditer(sentence):
             phrase = match.group(0).strip(" .,;:")
-            if match.start() == 0:
+            if match.start() == 0 and phrase not in _KNOWN_SHORT_ACRONYMS:
                 # Drop the leading word; keep the rest if it is still a name.
+                # A known acronym is kept as-is even alone at the start of a
+                # sentence ("RBI raised rates...") — it is never an ordinary
+                # sentence-opening word like "The".
                 parts = phrase.split(None, 1)
                 if len(parts) < 2:
                     continue
                 phrase = parts[1]
-            if len(phrase) < 4 or phrase.lower() in _NOT_NAMES:
+            too_short = len(phrase) < 4 and phrase not in _KNOWN_SHORT_ACRONYMS
+            if too_short or phrase.lower() in _NOT_NAMES:
                 continue
             candidates.add(phrase)
     return candidates

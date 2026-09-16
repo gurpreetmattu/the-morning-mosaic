@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
@@ -37,6 +38,7 @@ from app.db.persist import persist_genre
 from app.db.publish import PublishError, publish_revision
 from app.jobs.locking import job_lock
 from app.llm.client import LlmClient
+from app.llm.recorder import DatabaseCallRecorder
 from app.logging_config import configure_logging
 from app.models.enums import JobName, RunStatus
 from app.models.operations import PipelineRun
@@ -79,20 +81,31 @@ def run_build(
     renderer: SectionRenderer,
     genres: list[GenreKey] | None = None,
     now: datetime | None = None,
+    run_id: uuid.UUID | None = None,
 ) -> BuildReport:
-    """Build and publish one edition. The session is committed by the caller."""
+    """Build and publish one edition. The session is committed by the caller.
+
+    `run_id`, when given, must already exist as a committed `PipelineRun` row
+    (see `main()`) — the LLM client's recorder needs that row visible to its
+    own, separate session before any `llm_calls` row can reference it via
+    foreign key, and every LLM call in this build happens before this
+    session touches the database at all.
+    """
     report = BuildReport(edition_date=edition_date)
     started = now or now_utc()
 
-    run = PipelineRun(
-        job=JobName.BUILD,
-        edition_date=edition_date,
-        status=RunStatus.RUNNING,
-        started_at=started,
-        deadline_at=deadline,
-    )
-    session.add(run)
-    session.flush()
+    run = session.get(PipelineRun, run_id) if run_id is not None else None
+    if run is None:
+        run = PipelineRun(
+            id=run_id or uuid.uuid4(),
+            job=JobName.BUILD,
+            edition_date=edition_date,
+            status=RunStatus.RUNNING,
+            started_at=started,
+            deadline_at=deadline,
+        )
+        session.add(run)
+        session.flush()
 
     try:
         orchestrator.edition_number(edition_date)
@@ -197,7 +210,22 @@ def main(argv: list[str] | None = None) -> int:
                 logger.warning("another build is already running; exiting")
                 return 0
 
-            with Fetcher(user_agent=user_agent) as fetcher, LlmClient() as llm:
+            run_id = uuid.uuid4()
+            started = now_utc()
+            with session_scope() as setup:
+                setup.add(
+                    PipelineRun(
+                        id=run_id,
+                        job=JobName.BUILD,
+                        edition_date=edition_date,
+                        status=RunStatus.RUNNING,
+                        started_at=started,
+                        deadline_at=deadline,
+                    )
+                )
+
+            recorder = DatabaseCallRecorder(pipeline_run_id=run_id)
+            with Fetcher(user_agent=user_agent) as fetcher, LlmClient(recorder=recorder) as llm:
                 orchestrator = build_orchestrator(llm, fetcher)
                 with session_scope() as session:
                     report = run_build(
@@ -207,6 +235,8 @@ def main(argv: list[str] | None = None) -> int:
                         orchestrator=orchestrator,
                         renderer=SectionRenderer(),
                         genres=args.genres,
+                        now=started,
+                        run_id=run_id,
                     )
     finally:
         dispose_engine()
