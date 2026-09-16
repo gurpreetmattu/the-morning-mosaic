@@ -7,11 +7,12 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `54f03c8`
-- **State:** 60 commits · 76 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
-  files, 2 Dockerfiles, 3 GitHub Actions workflows · 502 Python tests (473 backend + 29 evals),
-  8 frontend tests (all green, database included) · ruff, `mypy --strict`, eslint, prettier, tsc,
-  `terraform validate`/`fmt`, and `actionlint` all clean
+- **Last updated:** 2026-09-17, at commit `a2aecc7`
+- **State:** 61 commits · 76 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+  files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
+  runbook · 502 Python tests (473 backend + 29 evals), 8 frontend tests (all green, database
+  included) · ruff, `mypy --strict`, eslint, prettier, tsc, `terraform validate`/`fmt`, and
+  `actionlint` all clean
 
 ---
 
@@ -485,4 +486,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       section 2 above: CLAUDE.md's corrections process (mark a story
       corrected in the archive, note it in the next edition) has no code
       behind it at all, not even the archive-display half already on
-      record — `PENDING`
+      record — `a2aecc7`
