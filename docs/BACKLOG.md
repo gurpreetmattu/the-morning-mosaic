@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `c7cd32b`
-- **State:** 14 commits · 37 modules · 135 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `2170602`
+- **State:** 18 commits · 42 modules · 160 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
