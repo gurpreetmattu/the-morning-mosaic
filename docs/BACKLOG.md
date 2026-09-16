@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `74d3add`
-- **State:** 22 commits · 44 modules · 188 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `5bcaabc`
+- **State:** 24 commits · 46 modules · 207 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -196,4 +196,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       sentences, citations with frozen excerpts, tags and fact checks —
       `74d3add`
 - [x] Genre sections rendered to email-safe HTML and plain text, and edition
-      revisions published immutably with their sections — this commit
+      revisions published immutably with their sections — `5bcaabc`
