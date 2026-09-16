@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `738ec2a`
-- **State:** 64 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `b5a2a77`
+- **State:** 63 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 513 Python tests (484 backend + 29 evals), 8 frontend tests (all green, database
   included) · ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and
