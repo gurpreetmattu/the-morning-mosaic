@@ -23,6 +23,11 @@
       {% if special_edition %}&nbsp;·&nbsp; {{ special_edition }}{% endif %}
       <br />Curated for {{ first_name }}
     </p>
+    {% if special_edition_note %}
+    <p style="margin:10px 0 0 0;padding:8px 12px;background:#f4f2ee;border-left:4px solid {{ special_edition_accent or '#141414' }};font-family:Georgia, serif;font-size:12px;color:#3a3a3a;">
+      {{ special_edition_note }}
+    </p>
+    {% endif %}
     {% if weather %}
     <p style="margin:10px 0 0 0;padding:8px 12px;background:#f4f2ee;font-family:Georgia, serif;font-size:12px;color:#3a3a3a;">
       {{ weather.city }}: {{ weather.summary }}, {{ weather.low }}&ndash;{{ weather.high }}&deg;C

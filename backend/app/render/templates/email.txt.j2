@@ -4,6 +4,9 @@
 {{ date_label }} | Edition {{ edition_number }}{% if special_edition %} | {{ special_edition }}{% endif %}
 
 Curated for {{ first_name }}
+{% if special_edition_note %}
+{{ special_edition_note }}
+{% endif %}
 {% if weather %}
 {{ weather.city }}: {{ weather.summary }}, {{ weather.low }}-{{ weather.high }}C
 {% endif %}

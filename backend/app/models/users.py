@@ -189,6 +189,10 @@ class UserPreference(Base):
     genre: Mapped[GenreKeyColumn]
     topic_tag: Mapped[str] = mapped_column(String(96), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    # Keys decay to elapsed calendar days rather than to how many times the
+    # feedback job happened to run (see app/jobs/feedback.py). Null only for
+    # a preference that has never yet been decayed.
+    last_decayed_at: Mapped[OptionalInstant]
     updated_at: Mapped[UpdatedAt]
 
     __table_args__ = (

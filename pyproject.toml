@@ -24,7 +24,6 @@ dependencies = [
     "trafilatura>=2.0",
     # Rendering
     "jinja2>=3.1",
-    "premailer>=3.10",
     "weasyprint>=63.0",
     # PDF assembly: pure Python, no native deps, so merging pre-rendered
     # genre pages into one reader's file doesn't need WeasyPrint again.
@@ -83,7 +82,7 @@ mypy_path = "backend"
 files = ["backend", "evals"]
 
 [[tool.mypy.overrides]]
-module = ["feedparser.*", "trafilatura.*", "weasyprint.*", "premailer.*", "google.cloud.*"]
+module = ["feedparser.*", "trafilatura.*", "weasyprint.*", "google.cloud.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

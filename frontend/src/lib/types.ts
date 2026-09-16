@@ -85,6 +85,11 @@ export interface EditionSummary {
   special_edition_key: string | null;
 }
 
+export interface ArchivePage {
+  editions: EditionSummary[];
+  has_more: boolean;
+}
+
 export interface RunSummary {
   id: string;
   job: string;

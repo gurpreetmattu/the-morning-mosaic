@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 from sqlalchemy import func, select
@@ -268,8 +268,53 @@ def test_a_vote_is_counted_once_however_often_the_job_runs(session: Session) -> 
     second_report = run_feedback(session, now=NOW)
 
     assert second_report.processed == 0
-    # Only decay moved it; the vote was not applied twice.
-    assert preferences(session, user)[("india", "infrastructure")] == pytest.approx(first * DECAY)
+    # A same-day rerun applies neither the vote nor decay a second time.
+    assert second_report.decayed == 0
+    assert preferences(session, user)[("india", "infrastructure")] == pytest.approx(first)
+
+
+def test_a_same_day_rerun_does_not_decay_twice(session: Session) -> None:
+    user = make_user(session)
+    session.add(UserPreference(user_id=user.id, genre="india", topic_tag="markets", score=4.0))
+    session.flush()
+
+    run_feedback(session, now=NOW)
+    first = preferences(session, user)[("india", "markets")]
+    second_report = run_feedback(session, now=NOW)
+
+    assert second_report.decayed == 0
+    assert preferences(session, user)[("india", "markets")] == pytest.approx(first)
+
+
+def test_a_run_the_next_day_decays_again(session: Session) -> None:
+    user = make_user(session)
+    session.add(UserPreference(user_id=user.id, genre="india", topic_tag="markets", score=4.0))
+    session.flush()
+
+    run_feedback(session, now=NOW)
+    first = preferences(session, user)[("india", "markets")]
+    next_day_report = run_feedback(session, now=NOW + timedelta(days=1))
+
+    assert next_day_report.decayed == 1
+    assert preferences(session, user)[("india", "markets")] == pytest.approx(first * DECAY)
+
+
+def test_a_skipped_day_still_decays_by_the_full_elapsed_amount(session: Session) -> None:
+    """A gap of several days (the job missed a day, or several) decays by
+    the corresponding power of DECAY in the one run that finally happens,
+    rather than by a single day's worth regardless of the gap."""
+    user = make_user(session)
+    session.add(
+        UserPreference(
+            user_id=user.id, genre="india", topic_tag="markets", score=4.0, last_decayed_at=NOW
+        )
+    )
+    session.flush()
+
+    report = run_feedback(session, now=NOW + timedelta(days=3))
+
+    assert report.decayed == 1
+    assert preferences(session, user)[("india", "markets")] == pytest.approx(4.0 * DECAY**3)
 
 
 def test_processed_feedback_is_stamped(session: Session) -> None:

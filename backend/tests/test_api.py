@@ -148,22 +148,22 @@ def make_user(
     return user
 
 
-def publish(session: Session) -> Story:
+def publish(session: Session, *, on: date = EDITION, edition_number: int = 5) -> Story:
     """One published edition with a single story, for archive and feedback."""
     article = CollectedArticle(
         source_key="the-hindu",
         genre="india",
-        url="https://example.test/corridor",
+        url=f"https://example.test/corridor-{on.isoformat()}",
         title="Corridor",
         published_at=NOW,
         fetched_at=NOW,
         text=BODY,
         passages=[Passage(ordinal=1, text=BODY)],
-        content_hash="archive-hash",
+        content_hash=f"archive-hash-{on.isoformat()}",
     )
     persist_genre(
         session,
-        edition_date=EDITION,
+        edition_date=on,
         outcome=GenreOutcome(
             genre="india",
             status=SectionStatus.OK,
@@ -182,7 +182,7 @@ def publish(session: Session) -> Story:
     )
     publish_revision(
         session,
-        build=EditionBuild(edition_date=EDITION, edition_number=5, genres=[]),
+        build=EditionBuild(edition_date=on, edition_number=edition_number, genres=[]),
         sections={
             "india": RenderedSection(
                 genre="india",
@@ -571,7 +571,26 @@ class TestArchive:
         response = client.get("/api/archive")
 
         assert response.status_code == 200
-        assert [row["edition_date"] for row in response.json()] == [EDITION.isoformat()]
+        body = response.json()
+        assert [row["edition_date"] for row in body["editions"]] == [EDITION.isoformat()]
+        assert body["has_more"] is False
+
+    def test_the_listing_is_paginated(self, client: TestClient, session: Session) -> None:
+        for offset in range(3):
+            publish(session, on=date(2026, 9, 10 + offset), edition_number=5 + offset)
+
+        first_page = client.get("/api/archive", params={"limit": 2}).json()
+        assert [row["edition_date"] for row in first_page["editions"]] == [
+            "2026-09-12",
+            "2026-09-11",
+        ]
+        assert first_page["has_more"] is True
+
+        second_page = client.get(
+            "/api/archive", params={"limit": 2, "before": "2026-09-11"}
+        ).json()
+        assert [row["edition_date"] for row in second_page["editions"]] == ["2026-09-10"]
+        assert second_page["has_more"] is False
 
 
 # ===================================================================== basics

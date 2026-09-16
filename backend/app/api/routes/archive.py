@@ -11,10 +11,10 @@ the website before it reaches their inbox.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -30,7 +30,8 @@ router = APIRouter()
 # The last delivery run. Before this, today's edition is still being sent.
 PUBLIC_FROM_IST_HOUR = 9
 
-MAX_LISTED = 60
+DEFAULT_LIST_LIMIT = 20
+MAX_LIST_LIMIT = 60
 
 
 class ArchivedSection(BaseModel):
@@ -61,6 +62,13 @@ class EditionSummary(BaseModel):
     special_edition_key: str | None
 
 
+class ArchivePage(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    editions: list[EditionSummary]
+    has_more: bool
+
+
 def is_public(edition_date: date, *, now: datetime | None = None) -> bool:
     """True once the edition has finished being delivered."""
     moment = to_ist(now or now_utc())
@@ -71,20 +79,48 @@ def is_public(edition_date: date, *, now: datetime | None = None) -> bool:
     return moment.hour >= PUBLIC_FROM_IST_HOUR
 
 
-@router.get("/api/archive", response_model=list[EditionSummary])
-def list_editions(session: Annotated[Session, Depends(db_session)]) -> list[EditionSummary]:
-    editions = session.scalars(
-        select(Edition).order_by(Edition.edition_date.desc()).limit(MAX_LISTED)
+def _latest_public_date(now: datetime | None = None) -> date:
+    """The newest `edition_date` a listing may show, given the time.
+
+    Pushing this into the query (rather than fetching and filtering in
+    Python, as this route used to) keeps `limit`/`has_more` exact: at most
+    one edition — today's — is ever not yet public, so filtering it out
+    afterwards could silently short a page by one.
+    """
+    moment = to_ist(now or now_utc())
+    if moment.hour >= PUBLIC_FROM_IST_HOUR:
+        return moment.date()
+    return moment.date() - timedelta(days=1)
+
+
+@router.get("/api/archive", response_model=ArchivePage)
+def list_editions(
+    session: Annotated[Session, Depends(db_session)],
+    before: date | None = None,
+    limit: Annotated[int, Query(gt=0)] = DEFAULT_LIST_LIMIT,
+) -> ArchivePage:
+    capped = min(limit, MAX_LIST_LIMIT)
+    query = (
+        select(Edition)
+        .where(Edition.edition_date <= _latest_public_date())
+        .order_by(Edition.edition_date.desc())
     )
-    return [
-        EditionSummary(
-            edition_date=edition.edition_date,
-            edition_number=edition.edition_number,
-            special_edition_key=edition.special_edition_key,
-        )
-        for edition in editions
-        if is_public(edition.edition_date)
-    ]
+    if before is not None:
+        query = query.where(Edition.edition_date < before)
+
+    # One extra row, never returned, just to know whether another page exists.
+    rows = list(session.scalars(query.limit(capped + 1)))
+    return ArchivePage(
+        editions=[
+            EditionSummary(
+                edition_date=edition.edition_date,
+                edition_number=edition.edition_number,
+                special_edition_key=edition.special_edition_key,
+            )
+            for edition in rows[:capped]
+        ],
+        has_more=len(rows) > capped,
+    )
 
 
 @router.get("/api/archive/{edition_date}", response_model=ArchivedEdition)

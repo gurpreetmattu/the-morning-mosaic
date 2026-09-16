@@ -16,6 +16,7 @@ from app.agents.schemas import (
     VerifiedStory,
     WrittenStory,
 )
+from app.config.schemas import EditionsConfig, SpecialEdition, WeekendConfig
 from app.config.settings import Settings
 from app.db.persist import persist_genre
 from app.db.publish import publish_revision
@@ -135,11 +136,21 @@ def outcome(count: int = 3, genre: str = "india") -> GenreOutcome:
     )
 
 
-def published_edition(session: Session, on: date = EDITION, stories: int = 3) -> None:
+def published_edition(
+    session: Session,
+    on: date = EDITION,
+    stories: int = 3,
+    special_edition_key: str | None = None,
+) -> None:
     persist_genre(session, edition_date=on, outcome=outcome(stories))
     publish_revision(
         session,
-        build=EditionBuild(edition_date=on, edition_number=5, genres=[]),
+        build=EditionBuild(
+            edition_date=on,
+            edition_number=5,
+            genres=[],
+            special_edition_key=special_edition_key,
+        ),
         sections={
             "india": RenderedSection(
                 genre="india",
@@ -287,6 +298,35 @@ def test_a_due_reader_receives_the_edition(session: Session) -> None:
     assert len(sender.messages) == 1
     assert sender.messages[0].to == "reader@example.com"
     assert "Headline 0" in sender.messages[0].html
+
+
+def test_a_special_edition_is_shown_by_name_not_by_its_raw_config_key(
+    session: Session,
+) -> None:
+    make_user(session)
+    published_edition(session, special_edition_key="gandhi-jayanti")
+    editions = EditionsConfig(
+        launch_date=date(2026, 1, 1),
+        weekend=WeekendConfig(saturday_features=["top-stories"], sunday_features=["top-stories"]),
+        special_editions=[
+            SpecialEdition(
+                key="gandhi-jayanti",
+                name="Gandhi Jayanti",
+                observed_on=EDITION,
+                note="A special edition marking Gandhi Jayanti.",
+                accent="#a3552b",
+            )
+        ],
+    )
+    sender = FakeSender()
+
+    deliver(session, sender, editions=editions)
+
+    html = sender.messages[0].html
+    assert "Gandhi Jayanti" in html
+    assert "gandhi-jayanti" not in html
+    assert "A special edition marking Gandhi Jayanti." in html
+    assert "#a3552b" in html
 
 
 def test_the_delivery_records_the_revision_that_was_sent(session: Session) -> None:

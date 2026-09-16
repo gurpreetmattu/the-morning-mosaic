@@ -47,8 +47,10 @@ VOTE_DELTA = {Vote.UP: 1.0, Vote.DOWN: -1.0}
 # Selection weights a preference by 2 and a followed keyword by 100, so five
 # keeps even a saturated topic well below something the reader asked for.
 SCORE_CAP = 5.0
-# Applied once per run. A saturated score falls to about half in a month
-# without reinforcement.
+# Applied once per elapsed calendar day (see apply_decay), not once per
+# call: a manual rerun on the same day must not decay a preference twice,
+# and a day the job never ran must not skip decaying it. A saturated score
+# falls to about half in a month without reinforcement.
 DECAY = 0.98
 # Below this a preference is indistinguishable from none; the row is removed
 # rather than kept forever at 0.0001.
@@ -68,18 +70,34 @@ def clamp(score: float) -> float:
     return max(-SCORE_CAP, min(SCORE_CAP, score))
 
 
-def apply_decay(session: Session) -> tuple[int, int]:
-    """Nudge every preference toward zero. Returns (decayed, pruned)."""
+def _elapsed_days(last_decayed_at: datetime | None, now: datetime) -> int:
+    """Calendar days (IST) since a preference last decayed.
+
+    A preference that has never decayed is treated as one day overdue,
+    rather than as zero — the conservative, one-time choice for a row that
+    predates `last_decayed_at` existing at all.
+    """
+    if last_decayed_at is None:
+        return 1
+    return max(0, (edition_date_for(now) - edition_date_for(last_decayed_at)).days)
+
+
+def apply_decay(session: Session, *, now: datetime) -> tuple[int, int]:
+    """Nudge every preference toward zero, once per elapsed day since it last
+    decayed rather than once per call. Returns (decayed, pruned)."""
     preferences = list(session.scalars(select(UserPreference)))
-    for preference in preferences:
-        preference.score *= DECAY
+    decayed = [p for p in preferences if _elapsed_days(p.last_decayed_at, now) > 0]
+    for preference in decayed:
+        days = _elapsed_days(preference.last_decayed_at, now)
+        preference.score *= DECAY**days
+        preference.last_decayed_at = now
 
     faded = [p for p in preferences if abs(p.score) < PRUNE_BELOW]
     for preference in faded:
         session.delete(preference)
 
     session.flush()
-    return len(preferences), len(faded)
+    return len(decayed), len(faded)
 
 
 def run_feedback(session: Session, *, now: datetime | None = None) -> FeedbackReport:
@@ -96,7 +114,7 @@ def run_feedback(session: Session, *, now: datetime | None = None) -> FeedbackRe
     session.commit()
 
     # Decay first, so a vote cast today is not immediately discounted.
-    report.decayed, report.pruned = apply_decay(session)
+    report.decayed, report.pruned = apply_decay(session, now=started)
 
     pending = list(
         session.scalars(
@@ -126,6 +144,7 @@ def run_feedback(session: Session, *, now: datetime | None = None) -> FeedbackRe
                 genre=story.genre,
                 tag=tag,
                 delta=VOTE_DELTA[feedback.vote],
+                now=started,
             )
             report.updated += 1
 
@@ -146,7 +165,9 @@ def _topic_tags(session: Session, story_id: uuid.UUID) -> list[str]:
     )
 
 
-def _adjust(session: Session, *, user_id: uuid.UUID, genre: str, tag: str, delta: float) -> None:
+def _adjust(
+    session: Session, *, user_id: uuid.UUID, genre: str, tag: str, delta: float, now: datetime
+) -> None:
     preference = session.scalar(
         select(UserPreference).where(
             UserPreference.user_id == user_id,
@@ -155,7 +176,16 @@ def _adjust(session: Session, *, user_id: uuid.UUID, genre: str, tag: str, delta
         )
     )
     if preference is None:
-        session.add(UserPreference(user_id=user_id, genre=genre, topic_tag=tag, score=clamp(delta)))
+        # Freshly created, so not decayed again today (see _elapsed_days).
+        session.add(
+            UserPreference(
+                user_id=user_id,
+                genre=genre,
+                topic_tag=tag,
+                score=clamp(delta),
+                last_decayed_at=now,
+            )
+        )
         session.flush()
         return
 

@@ -33,6 +33,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.clock import edition_date_for, now_utc, to_ist
+from app.config.loader import load_editions
+from app.config.schemas import EditionsConfig
 from app.config.settings import Settings, get_settings
 from app.db.engine import dispose_engine, get_sessionmaker
 from app.db.publish import latest_revision
@@ -215,10 +217,12 @@ def run_delivery(
     sender: Sender,
     renderer: EmailRenderer | None = None,
     settings: Settings | None = None,
+    editions: EditionsConfig | None = None,
     now: datetime | None = None,
 ) -> DeliveryReport:
     config = settings or get_settings()
     assemble = renderer or EmailRenderer()
+    editions_config = editions or load_editions()
     started = now or now_utc()
     report = DeliveryReport(edition_date=edition_date, slot=slot)
 
@@ -262,13 +266,22 @@ def run_delivery(
             continue
 
         links = build_links(session, user=user, revision=revision, settings=config)
+        special = (
+            editions_config.by_key(edition.special_edition_key)
+            if edition.special_edition_key
+            else None
+        )
         email = assemble.render(
             first_name=reader.first_name,
             edition_date=edition_date,
             edition_number=edition.edition_number,
             selected=selected,
             links=links,
-            special_edition=edition.special_edition_key,
+            # Fall back to the raw key if it no longer matches any configured
+            # special edition, rather than silently showing nothing.
+            special_edition=special.name if special else edition.special_edition_key,
+            special_edition_note=special.note if special else None,
+            special_edition_accent=special.accent if special else None,
         )
 
         # The claim is committed before SMTP, so a crash cannot lose it.

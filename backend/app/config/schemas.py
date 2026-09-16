@@ -271,6 +271,9 @@ class EditionsConfig(ConfigBase):
                 return edition
         return None
 
+    def by_key(self, key: str) -> SpecialEdition | None:
+        return next((edition for edition in self.special_editions if edition.key == key), None)
+
     def covered_years(self) -> frozenset[int]:
         return frozenset(e.observed_on.year for e in self.special_editions)
 

@@ -8,12 +8,14 @@ as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
 - **Last updated:** 2026-09-17, at commit `da16371`
-- **State:** 65 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **State:** 67 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 527 Python tests (498 backend + 29 evals), 8 frontend tests (all green, database
+  runbook · 533 Python tests (504 backend + 29 evals), 8 frontend tests (all green, database
   included) · ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and
   `actionlint` all clean (`terraform validate` needs `terraform init`'s cached providers, not
-  available in this environment)
+  available in this environment) · a new migration (`d5f5dc049b56`) verified upgrade/downgrade/
+  upgrade against a fresh Postgres, outside the test suite (see the still-open item in §2 about
+  CI never exercising Alembic itself)
 
 ---
 
@@ -123,9 +125,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `CONFIG_DIR` override — `backend/Dockerfile` sets it to `/app/config`
       and copies `/config` there — rather than changing the loader, since
       the override already existed for exactly this.
-- [ ] **`premailer` is an unused dependency.** Sections are written with inline
-      styles directly, so nothing inlines a stylesheet. Either the full email
-      template will need it, or it should be dropped.
 - [ ] **Section HTML has never been seen in a real mail client.** It is built
       to the email-safe rules (inline styles, no classes, no flexbox) and tests
       assert those, but CLAUDE.md requires checking Gmail web and mobile plus
@@ -165,8 +164,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       received it." `docs/runbooks/incident-response.md`'s "story already
       reached readers" case documents a manual workaround (a hand-written
       SQL insert and a manually-sent note) for exactly this reason.
-- [ ] **The archive lists at most 60 editions** and has no pagination. Fine
-      for two months; a decision by January.
 - [ ] **Preferences can edit genres, city, and delivery slot, but not
       frequency, edition preference, or followed keywords**, even though
       `PATCH /api/me` supports all of them. A frontend gap, not a backend
@@ -200,15 +197,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       and edition numbering derives from it. *Two weeks away.*
 - [ ] **21 lunar festival dates missing** (Diwali, Holi, Eid, …), deliberately
       left blank in `awaiting_dates` rather than guessed.
-- [ ] **A special edition shows the raw config key, not a name, and looks
-      identical to any other day.** `SpecialEdition.name`, `.note`, and
-      `.accent` (`config/schemas.py`) are all defined but never read
-      anywhere outside `EditionsConfig.for_date()`'s own lookup — only
-      `.key` reaches the masthead, verbatim, as the literal slug (e.g.
-      "diwali" rather than "Diwali"; `app/jobs/delivery.py` passes
-      `edition.special_edition_key` straight through). CLAUDE.md's "variety
-      comes from special editions" implies a visual difference, not a slug
-      next to the date.
 - [ ] **Model choices are unvalidated hypotheses.** Chosen on verified
       behaviour and latency, not measured quality. CLAUDE.md requires an eval
       run before trusting them. The Fact-checker (`kilo/cohere/north-mini-code`)
@@ -237,9 +225,6 @@ noticing the count was wrong.)
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
       per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
       Decide whether to wrap it or amend the spec.
-- [ ] **Preference decay is per run, not per day.** A day with two runs decays
-      twice; a skipped day does not decay at all. Keying the decay to elapsed
-      days rather than invocations would be the honest version.
 - [ ] **Bounce parsing has never seen a real Gmail DSN.** The parser is built
       to RFC 3464 and tested against synthetic reports; `ImapBounceSource` has
       never spoken to an actual IMAP server. Both need a live check once the
@@ -575,3 +560,30 @@ noticing the count was wrong.)
       story-withdrawal machinery (`_carry_forward`, `publish_revision`)
       rather than duplicating it; the section itself renders as a genuine
       `quiet_day`, not an empty `ok` section.
+- [x] A special edition now shows its real name in the masthead
+      (`EditionsConfig.by_key()` resolves `special_edition_key` in
+      `app/jobs/delivery.py`, falling back to the raw key only if it no
+      longer matches any configured edition), plus its `.note` as a small
+      accented banner and `.accent` as that banner's border colour — both
+      previously defined in config and never read anywhere.
+- [x] Preference decay now keys to elapsed calendar days rather than to
+      how many times the feedback job ran: `UserPreference.last_decayed_at`
+      (new column, migration `d5f5dc049b56`, upgrade/downgrade verified
+      against a real, fresh Postgres) lets `apply_decay` raise `DECAY` to
+      the correct power of elapsed IST days, so a same-day manual rerun no
+      longer double-decays and a day the job never ran is caught up fully,
+      not skipped, on the next run that does happen.
+- [x] `premailer` dropped as a dependency — confirmed unused (sections are
+      written with inline styles directly; there is no stylesheet to
+      inline yet, since the full email shell is still unbuilt) — along
+      with its now-unused transitive dependencies. Revisit only once the
+      full email template actually needs to inline a stylesheet.
+- [x] `GET /api/archive` is paginated: `limit` (capped at 60) and `before`
+      (an edition date cursor) replace the flat 60-edition cap, and the
+      response now reports `has_more` rather than letting the caller guess
+      from a possibly-short page. Filtering by "is this edition public yet"
+      moved into the SQL query itself (`_latest_public_date`), rather than
+      fetching a page and filtering in Python, which could silently short
+      a page by the one edition — today's — that might not be public yet.
+      The frontend archive index now reads the new shape and offers an
+      "Older editions" link when `has_more` is true.

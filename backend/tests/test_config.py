@@ -114,6 +114,13 @@ def test_special_editions_are_looked_up_by_date() -> None:
     assert editions.for_date(date(1999, 1, 1)) is None
 
 
+def test_special_editions_are_looked_up_by_key() -> None:
+    editions = load_editions()
+    first = editions.special_editions[0]
+    assert editions.by_key(first.key) is first
+    assert editions.by_key("not-a-real-key") is None
+
+
 def test_cities_are_unique_and_addressable() -> None:
     cities = load_cities()
     assert len(cities.by_id()) == len(cities.cities)

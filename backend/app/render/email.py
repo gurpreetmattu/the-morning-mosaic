@@ -96,6 +96,8 @@ class EmailRenderer:
         links: Links,
         weather: Weather | None = None,
         special_edition: str | None = None,
+        special_edition_note: str | None = None,
+        special_edition_accent: str | None = None,
         corrections: str | None = None,
     ) -> RenderedEmail:
         by_key = self._genres.by_key()
@@ -122,6 +124,8 @@ class EmailRenderer:
             "date_label": date_label(edition_date),
             "edition_number": edition_number,
             "special_edition": special_edition,
+            "special_edition_note": special_edition_note,
+            "special_edition_accent": special_edition_accent,
             "weather": weather,
             "sixty_seconds": self._digest(chosen),
             "reading_minutes": minutes,
