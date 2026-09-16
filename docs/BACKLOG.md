@@ -135,9 +135,10 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 **Agents** (5 of 10 done — Orchestrator, Collector, Ranker, Writer, Fact-checker)
 - [ ] Image finder (6) · [ ] Weather (7) · [ ] Delivery (9) · [ ] Feedback (10)
-- [~] Layout (8) — genre sections render to HTML and plain text. Still to do:
-      per-user assembly (masthead, "Today in 60 seconds", extras, ordering,
-      correction notes) and PDF pages via WeasyPrint.
+- [~] Layout (8) — sections, per-user selection and full email assembly are
+      done. Still to do: PDF pages via WeasyPrint, and the extras the masthead
+      leaves room for (weather box is wired but has no Weather agent feeding
+      it; market strip, quiz, quote and "On this day" are not built).
 
 **Pipeline**
 - [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
@@ -214,6 +215,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       revisions published immutably with their sections — `5bcaabc`
 - [x] Email layer: signed stateless tokens, hashed stored tokens, SMTP sender
       with the dev allowlist and one-click unsubscribe — `1db440c`
+- [x] Per-user selection and full email assembly: keyword, preference and
+      edition-preference ordering, masthead, "Today in 60 seconds", computed
+      reading time — this commit
 - [x] Build job: the full pipeline behind one command, single-instance job
       lock, pipeline_runs tracking — `43adec4`. Run end to end against the
       live database: it correctly refused to publish, because no source has

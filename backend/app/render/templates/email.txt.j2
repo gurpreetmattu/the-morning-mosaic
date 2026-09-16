@@ -1,0 +1,46 @@
+{#- Plain-text twin of email.html.j2: the same facts and the same links. -#}
+{{ brand | upper }}
+{{ tagline }}
+{{ date_label }} | Edition {{ edition_number }}{% if special_edition %} | {{ special_edition }}{% endif %}
+
+Curated for {{ first_name }}
+{% if weather %}
+{{ weather.city }}: {{ weather.summary }}, {{ weather.low }}-{{ weather.high }}C
+{% endif %}
+{% if sixty_seconds %}
+
+TODAY IN 60 SECONDS
+{% for line in sixty_seconds %}
+- {{ line }}
+{% endfor %}
+About {{ reading_minutes }} minute{{ '' if reading_minutes == 1 else 's' }} to read.
+{% endif %}
+{% for section in sections %}
+
+{{ section.title | upper }}
+{{ '=' * section.title | length }}
+{{ section.blurb }}
+{% for story in section.stories %}
+
+* {{ story.headline }}
+{% if story.hedged %}
+  [Reported by entertainment sources only. Treat as unconfirmed.]
+{% endif %}
+  {{ story.summary }}
+{% if story.why_this_matters %}
+  Why this matters: {{ story.why_this_matters }}
+{% endif %}
+  {{ 'Sources' if story.sources | length > 1 else 'Source' }}: {% for source in story.sources %}{{ source.name }} <{{ source.url }}>{% if not loop.last %}, {% endif %}{% endfor %}
+{% endfor %}
+{% endfor %}
+{% if corrections %}
+
+CORRECTION
+{{ corrections }}
+{% endif %}
+
+---
+Every fact above comes from the sources linked beneath each story.
+PDF: {{ pdf_url }}
+Preferences: {{ preferences_url }}
+Unsubscribe: {{ unsubscribe_url }}

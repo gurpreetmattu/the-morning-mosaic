@@ -32,11 +32,27 @@ class RenderedSection(BaseModel):
 
 
 def build_environment() -> Environment:
+    """Escaping environment for HTML templates."""
     return Environment(
         loader=FileSystemLoader(TEMPLATE_DIR),
-        # HTML is escaped; the .txt template is not, by extension.
         autoescape=select_autoescape(enabled_extensions=("j2",), default_for_string=False),
         # A missing variable must fail the render, not publish a blank.
+        undefined=StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+
+def text_environment() -> Environment:
+    """Non-escaping twin, for the plain-text templates.
+
+    Autoescaping keys on the .j2 suffix, which the text templates also carry,
+    so they need an environment of their own or readers would see &amp; in
+    plain text.
+    """
+    return Environment(
+        loader=FileSystemLoader(TEMPLATE_DIR),
+        autoescape=False,
         undefined=StrictUndefined,
         trim_blocks=True,
         lstrip_blocks=True,
@@ -71,27 +87,15 @@ class SectionRenderer:
         }
 
         html = self._env.get_template("section.html.j2").render(**context)
-        # Autoescape is keyed on the .j2 suffix, so the text template would be
-        # escaped too. Render it through a separate, unescaped environment.
-        plain = self._text_environment().get_template("section.txt.j2").render(**context)
+        plain = text_environment().get_template("section.txt.j2").render(**context)
 
         return RenderedSection(
             genre=outcome.genre,
             status=outcome.status,
             html=html.strip(),
-            plain_text=_tidy(plain),
+            plain_text=tidy(plain),
             story_count=len(stories),
         )
-
-    def _text_environment(self) -> Environment:
-        env = Environment(
-            loader=FileSystemLoader(TEMPLATE_DIR),
-            autoescape=False,
-            undefined=StrictUndefined,
-            trim_blocks=True,
-            lstrip_blocks=True,
-        )
-        return env
 
     def _story(self, verified: VerifiedStory) -> dict[str, object]:
         written = verified.story
@@ -115,7 +119,7 @@ class SectionRenderer:
         return list(seen.values())
 
 
-def _tidy(text: str) -> str:
+def tidy(text: str) -> str:
     """Collapse the blank lines Jinja block tags leave behind."""
     lines = [line.rstrip() for line in text.splitlines()]
     tidied: list[str] = []

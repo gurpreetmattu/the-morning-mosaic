@@ -1,0 +1,89 @@
+{#
+  One reader's edition. Assembled per user from stories already verified; no
+  model runs here, so two readers who receive the same story receive the same
+  words.
+
+  Table-based layout on purpose: Outlook renders with Word, which has no
+  reliable support for max-width on a div.
+#}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f2ee;margin:0;padding:0;">
+<tr><td align="center" style="padding:20px 10px;">
+<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:640px;max-width:100%;background:#ffffff;">
+
+  {# ----------------------------------------------------------- masthead #}
+  <tr><td style="padding:26px 28px 16px 28px;border-bottom:3px double #141414;">
+    <h1 style="margin:0;font-family:'Playfair Display', Georgia, serif;font-size:32px;line-height:1.1;letter-spacing:-0.5px;color:#141414;">
+      {{ brand }}
+    </h1>
+    <p style="margin:6px 0 0 0;font-family:Georgia, serif;font-size:13px;font-style:italic;color:#5a5a5a;">
+      {{ tagline }}
+    </p>
+    <p style="margin:12px 0 0 0;font-family:Georgia, serif;font-size:12px;color:#5a5a5a;">
+      {{ date_label }} &nbsp;·&nbsp; Edition {{ edition_number }}
+      {% if special_edition %}&nbsp;·&nbsp; {{ special_edition }}{% endif %}
+      <br />Curated for {{ first_name }}
+    </p>
+    {% if weather %}
+    <p style="margin:10px 0 0 0;padding:8px 12px;background:#f4f2ee;font-family:Georgia, serif;font-size:12px;color:#3a3a3a;">
+      {{ weather.city }}: {{ weather.summary }}, {{ weather.low }}&ndash;{{ weather.high }}&deg;C
+    </p>
+    {% endif %}
+  </td></tr>
+
+  {# -------------------------------------------- today in 60 seconds #}
+  {% if sixty_seconds %}
+  <tr><td style="padding:18px 28px 4px 28px;">
+    <h2 style="margin:0 0 8px 0;font-family:'Playfair Display', Georgia, serif;font-size:16px;color:#141414;">
+      Today in 60 seconds
+    </h2>
+    <ul style="margin:0;padding:0 0 0 18px;font-family:Georgia, serif;font-size:13px;line-height:1.6;color:#3a3a3a;">
+      {% for line in sixty_seconds %}
+      <li style="margin:0 0 4px 0;">{{ line }}</li>
+      {% endfor %}
+    </ul>
+    <p style="margin:10px 0 0 0;font-family:Georgia, serif;font-size:12px;color:#6a6a6a;">
+      About {{ reading_minutes }} minute{{ '' if reading_minutes == 1 else 's' }} to read.
+    </p>
+  </td></tr>
+  {% endif %}
+
+  {# ------------------------------------------------------------ sections #}
+  <tr><td style="padding:22px 28px 0 28px;">
+    {% for section in sections %}
+    <section style="margin:0 0 32px 0;">
+      <h2 style="margin:0 0 4px 0;padding:0 0 6px 0;font-family:{{ section.theme.heading_font }};font-size:22px;line-height:1.25;color:{{ section.theme.accent }};border-bottom:2px solid {{ section.theme.rule }};">
+        {{ section.title }}
+      </h2>
+      <p style="margin:0 0 18px 0;font-family:{{ section.theme.body_font }};font-size:13px;line-height:1.4;color:#5a5a5a;">
+        {{ section.blurb }}
+      </p>
+      {% set theme = section.theme %}
+      {% for story in section.stories %}
+        {% include "_story.html.j2" %}
+      {% endfor %}
+    </section>
+    {% endfor %}
+  </td></tr>
+
+  {# -------------------------------------------------------------- footer #}
+  <tr><td style="padding:8px 28px 26px 28px;border-top:1px solid #d8d4cc;">
+    {% if corrections %}
+    <p style="margin:0 0 12px 0;padding:10px 12px;background:#fbf0e7;font-family:Georgia, serif;font-size:12px;line-height:1.5;color:#3a3a3a;">
+      <strong>Correction.</strong> {{ corrections }}
+    </p>
+    {% endif %}
+    <p style="margin:0 0 8px 0;font-family:Georgia, serif;font-size:12px;line-height:1.5;color:#6a6a6a;">
+      <a href="{{ pdf_url }}" style="color:#141414;">Download today's edition as a PDF</a>
+      &nbsp;·&nbsp;
+      <a href="{{ preferences_url }}" style="color:#141414;">Manage your preferences</a>
+    </p>
+    <p style="margin:0;font-family:Georgia, serif;font-size:11px;line-height:1.5;color:#8a8a8a;">
+      Every fact above comes from the sources linked beneath each story.
+      <br />
+      <a href="{{ unsubscribe_url }}" style="color:#8a8a8a;">Unsubscribe</a> at any time.
+    </p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
