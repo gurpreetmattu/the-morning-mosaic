@@ -74,6 +74,18 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       seed job prints. CLAUDE.md requires JSON logs to Cloud Logging. Worth
       doing before more agents land, since each will want it.
 - [ ] **No Langfuse tracing** wired, though it is a dependency and in the spec.
+- [ ] **`llm_calls` logging is built but never wired in.** `DatabaseCallRecorder`
+      (`app/llm/recorder.py`) fully implements CLAUDE.md's "log token usage,
+      latency, and failures per agent per run," but `build.py` and
+      `late_update.py` both construct `LlmClient()` with no `recorder=`
+      argument — the table exists and is never written to in real use.
+      Likely a one-line fix in each job once someone notices.
+- [ ] **Raw article text is never actually purged after 30 days.**
+      `Article.raw_text_purged_at` is a column ready for it
+      (`app/models/content.py`), but no job or scheduled task ever sets it
+      or deletes the text — there's no 7th job, and none of the six
+      existing ones touch it either. CLAUDE.md's specific retention promise
+      has a column, not code, behind it.
 - [ ] **No crawl throttling or `Crawl-delay` support.** `RobotsPolicy` honours
       allow/disallow and caches per run, but nothing rate-limits requests to a
       single host. With feeds enabled this could hammer a publisher.
@@ -201,6 +213,11 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       manual, one-off Docker smoke test done while reviewing the frontend
       build. A form field silently breaking would only be caught by
       someone clicking through it.
+- [ ] **No website-downtime status message.** CLAUDE.md wants site
+      downtime shown as a status message on the site rather than emailed,
+      unless it stops the newsletter. Low priority: there's no monitoring
+      system detecting downtime to drive it yet either, so this is a page
+      with nothing to trigger it.
 - [ ] **Privacy and terms are drafts with bracketed placeholders**
       (`[operator name]`, `[date]`, grievance contact), flagged as such on the
       pages themselves. `CURRENT_POLICY_VERSION` (see above) still names a
@@ -213,6 +230,15 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       and edition numbering derives from it. *Two weeks away.*
 - [ ] **21 lunar festival dates missing** (Diwali, Holi, Eid, …), deliberately
       left blank in `awaiting_dates` rather than guessed.
+- [ ] **A special edition shows the raw config key, not a name, and looks
+      identical to any other day.** `SpecialEdition.name`, `.note`, and
+      `.accent` (`config/schemas.py`) are all defined but never read
+      anywhere outside `EditionsConfig.for_date()`'s own lookup — only
+      `.key` reaches the masthead, verbatim, as the literal slug (e.g.
+      "diwali" rather than "Diwali"; `app/jobs/delivery.py` passes
+      `edition.special_edition_key` straight through). CLAUDE.md's "variety
+      comes from special editions" implies a visual difference, not a slug
+      next to the date.
 - [ ] **Model choices are unvalidated hypotheses.** Chosen on verified
       behaviour and latency, not measured quality. CLAUDE.md requires an eval
       run before trusting them. The Fact-checker (`kilo/cohere/north-mini-code`)
@@ -225,8 +251,12 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 4. Not built yet
 
-**Agents** (5 of 10 done — Orchestrator, Collector, Ranker, Writer, Fact-checker)
-- [ ] Image finder (6) · [ ] Weather (7) · [ ] Delivery (9) · [ ] Feedback (10)
+**Agents** (7 of 10 done — Orchestrator, Collector, Ranker, Writer,
+Fact-checker, Delivery, Feedback. This line previously said "5 of 10" and
+listed Delivery and Feedback as not done — stale since those two jobs were
+built; caught by an audit of this file against the code, not by anyone
+noticing the count was wrong.)
+- [ ] Image finder (6) · [ ] Weather (7)
 - [~] Layout (8) — sections, per-user selection, full email assembly, and
       PDF pages (genre pages once per revision, merged per reader on first
       download) are done. Still to do: the extras the masthead leaves room
@@ -362,6 +392,14 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       does exist; the object-key layout (`pdf/sections/{revision}/{genre}.pdf`,
       `pdf/readers/{revision}/{user}.pdf`) is what the 30-day lifecycle
       rule from CLAUDE.md will need to target.
+- [ ] **The PDF route streams bytes through `api` rather than serving a
+      signed link**, which is what CLAUDE.md's tech stack section literally
+      specifies ("served via signed links through the API"). Deliberate at
+      the time — it keeps one code path uniform across `LocalObjectStorage`
+      in dev and `GcsObjectStorage` in prod, rather than generating
+      cloud-specific signed URLs — but it means every PDF download's
+      bandwidth goes through Cloud Run rather than directly from storage.
+      Recording it as a spec deviation rather than letting it pass silently.
 - Local PostgreSQL for tests: `postgresql://postgres:mosaic@localhost:15432/mosaic`
   (`docker rm -f mosaic-pg` to drop it). Set `TEST_DATABASE_URL` to run the
   database tests; they skip without it.
