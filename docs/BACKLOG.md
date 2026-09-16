@@ -160,10 +160,13 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       consent row records `2026-09-01`, a policy that has not been written.
       DPDP wants consent tied to the text the reader actually saw, so this has
       to move next to the published policy, not live beside the route.
-- [ ] **The archive shows no corrections.** CLAUDE.md requires a corrected
-      story to be marked in the archive with the correction shown; the route
-      serves the pre-rendered section HTML as published and the `corrections`
-      table is never read.
+- [ ] **The corrections process CLAUDE.md specifies doesn't exist at all,
+      not just in the archive.** Nothing writes a `Correction` row, nothing
+      renders one in the archive, and there's no template or job step for
+      "a correction note appears in the next edition for users who
+      received it." `docs/runbooks/incident-response.md`'s "story already
+      reached readers" case documents a manual workaround (a hand-written
+      SQL insert and a manually-sent note) for exactly this reason.
 - [ ] **The archive lists at most 60 editions** and has no pagination. Fine
       for two months; a decision by January.
 - [ ] **`LLMBUFFET_*` naming lags upstream.** The package was renamed to
@@ -279,7 +282,10 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       locally exactly as the workflow specifies and pass; nothing has run
       on GitHub's own infrastructure, since there is no git remote for a
       workflow to run in yet.
-- [ ] `docs/`: architecture doc, DPDP incident runbook, operational runbooks
+- [x] `docs/architecture.md` and `docs/runbooks/incident-response.md` — see
+      the Done entry. Still open: other operational runbooks (a manual
+      build rerun, approving a held notice batch, rotating out of a
+      degraded LLM provider) beyond the one incident-response doc.
 - [ ] **`terraform plan`/`apply` have never run against a real project.**
       No GCP project exists yet (Blockers). `terraform validate` passes;
       `fmt` is clean. Two real bugs were only found by going one step
@@ -466,3 +472,17 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       dummy-secret recipe) and passes — see the Done entry above for evals,
       and the two entries in section 2 for what genuinely can't be verified
       without a GitHub repository and a GCP project — `54f03c8`
+- [x] `docs/architecture.md` (system diagram, the daily job schedule, the
+      agent pipeline, the grounding-chain data model, reader-facing
+      surfaces, infrastructure — all cross-referencing the code and other
+      docs rather than restating them) and `docs/runbooks/incident-response.md`
+      (data breach, leaked secrets — a full per-secret rotation table
+      including the real, verified consequence that rotating
+      `TOKEN_SIGNING_KEY` invalidates every unsubscribe link ever sent,
+      since it's HMAC-derived from that key — and sending wrong content).
+      Also `docs/adr/0002` recording the single-public-origin decision.
+      Writing the "wrong content" section surfaced a real gap, now in
+      section 2 above: CLAUDE.md's corrections process (mark a story
+      corrected in the archive, note it in the next edition) has no code
+      behind it at all, not even the archive-display half already on
+      record — `PENDING`
