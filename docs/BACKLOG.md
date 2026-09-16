@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `9398dc9`
-- **State:** 41 commits · 66 modules · 411 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `9ba5a47`
+- **State:** 42 commits · 66 modules · 411 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -289,4 +289,4 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] Public API: signup with double opt-in and the waitlist cap, the
       link-scanner-safe opt-in/unsubscribe/feedback pair of GET and POST,
       one-click unsubscribe, the archive gated until 09:00 IST, security
-      headers and rate limiting — `PENDING`
+      headers and rate limiting — `9ba5a47`
