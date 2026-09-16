@@ -185,11 +185,40 @@ def test_a_tag_outside_the_taxonomy_is_dropped_but_the_story_survives() -> None:
 
 
 def test_an_entity_absent_from_the_passages_is_dropped() -> None:
-    draft = good_draft(entity_tags=["union cabinet", "Ministry of Invented Affairs"])
+    draft = good_draft(entity_tags=["Ministry of Invented Affairs"])
     result = validate(draft)
     assert result.story is not None
-    assert result.story.entity_tags == ["union cabinet"]
+    assert result.story.entity_tags == []
     assert WriterIssue.DROPPED_ENTITY_TAG in issues(result)
+
+
+def test_a_generic_phrase_is_dropped_even_when_it_appears_in_the_passages() -> None:
+    """"union cabinet" is in P1 verbatim, but it is not a proper noun —
+    accepting it would let real entity tags drown in noise like this."""
+    draft = good_draft(entity_tags=["union cabinet"])
+    result = validate(draft)
+    assert result.story is not None
+    assert result.story.entity_tags == []
+    assert WriterIssue.DROPPED_ENTITY_TAG in issues(result)
+
+
+def test_a_proper_noun_grounded_in_the_passages_is_kept() -> None:
+    refs = build_passages([article("wire", "Minister Nitin Gadkari opened the corridor.")])
+    result = validate_draft(
+        {
+            "headline": {"text": "Corridor opens to freight traffic", "passage_ids": ["a1:p1"]},
+            "summary": [
+                {"text": "Officials marked the opening on Tuesday.", "passage_ids": ["a1:p1"]}
+            ],
+            "entity_tags": ["Nitin Gadkari"],
+        },
+        passages=refs,
+        allowed_topic_tags=ALLOWED,
+        require_hedge=False,
+    )
+    assert result.story is not None
+    assert result.story.entity_tags == ["Nitin Gadkari"]
+    assert issues(result) == set()
 
 
 # --------------------------------------------------------- optional pieces

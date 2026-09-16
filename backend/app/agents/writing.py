@@ -22,6 +22,7 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from functools import lru_cache
 
+from app.agents.checking import looks_like_a_proper_noun
 from app.agents.schemas import (
     DraftSentence,
     PassageRef,
@@ -288,15 +289,25 @@ def validate_draft(
     entity_tags: list[str] = []
     for tag in payload.get("entity_tags") or []:
         candidate = str(tag).strip()
-        if candidate and re.search(
+        if not candidate:
+            continue
+        grounded = re.search(
             rf"\b{re.escape(candidate)}\b", " ".join(passage_texts), re.IGNORECASE
-        ):
+        )
+        if grounded and looks_like_a_proper_noun(candidate):
             entity_tags.append(candidate)
-        elif candidate:
+        elif not grounded:
             problems.append(
                 WriterProblem(
                     issue=WriterIssue.DROPPED_ENTITY_TAG,
                     detail=f"{candidate!r} does not appear in the source passages",
+                )
+            )
+        else:
+            problems.append(
+                WriterProblem(
+                    issue=WriterIssue.DROPPED_ENTITY_TAG,
+                    detail=f"{candidate!r} is a generic phrase, not a proper noun",
                 )
             )
 

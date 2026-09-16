@@ -2,17 +2,26 @@
 
 from __future__ import annotations
 
+import os
 import re
+import uuid
 from pathlib import Path
 
+import pytest
+from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
+from app.db.engine import normalise_url
 from app.models import Base
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / "backend" / "migrations"
+
+TEST_DB_ENV = "TEST_DATABASE_URL"
 
 
 def script_directory() -> ScriptDirectory:
@@ -67,3 +76,42 @@ def test_downgrade_drops_every_enum_type_it_created() -> None:
 
     missing = in_models - dropped
     assert missing == set(), f"enum types never dropped on downgrade: {sorted(missing)}"
+
+
+@pytest.mark.integration
+def test_the_migration_chain_runs_against_a_real_database() -> None:
+    """The other tests in this file are static (source-text) checks; the
+    test suite otherwise builds its schema with `Base.metadata.create_all`
+    (see conftest.py's `engine` fixture), so nothing ever actually ran
+    `alembic upgrade`/`downgrade` until this test. A throwaway database on
+    the same server keeps this fully isolated from every other test.
+    """
+    base_url = os.getenv(TEST_DB_ENV)
+    if not base_url:
+        pytest.skip(f"{TEST_DB_ENV} is not set")
+
+    server = make_url(base_url)
+    admin_engine = create_engine(normalise_url(server.render_as_string(hide_password=False)))
+    throwaway = f"alembic_check_{uuid.uuid4().hex[:12]}"
+    throwaway_url = server.set(database=throwaway).render_as_string(hide_password=False)
+
+    with admin_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        conn.execute(text(f'CREATE DATABASE "{throwaway}"'))
+
+    config = Config(str(ROOT / "backend" / "alembic.ini"))
+    config.set_main_option("script_location", str(MIGRATIONS))
+
+    previous = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = throwaway_url
+    try:
+        command.upgrade(config, "head")
+        command.downgrade(config, "base")
+        command.upgrade(config, "head")
+    finally:
+        if previous is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = previous
+        with admin_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+            conn.execute(text(f'DROP DATABASE IF EXISTS "{throwaway}"'))
+        admin_engine.dispose()

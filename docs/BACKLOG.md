@@ -8,14 +8,13 @@ as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
 - **Last updated:** 2026-09-17, at commit `9f21673`
-- **State:** 67 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **State:** 69 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 533 Python tests (504 backend + 29 evals), 8 frontend tests (all green, database
-  included) · ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and
-  `actionlint` all clean (`terraform validate` needs `terraform init`'s cached providers, not
-  available in this environment) · a new migration (`d5f5dc049b56`) verified upgrade/downgrade/
-  upgrade against a fresh Postgres, outside the test suite (see the still-open item in §2 about
-  CI never exercising Alembic itself)
+  runbook · 537 Python tests (508 backend + 29 evals, one of which now runs the real Alembic
+  chain against a throwaway database), 8 frontend tests (all green, database included) ·
+  ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
+  (`terraform validate` needs `terraform init`'s cached providers, not available in this
+  environment)
 
 ---
 
@@ -54,14 +53,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       a table held exactly one row. Those assertions are now scoped, but the
       next "count the rows" test will hit it again. A dedicated test database,
       or a truncate fixture, is the real fix.
-- [ ] **The test suite and CI never run the Alembic migration itself.**
-      `backend/tests/conftest.py`'s `engine` fixture builds tables straight
-      from `Base.metadata.create_all(...)`, and `ci.yml`'s Postgres service
-      container gets the same treatment — nothing runs
-      `alembic upgrade head` (or `downgrade`) as part of the automated
-      gate. The migration file was verified by hand once, against real
-      Postgres, when it was written (see the Done entry), but it could
-      drift from the models today and nothing would catch it.
 - [ ] **No admin alerting.** CLAUDE.md wants Cloud Monitoring notifications on
       build failure, deadline miss, send failures and sharp drops in verified
       story counts. The build job records everything needed in `pipeline_runs`,
@@ -80,22 +71,12 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       sources only"); it is not implemented. Matters most for strict genres,
       where a story dropped for thin sourcing might be rescued by looking
       wider before giving up on it.
-- [ ] **A copied sentence is dropped mid-summary, which can leave the prose
-      disjointed.** Verified against a live model, the Writer produced a
-      17-word copy in one summary sentence; the check removed that sentence
-      and kept the rest. The problem is recorded, so when the Orchestrator
-      exists it must treat `copied_text` as retry-worthy *even when a story
-      was returned*, rather than publishing the gap.
 - [x] ~~Planted-error catch rate is measured by hand, not by an eval.~~ Now
       `evals/fact_checker_catch_rate.py`: 10 deterministic cases (control +
       4 error categories, across 2 base stories) pass today at 100%; the
       other 3 categories (invented prose fact, reversed meaning, unstated
       causation) are built and ready but need a live model to actually
       score — see `evals/README.md`.
-- [ ] **Entity tags accept generic noun phrases.** The check is only that the
-      tag appears in the passages, so "central bank" and "two Mumbai
-      brokerages" pass alongside "Reserve Bank of India". Harmless for
-      grounding, noisy for keyword matching; may want a proper-noun heuristic.
 - [ ] **Conflicting key facts are not detected.** The rule is "state that
       reports differ, or drop". Nothing compares figures or claims across the
       articles in a cluster yet. Probably belongs with the Fact-checker, but it
@@ -587,3 +568,26 @@ noticing the count was wrong.)
       a page by the one edition — today's — that might not be public yet.
       The frontend archive index now reads the new shape and offers an
       "Older editions" link when `has_more` is true.
+- [x] A copied sentence is now retry-worthy in `write_and_verify`
+      (`app/agents/verification.py`), instead of `validate_draft` silently
+      dropping the sentence and the loop handing a story missing it
+      straight to the Fact-checker just because `story is not None`. A
+      genuine repro test (`test_a_copied_sentence_retries_instead_of_
+      publishing_the_gap`) confirms the Fact-checker is never even called
+      on the copied draft — the retry happens one step earlier.
+- [x] Entity tags now require the shape of a proper noun
+      (`looks_like_a_proper_noun` in `app/agents/checking.py`, reusing the
+      same capitalised-word-run regex the name check already had), not just
+      that the tag appears somewhere in the passages. Caught an existing
+      test asserting the opposite of the fix: `test_writer.py` expected
+      "union cabinet" (lowercase, generic) to survive as an entity tag
+      because it happened to appear verbatim in the fixture passage —
+      updated alongside two new tests for the generic-but-grounded and
+      proper-noun-and-grounded cases.
+- [x] The Alembic migration chain now actually runs against a real
+      database as part of the test suite (`test_the_migration_chain_runs_
+      against_a_real_database` in `test_migrations.py`): upgrade → downgrade
+      → upgrade, in a throwaway database created and dropped on the same
+      Postgres server, fully isolated from every other test (which still
+      build their schema via `Base.metadata.create_all`). Runs in CI
+      automatically — `TEST_DATABASE_URL` is already set there.

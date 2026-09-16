@@ -16,6 +16,7 @@ from app.agents.schemas import (
     PooledStory,
     VerificationOutcome,
     VerifiedStory,
+    WriterIssue,
     WriterProblem,
 )
 from app.agents.writer import Writer
@@ -42,6 +43,15 @@ def write_and_verify(
         written = writer.write(pooled, genre, feedback=feedback)
         if written.story is None:
             feedback = _problems_as_feedback(written.problems)
+            continue
+
+        copied = [p for p in written.problems if p.issue is WriterIssue.COPIED_TEXT]
+        if copied:
+            # validate_draft() drops a copied sentence rather than failing
+            # the story outright, so a story can come back here missing a
+            # sentence it silently lost. Accepting it would publish
+            # disjointed prose; retry instead, same as any other rejection.
+            feedback = _problems_as_feedback(copied)
             continue
 
         checked = checker.check(written.story, passages)

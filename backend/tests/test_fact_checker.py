@@ -399,6 +399,42 @@ def test_the_loop_returns_on_the_first_clean_pass() -> None:
 
 
 @respx.mock
+def test_a_copied_sentence_retries_instead_of_publishing_the_gap() -> None:
+    """validate_draft() drops a copied sentence rather than failing the
+    story outright, so the first draft here still comes back with a story
+    — just missing a sentence. The loop must retry anyway, not hand that
+    story straight to the Fact-checker."""
+    copied_draft = {
+        **GOOD_DRAFT,
+        "summary": [
+            # Copied verbatim from P1 (see article() below): the story
+            # comes back with a valid headline and one_liner, so the loop
+            # cannot tell from `story is None` alone that anything is wrong.
+            {"text": P1, "passage_ids": ["a1:p1"]},
+            {"text": "Governor Das flagged inflation risks.", "passage_ids": ["a1:p2"]},
+        ],
+    }
+    respx.post(f"{PRIMARY}/chat/completions").mock(
+        side_effect=[reply(copied_draft), reply(GOOD_DRAFT), reply(ALL_SUPPORTED)]
+    )
+    shared = client()
+
+    outcome = write_and_verify(
+        writer=Writer(llm=shared),
+        checker=FactChecker(llm=shared),
+        pooled=pooled(),
+        genre="business",
+    )
+
+    assert outcome.verified is not None
+    assert outcome.attempts == 2
+    # Only one Fact-checker call: none for the copied draft, one for the retry.
+    assert len(respx.calls) == 3
+    retry_prompt = json.loads(respx.calls[1].request.content)["messages"][1]["content"]
+    assert "copied_text" in retry_prompt
+
+
+@respx.mock
 def test_the_loop_retries_with_the_checkers_own_wording() -> None:
     respx.post(f"{PRIMARY}/chat/completions").mock(
         side_effect=[
