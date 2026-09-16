@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `8dbc689`
-- **State:** 30 commits · 52 modules · 282 tests (all green, database included) ·
+- **Last updated:** 2026-09-17, at commit `801f673`
+- **State:** 32 commits · 53 modules · 306 tests (all green, database included) ·
   ruff and `mypy --strict` clean
 
 ---
@@ -229,7 +229,7 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       reading time — `8dbc689`
 - [x] Delivery job: at-most-once claim, per-reader assembly, retry of failed
       sends, weekday/weekend frequency, dev-suppression recorded as skipped —
-      this commit
+      `801f673`
 - [x] Build job: the full pipeline behind one command, single-instance job
       lock, pipeline_runs tracking — `43adec4`. Run end to end against the
       live database: it correctly refused to publish, because no source has
