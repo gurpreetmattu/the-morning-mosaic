@@ -7,12 +7,13 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `190dd01`
-- **State:** 89 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 91 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 585 Python tests (556 backend + 29 evals, two migrations now verified against a real
-  throwaway database, and seven of which actually launch every scheduled job as a subprocess —
-  see the critical fix in Done), 8 frontend tests (all green, database included) ·
+  runbook · 588 Python tests (559 backend + 29 evals, two migrations now verified against a real
+  throwaway database, seven of which actually launch every scheduled job as a subprocess — see
+  the critical fix in Done, and three of which race real concurrent database connections against
+  each other), 8 frontend tests (all green, database included) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
   (`terraform validate` needs `terraform init`'s cached providers, not available in this
   environment) · **7 scheduled jobs now** (was 6) — see the purge-job entry in Done
@@ -162,11 +163,6 @@ noticing the count was wrong.)
       to RFC 3464 and tested against synthetic reports; `ImapBounceSource` has
       never spoken to an actual IMAP server. Both need a live check once the
       Gmail app password exists.
-- [ ] **Cross-process delivery concurrency is untested.** The claim uses
-      `FOR UPDATE SKIP LOCKED` and commits before SMTP, and the at-most-once
-      semantics are covered (sent skipped, `sending` never resent, failed
-      retried). But two real processes racing for the same reader has never
-      been exercised, because the test suite runs in one transaction.
 - [ ] Late update: re-collection of breaking stories and publishing a new
       revision
 - [ ] Prompt for the Image finder (`ranker_v1`, `writer_v1` and
@@ -704,3 +700,19 @@ noticing the count was wrong.)
       two independently constructed `RateLimiter` objects with the same
       name share one count, standing in for two Cloud Run instances), 2
       for the new purge behaviour.
+- [x] Cross-process delivery concurrency is now genuinely exercised.
+      `test_delivery_concurrency.py` opens two (and separately, six) real
+      independent sessions against the actual test database — not the
+      shared savepoint-scoped `session` fixture every other test uses,
+      which is one connection and so can never race a *second* transaction
+      against `claim()`'s `SELECT ... FOR UPDATE SKIP LOCKED` — synchronises
+      them with a `threading.Barrier` so they attempt the same claim at the
+      same instant, and cleans up everything it commits itself, since the
+      usual per-test rollback does not apply to real commits. Writing it
+      surfaced a genuine subtlety worth recording, not a bug: `claim()`
+      alone does not exclude a second caller from a still-`PENDING` row —
+      only `run_delivery`'s immediate `status = SENDING` + commit right
+      after `claim()` returns does. The first test written skipped that
+      step and got two "successful" claims back, which is correct given
+      what the function actually promises, not a false pass — fixed by
+      making the test mirror `run_delivery`'s real sequence.
