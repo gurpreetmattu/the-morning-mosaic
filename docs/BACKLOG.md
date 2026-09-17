@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `fd38118`
-- **State:** 69 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `91f9181`
+- **State:** 71 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 537 Python tests (508 backend + 29 evals, one of which now runs the real Alembic
   chain against a throwaway database), 8 frontend tests (all green, database included) ·
@@ -145,10 +145,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       received it." `docs/runbooks/incident-response.md`'s "story already
       reached readers" case documents a manual workaround (a hand-written
       SQL insert and a manually-sent note) for exactly this reason.
-- [ ] **Preferences can edit genres, city, and delivery slot, but not
-      frequency, edition preference, or followed keywords**, even though
-      `PATCH /api/me` supports all of them. A frontend gap, not a backend
-      one.
 - [ ] **Turnstile has a real widget now but no real site key to test it
       against.** `TurnstileWidget` renders nothing without
       `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, matching the backend's own "skip
@@ -591,3 +587,9 @@ noticing the count was wrong.)
       Postgres server, fully isolated from every other test (which still
       build their schema via `Base.metadata.create_all`). Runs in CI
       automatically — `TEST_DATABASE_URL` is already set there.
+- [x] The preferences dashboard now edits frequency, edition preference,
+      and followed keywords, matching the signup form's own controls for
+      the same three fields — `PATCH /api/me` already supported all of
+      them; only the UI was missing. Verified via `tsc`, `eslint`, and
+      `next build`; not click-tested in a real browser this session (no
+      browser automation connection available).

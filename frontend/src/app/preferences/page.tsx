@@ -5,8 +5,18 @@ import { ApiError, apiGet, publicPost, readerPatch, readerPost } from "@/lib/api
 import type { MeResponse, PreferencesUpdate, SiteConfig, StatusMessage } from "@/lib/types";
 import { Button, Field, Lede, Notice, PageTitle, textInputClasses } from "@/components/ui";
 
+const MAX_KEYWORDS = 10;
+
 function slotLabel(slot: string): string {
   return slot.slice(0, 5);
+}
+
+function parseKeywords(input: string): string[] {
+  return input
+    .split(",")
+    .map((word) => word.trim())
+    .filter(Boolean)
+    .slice(0, MAX_KEYWORDS);
 }
 
 export default function PreferencesPage() {
@@ -96,6 +106,7 @@ function Dashboard({
   onSignedOut: () => void;
 }) {
   const [me, setMe] = useState(initialMe);
+  const [keywordInput, setKeywordInput] = useState(initialMe.keywords.join(", "));
   const [status, setStatus] = useState<{ kind: "error" | "success"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -106,6 +117,7 @@ function Dashboard({
     try {
       const updated = await readerPatch<MeResponse>("/api/me", update);
       setMe(updated);
+      setKeywordInput(updated.keywords.join(", "));
       setStatus({ kind: "success", text: "Saved." });
     } catch (err) {
       setStatus({ kind: "error", text: err instanceof ApiError ? err.message : "Save failed." });
@@ -204,6 +216,44 @@ function Dashboard({
         </select>
       </Field>
 
+      <Field htmlFor="pref-frequency" label="Frequency">
+        <select
+          id="pref-frequency"
+          value={me.frequency}
+          onChange={(e) => setMe({ ...me, frequency: e.target.value })}
+          className={textInputClasses("mt-1")}
+        >
+          <option value="daily">Every day</option>
+          <option value="weekdays">Weekdays only</option>
+        </select>
+      </Field>
+
+      <Field htmlFor="pref-edition-preference" label="Edition preference">
+        <select
+          id="pref-edition-preference"
+          value={me.edition_preference}
+          onChange={(e) => setMe({ ...me, edition_preference: e.target.value })}
+          className={textInputClasses("mt-1")}
+        >
+          <option value="india">India-focused</option>
+          <option value="mixed">Mixed</option>
+          <option value="global">Global</option>
+        </select>
+      </Field>
+
+      <Field
+        htmlFor="pref-keywords"
+        label={`Followed keywords (optional, comma-separated, up to ${MAX_KEYWORDS})`}
+      >
+        <input
+          id="pref-keywords"
+          value={keywordInput}
+          onChange={(e) => setKeywordInput(e.target.value)}
+          placeholder="cricket, isro"
+          className={textInputClasses("mt-1")}
+        />
+      </Field>
+
       <div className="mb-8 flex flex-wrap gap-3">
         <Button
           disabled={busy}
@@ -212,6 +262,9 @@ function Dashboard({
               genres: me.genres,
               delivery_slot: slotLabel(me.delivery_slot),
               city_id: me.city_id,
+              frequency: me.frequency,
+              edition_preference: me.edition_preference,
+              keywords: parseKeywords(keywordInput),
             })
           }
         >
