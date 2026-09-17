@@ -101,8 +101,29 @@ def syndication_overlap(left: CollectedArticle, right: CollectedArticle) -> floa
     return shared / min(len(left_shingles), len(right_shingles))
 
 
+def _stem(word: str) -> str:
+    """A deliberately narrow suffix strip — plurals and past tense only, not
+    a full stemmer, so it merges morphological variants of the same word
+    ("tax"/"taxes") without collapsing genuinely different words together
+    the way a more aggressive stemmer would ("approves" stays distinct from
+    "clears" — that's a paraphrase, which is the LLM step's job to catch,
+    not this deterministic fallback's).
+    """
+    if word.endswith("ies") and len(word) > 5:
+        return word[:-3] + "y"
+    if word.endswith("es") and len(word) > 4:
+        return word[:-2]
+    if word.endswith("ed") and len(word) > 4:
+        return word[:-2]
+    if word.endswith("s") and not word.endswith("ss") and len(word) > 3:
+        return word[:-1]
+    return word
+
+
 def title_tokens(title: str) -> frozenset[str]:
-    return frozenset(w for w in _WORD.findall(title.lower()) if w not in _STOPWORDS and len(w) > 2)
+    return frozenset(
+        _stem(w) for w in _WORD.findall(title.lower()) if w not in _STOPWORDS and len(w) > 2
+    )
 
 
 def title_similarity(left: str, right: str) -> float:

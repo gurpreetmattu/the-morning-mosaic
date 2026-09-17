@@ -523,3 +523,20 @@ def test_headline_overlap_groups_the_same_event() -> None:
 
 def test_similarity_ignores_stopwords() -> None:
     assert title_similarity("The cabinet has cleared it", "Cabinet cleared") > 0.5
+
+
+def test_plurals_and_past_tense_are_treated_as_the_same_word() -> None:
+    assert title_similarity(
+        "State presents annual budget with tax relief",
+        "Annual state budget unveiled, taxes cut",
+    ) >= 0.5
+
+
+def test_stemming_does_not_collapse_genuinely_different_words() -> None:
+    """"approves" and "clears" are a real paraphrase, not a plural/tense
+    variant of the same word — the narrow stemmer must leave them distinct,
+    or it would risk merging genuinely unrelated stories elsewhere."""
+    assert title_similarity(
+        "Cabinet approves eastern freight corridor",
+        "Government clears eastern freight corridor project",
+    ) < 0.5

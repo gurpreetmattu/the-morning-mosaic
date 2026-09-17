@@ -30,13 +30,16 @@ from evals.schemas import CaseResult, EvalResult, EvalStatus
 FULL_PIPELINE_THRESHOLD = 0.9
 
 # Measured, not assumed: on this fixture the title-only fallback correctly
-# keeps every unrelated pair apart but fails to merge the two genuinely
-# duplicate pairs, because their headlines are paraphrased rather than
-# near-identical (Jaccard ~0.33-0.38 against a 0.5 merge threshold) — 8 of
-# 10 pairs right. That's not a bug: paraphrased duplicates are exactly what
-# the LLM step exists to catch; this heuristic is the offline fallback, and
-# staying conservative (never inventing a merge) is the point of it.
-TITLE_BASELINE_THRESHOLD = 0.75
+# keeps every unrelated pair apart and, since title_tokens() started
+# stemming plurals and past tense (a narrow suffix strip, not a real
+# stemmer — see title_tokens' own docstring), now also merges the "budget"
+# pair ("tax" / "taxes" was the only thing keeping it under the 0.5
+# threshold). The "corridor" pair still doesn't merge — its headlines
+# paraphrase with different words ("approves" / "clears"), which no lexical
+# heuristic can close without risking a false merge elsewhere; that's
+# exactly what the LLM step exists to catch. 9 of 10 pairs right; staying
+# conservative on the one it can't get is the point of a fallback.
+TITLE_BASELINE_THRESHOLD = 0.85
 
 
 def _pairwise_accuracy(
