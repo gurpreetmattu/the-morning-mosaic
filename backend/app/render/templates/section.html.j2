@@ -18,6 +18,13 @@
   </p>
 
   {% if status == 'ok' %}
+    {% if ai_tool %}
+    <p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
+      <strong style="color:{{ theme.accent }};">AI tool of the day:</strong>
+      {{ ai_tool.headline }} — {{ ai_tool.blurb }}
+      (<a href="{{ ai_tool.source.url }}" style="color:{{ theme.accent }};text-decoration:underline;">{{ ai_tool.source.name }}</a>)
+    </p>
+    {% endif %}
     {% for story in stories %}
       {% include "_story.html.j2" %}
     {% endfor %}

@@ -4,6 +4,9 @@
 {{ '=' * section_title | length }}
 {{ blurb }}
 {% if status == 'ok' %}
+{% if ai_tool %}
+AI tool of the day: {{ ai_tool.headline }} - {{ ai_tool.blurb }} ({{ ai_tool.source.name }} <{{ ai_tool.source.url }}>)
+{% endif %}
 {% for story in stories %}
 * {{ story.headline }}
 {% if story.hedged %}

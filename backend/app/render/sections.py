@@ -83,6 +83,7 @@ class SectionRenderer:
             status=outcome.status,
             stories=[self._story(story) for story in outcome.stories],
             note=outcome.note or "",
+            ai_tool=self._ai_tool_from_verified(outcome.genre, outcome.stories),
         )
 
     def render_candidates(
@@ -109,7 +110,43 @@ class SectionRenderer:
                 for candidate in candidates
             ],
             note="" if candidates else QUIET_DAY_NOTE,
+            ai_tool=self._ai_tool_from_candidates(genre, candidates),
         )
+
+    def _ai_tool_from_verified(
+        self, genre: str, stories: Sequence[VerifiedStory]
+    ) -> dict[str, object] | None:
+        """CLAUDE.md: "AI tool of the day" is picked from tools covered in
+        that day's verified AI stories. Rather than guessing which entity tag
+        names an actual tool, this features the day's top-ranked verified AI
+        story itself — deterministic, and grounded in exactly the same
+        already-checked headline/one-liner/source every reader already sees
+        in the section below.
+        """
+        if genre != "ai" or not stories:
+            return None
+        top = stories[0]  # already the best-ranked story that survived verification
+        sources = self._sources(top)
+        if not sources:
+            return None
+        written = top.story
+        blurb = written.one_liner.text if written.one_liner else written.summary[0].text
+        return {"headline": written.headline.text, "blurb": blurb, "source": sources[0]}
+
+    def _ai_tool_from_candidates(
+        self, genre: str, candidates: Sequence[Candidate]
+    ) -> dict[str, object] | None:
+        if genre != "ai" or not candidates:
+            return None
+        top = min(candidates, key=lambda c: c.pool_rank)
+        if not top.sources:
+            return None
+        blurb = top.one_liner or top.summary
+        return {
+            "headline": top.headline,
+            "blurb": blurb,
+            "source": {"name": top.sources[0].name, "url": top.sources[0].url},
+        }
 
     def _render(
         self,
@@ -118,6 +155,7 @@ class SectionRenderer:
         status: SectionStatus,
         stories: list[dict[str, object]],
         note: str,
+        ai_tool: dict[str, object] | None = None,
     ) -> RenderedSection:
         settings = self._genres.by_key()[genre]  # type: ignore[index]
         context = {
@@ -127,6 +165,7 @@ class SectionRenderer:
             "status": status.value,
             "stories": stories,
             "note": note,
+            "ai_tool": ai_tool,
         }
 
         html = self._env.get_template("section.html.j2").render(**context)

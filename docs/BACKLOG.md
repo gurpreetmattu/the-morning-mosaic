@@ -7,14 +7,15 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `59a99f0`
-- **State:** 95 commits · 79 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 97 commits · 79 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 618 Python tests (589 backend + 29 evals, three migrations now verified against a real
+  runbook · 625 Python tests (596 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
-  other, and thirty of which cover the weekend edition's selection logic and its build/delivery
-  wiring — see the weekend-content entry in Done), 31 frontend tests (8 pure-logic + 23 new
+  other, thirty of which cover the weekend edition's selection logic and its build/delivery
+  wiring — see the weekend-content entry in Done, and seven of which cover "AI tool of the day" —
+  see its own Done entry), 31 frontend tests (8 pure-logic + 23 new
   component/interaction tests under jsdom and React Testing Library — see the component-tests
   entry in Done) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
@@ -185,11 +186,8 @@ noticing the count was wrong.)
 **Services**
 - [ ] weather · [ ] markets · [ ] sports · [ ] releases · [ ] deals
 - [ ] images · [ ] quotes / "On this day"
-- [ ] **"AI tool of the day" has no code**, distinct from the external-API
-      services above: CLAUDE.md says it's "picked from tools covered in
-      that day's verified AI stories," so it needs no new provider account
-      — just logic to select one from that day's Writer/Fact-checker
-      output, which doesn't exist yet.
+- [x] ~~"AI tool of the day" has no code.~~ See the ai-tool-of-the-day Done
+      entry.
 
 **Surfaces**
 - [x] FastAPI routes — signup, opt-in, unsubscribe, feedback, the archive,
@@ -776,3 +774,32 @@ noticing the count was wrong.)
       waiting on data-dependent content (the loaded run, the notice text)
       instead of the always-present heading; confirmed stable across
       repeated runs once fixed.
+- [x] "AI tool of the day" — `PENDING`. CLAUDE.md's own wording ("picked
+      from tools covered in that day's verified AI stories") leaves the
+      actual selection open: stories carry untyped entity tags (people,
+      companies, places all mixed together), not a "this one names a tool"
+      flag, so there was no reliable way to point at a specific tool name
+      without inventing a maintained allow-list. Asked the owner how to
+      scope it (`AskUserQuestion`) rather than guess; picked the
+      recommended option — feature the day's top-ranked verified AI story
+      itself as "AI tool of the day," rather than trying to extract a tool
+      name from it. Fully deterministic and grounded in exactly the
+      headline/one-liner/source every reader already sees in the section
+      below, so nothing new is invented.
+      Implemented in `app/render/sections.py` rather than as a per-user
+      `Extra` row: `ExtraKind.AI_TOOL` already existed on the model but
+      nothing ever built or rendered any `Extra`, and CLAUDE.md's "genre
+      extras" framing (alongside scores/fixtures, movie/music releases)
+      means this belongs in the shared, once-per-revision genre section —
+      same place archive readers and every emailed reader both see it from
+      — not behind new per-user plumbing. `SectionRenderer.render()` reads
+      it straight from the AI genre's already-rank-ordered
+      `GenreOutcome.stories`; `render_candidates()` (the late-update path,
+      working from persisted rows instead) picks by `pool_rank` for the
+      same result. No new table, no migration. New template blocks in
+      `section.html.j2`/`.txt.j2`, gated on genre so no other section ever
+      shows one. 7 new tests: the callout appears only for the AI genre,
+      only for the top-ranked story, falls back to the first summary
+      sentence when a story has no one-liner, and is absent on a quiet or
+      failed AI day — covering both the fresh-build and the
+      render-from-persisted-rows paths.

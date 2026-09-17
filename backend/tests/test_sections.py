@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 
 from app.agents.schemas import (
@@ -12,6 +13,7 @@ from app.agents.schemas import (
 )
 from app.models.enums import SectionStatus
 from app.render.sections import SectionRenderer
+from app.render.selection import Candidate, SourceLink
 from app.sources.schemas import CollectedArticle, Passage
 
 NOW = datetime(2026, 10, 5, 4, 15, tzinfo=UTC)
@@ -37,17 +39,20 @@ def verified(
     *,
     why: str = "",
     hedged: bool = False,
+    one_liner: str | None = None,
+    pool_rank: int = 1,
     articles: list[CollectedArticle] | None = None,
 ) -> VerifiedStory:
     return VerifiedStory(
         story=WrittenStory(
             headline=DraftSentence(text=headline, passage_ids=["a1:p1"]),
             summary=[DraftSentence(text="Ministers approved it.", passage_ids=["a1:p1"])],
+            one_liner=DraftSentence(text=one_liner, passage_ids=["a1:p1"]) if one_liner else None,
             why_this_matters=([DraftSentence(text=why, passage_ids=["a1:p1"])] if why else []),
             hedged=hedged,
         ),
         articles=articles or [article()],
-        pool_rank=1,
+        pool_rank=pool_rank,
         attempts=1,
     )
 
@@ -55,13 +60,40 @@ def verified(
 def outcome(
     status: SectionStatus = SectionStatus.OK,
     *stories: VerifiedStory,
+    genre: str = "india",
     note: str | None = None,
 ) -> GenreOutcome:
     return GenreOutcome(
-        genre="india",
+        genre=genre,  # type: ignore[arg-type]
         status=status,
         stories=list(stories) if status is SectionStatus.OK else [],
         note=note,
+    )
+
+
+def candidate(
+    rank: int,
+    *,
+    genre: str = "ai",
+    headline: str = "Model launched",
+    one_liner: str | None = "A quick summary.",
+    source: SourceLink | None = None,
+) -> Candidate:
+    return Candidate(
+        story_id=uuid.uuid5(uuid.NAMESPACE_URL, f"{genre}-{rank}-{headline}"),
+        genre=genre,  # type: ignore[arg-type]
+        headline=headline,
+        summary="Summary.",
+        one_liner=one_liner,
+        why_this_matters=None,
+        hedged=False,
+        india_relevance=False,
+        pool_rank=rank,
+        topic_tags=frozenset(),
+        entity_tags=frozenset(),
+        sources=(source,)
+        if source
+        else (SourceLink(name="The Hindu", url="https://example.test/tool"),),
     )
 
 
@@ -169,3 +201,77 @@ def test_a_failed_section_renders_its_short_note() -> None:
 def test_the_story_count_is_reported_for_the_section_row() -> None:
     rendered = SectionRenderer().render(outcome(SectionStatus.OK, verified("One"), verified("Two")))
     assert rendered.story_count == 2
+
+
+# --------------------------------------------------------- ai tool of the day
+
+
+def test_the_top_ai_story_becomes_the_ai_tool_of_the_day() -> None:
+    html, text = render(
+        outcome(
+            SectionStatus.OK,
+            verified("Model launches with new benchmark", one_liner="A faster, cheaper model."),
+            genre="ai",
+        )
+    )
+
+    assert "AI tool of the day" in html
+    assert "Model launches with new benchmark" in html
+    assert "A faster, cheaper model." in html
+    assert "AI tool of the day" in text
+    assert "A faster, cheaper model." in text
+
+
+def test_the_ai_tool_falls_back_to_the_first_summary_sentence_with_no_one_liner() -> None:
+    html, _ = render(outcome(SectionStatus.OK, verified("Model launches"), genre="ai"))
+
+    assert "AI tool of the day" in html
+    assert "Ministers approved it." in html  # the fixture's default summary sentence
+
+
+def test_only_the_top_ranked_ai_story_is_featured() -> None:
+    html, _ = render(
+        outcome(
+            SectionStatus.OK,
+            verified("First place story", pool_rank=1),
+            verified("Second place story", pool_rank=2),
+            genre="ai",
+        )
+    )
+
+    tool_line = html.split("AI tool of the day:")[1].split("</p>")[0]
+    assert "First place story" in tool_line
+    assert "Second place story" not in tool_line
+
+
+def test_no_ai_tool_callout_for_a_non_ai_genre() -> None:
+    html, text = render(outcome(SectionStatus.OK, verified(), genre="india"))
+
+    assert "AI tool of the day" not in html
+    assert "AI tool of the day" not in text
+
+
+def test_no_ai_tool_callout_on_a_quiet_ai_day() -> None:
+    html, _ = render(outcome(SectionStatus.QUIET_DAY, genre="ai", note="A quiet news day."))
+
+    assert "AI tool of the day" not in html
+
+
+def test_render_candidates_also_features_the_top_ranked_ai_story() -> None:
+    rendered = SectionRenderer().render_candidates(
+        "ai",
+        [
+            candidate(2, headline="Runner-up tool"),
+            candidate(1, headline="Top tool", one_liner="The one that matters."),
+        ],
+    )
+
+    assert "AI tool of the day" in rendered.html
+    assert "Top tool" in rendered.html.split("AI tool of the day:")[1].split("</p>")[0]
+    assert "The one that matters." in rendered.html
+
+
+def test_render_candidates_has_no_ai_tool_for_other_genres() -> None:
+    rendered = SectionRenderer().render_candidates("india", [candidate(1, genre="india")])
+
+    assert "AI tool of the day" not in rendered.html
