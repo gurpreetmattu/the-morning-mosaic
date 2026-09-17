@@ -31,7 +31,7 @@ from app.db.publish import latest_revision, publish_revision
 from app.db.seed import seed_cities, seed_sources
 from app.email import tokens
 from app.email.sender import Message, Sender, SendOutcome, SendResult
-from app.models.content import Story, StoryWithdrawal
+from app.models.content import Correction, Story, StoryWithdrawal
 from app.models.editions import Delivery, EditionRevision
 from app.models.enums import (
     DeliveryStatus,
@@ -701,3 +701,99 @@ class TestWithdrawSection:
         )
 
         assert response.status_code == 400
+
+
+class TestCorrections:
+    def test_correcting_a_story_records_it(self, client: TestClient, session: Session) -> None:
+        publish_with_stories(session)
+        target = session.scalar(select(Story).where(Story.headline == "Corridor cleared"))
+        assert target is not None
+        sign_in_admin(client)
+
+        response = client.post(
+            f"/admin/api/stories/{target.id}/correct",
+            json={"description": "The figure was wrong; corrected to 900 crore."},
+            headers=admin_csrf_headers(client),
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["story_id"] == str(target.id)
+        assert body["description"] == "The figure was wrong; corrected to 900 crore."
+
+        row = session.scalar(select(Correction).where(Correction.story_id == target.id))
+        assert row is not None
+        assert row.announced_on is None
+
+    def test_correcting_does_not_withdraw_or_change_the_story(
+        self, client: TestClient, session: Session
+    ) -> None:
+        publish_with_stories(session)
+        target = session.scalar(select(Story).where(Story.headline == "Corridor cleared"))
+        assert target is not None
+        sign_in_admin(client)
+
+        client.post(
+            f"/admin/api/stories/{target.id}/correct",
+            json={"description": "Fixed."},
+            headers=admin_csrf_headers(client),
+        )
+
+        session.refresh(target)
+        assert target.status is not StoryStatus.WITHDRAWN
+        assert target.headline == "Corridor cleared"
+
+    def test_correcting_an_unknown_story_is_a_404(self, client: TestClient) -> None:
+        sign_in_admin(client)
+
+        response = client.post(
+            "/admin/api/stories/00000000-0000-0000-0000-000000000000/correct",
+            json={"description": "test"},
+            headers=admin_csrf_headers(client),
+        )
+
+        assert response.status_code == 404
+
+    def test_an_empty_description_is_rejected(
+        self, client: TestClient, session: Session
+    ) -> None:
+        publish_with_stories(session)
+        target = session.scalar(select(Story).where(Story.headline == "Corridor cleared"))
+        assert target is not None
+        sign_in_admin(client)
+
+        response = client.post(
+            f"/admin/api/stories/{target.id}/correct",
+            json={"description": ""},
+            headers=admin_csrf_headers(client),
+        )
+
+        assert response.status_code == 422
+
+    def test_corrections_are_listed_newest_first(
+        self, client: TestClient, session: Session
+    ) -> None:
+        publish_with_stories(session)
+        target = session.scalar(select(Story).where(Story.headline == "Corridor cleared"))
+        assert target is not None
+        sign_in_admin(client)
+        headers = admin_csrf_headers(client)
+
+        client.post(
+            f"/admin/api/stories/{target.id}/correct",
+            json={"description": "first"},
+            headers=headers,
+        )
+        client.post(
+            f"/admin/api/stories/{target.id}/correct",
+            json={"description": "second"},
+            headers=headers,
+        )
+
+        response = client.get("/admin/api/corrections")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert [row["description"] for row in body] == ["second", "first"]
+        assert body[0]["headline"] == "Corridor cleared"
+        assert body[0]["announced_on"] is None

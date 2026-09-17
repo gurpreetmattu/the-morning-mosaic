@@ -7,10 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `5c94a11`
-- **State:** 85 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 87 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 563 Python tests (534 backend + 29 evals, one of which now runs the real Alembic
+  runbook · 575 Python tests (546 backend + 29 evals, one of which now runs the real Alembic
   chain against a throwaway database, and seven of which actually launch every scheduled job as
   a subprocess — see the critical fix in Done), 8 frontend tests (all green, database included) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
@@ -106,13 +106,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       consent row records `2026-09-01`, a policy that has not been written.
       DPDP wants consent tied to the text the reader actually saw, so this has
       to move next to the published policy, not live beside the route.
-- [ ] **The corrections process CLAUDE.md specifies doesn't exist at all,
-      not just in the archive.** Nothing writes a `Correction` row, nothing
-      renders one in the archive, and there's no template or job step for
-      "a correction note appears in the next edition for users who
-      received it." `docs/runbooks/incident-response.md`'s "story already
-      reached readers" case documents a manual workaround (a hand-written
-      SQL insert and a manually-sent note) for exactly this reason.
 - [ ] **Turnstile has a real widget now but no real site key to test it
       against.** `TurnstileWidget` renders nothing without
       `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, matching the backend's own "skip
@@ -658,3 +651,39 @@ noticing the count was wrong.)
       tests, including one proving two *different* facts that both happen
       to be numbers (an injury count and a budget figure) are correctly
       left alone.
+- [x] **The corrections process CLAUDE.md specifies now exists, end to
+      end.** The `Correction` model already existed
+      (`app/models/content.py`) with exactly the shape needed
+      (`announced_on`, for gating the note to one edition); nothing wrote
+      to it, rendered one, or noted one until now.
+      - `POST /admin/api/stories/{id}/correct` records it (admin dashboard:
+        "Correct a story"); deliberately separate from
+        `/withdraw` — a correction doesn't imply the story needs pulling,
+        and withdrawal doesn't imply a correction note is owed.
+      - The archive (`GET /api/archive/{edition_date}`) now returns
+        `corrections: CorrectionSummary[]`, layered alongside the frozen
+        per-genre section HTML rather than touching it — "published content
+        is otherwise never edited" holds exactly.
+      - `app/jobs/delivery.py` gained `pending_corrections` (marks a
+        correction announced for `edition_date` the first time any run that
+        day sees it, so every slot that day still includes it — not just
+        the first), `correction_recipients`, and `correction_note_for`,
+        wired into the existing `EmailRenderer.render(corrections=...)`
+        parameter and template block, which had been sitting unused since
+        the email layer was built. Genre-and-date matching, not
+        story-level — there is still no record of which specific stories a
+        reader's selection included that day, only that they received an
+        edition — so this over-includes rather than risks missing someone,
+        the same trade-off the incident runbook already documented as
+        acceptable for the manual workaround it now replaces.
+      - `docs/runbooks/incident-response.md`'s "story already reached
+        readers" case rewritten from a 5-step manual-SQL workaround to the
+        actual endpoint.
+      - 11 new backend tests (delivery: received/wrong-genre/never-received/
+        not-repeated-next-day/later-same-day-slot; archive: shown
+        alongside the frozen section, absent when there are none; admin:
+        record/list/404/422/doesn't-withdraw) plus a matching "Correct a
+        story" form and list on the admin dashboard and a correction notice
+        block on the archive edition page. Frontend verified via `tsc`,
+        `eslint`, and `next build`; not click-tested in a real browser this
+        session (no browser automation connection available).

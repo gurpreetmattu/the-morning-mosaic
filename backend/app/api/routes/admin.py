@@ -51,7 +51,7 @@ from app.db.publish import PublishError, latest_revision, publish_revision
 from app.email import tokens
 from app.email.sender import Message, Sender
 from app.email.tokens import TokenError
-from app.models.content import Story, StoryWithdrawal
+from app.models.content import Correction, Story, StoryWithdrawal
 from app.models.editions import Delivery, Edition, EditionSection
 from app.models.enums import (
     DeliveryStatus,
@@ -552,6 +552,97 @@ def list_withdrawals(
             withdrawn_at=withdrawal.withdrawn_at,
         )
         for withdrawal, story in rows
+    ]
+
+
+# ---------------------------------------------------------------- corrections
+
+
+class CorrectionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    description: str = Field(min_length=1, max_length=1000)
+
+
+class CorrectionResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    story_id: uuid.UUID
+    description: str
+    corrected_at: datetime
+
+
+class CorrectionSummary(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    story_id: uuid.UUID
+    headline: str
+    genre: str
+    edition_date: date
+    description: str
+    corrected_at: datetime
+    announced_on: date | None
+
+
+@router.post("/api/stories/{story_id}/correct", response_model=CorrectionResponse)
+def correct_story(
+    story_id: uuid.UUID,
+    payload: CorrectionRequest,
+    admin_email: Annotated[str, Depends(require_admin)],
+    session: Annotated[Session, Depends(db_session)],
+    _csrf: Annotated[None, Depends(require_admin_csrf)],
+) -> CorrectionResponse:
+    """Records that a published story was wrong. Never edits the story
+    itself — the archive shows this alongside the frozen section HTML
+    (`GET /api/archive/{edition_date}`), and the delivery job includes a
+    note in the next edition for readers who received the original
+    (`app/jobs/delivery.py`'s `pending_corrections`). Withdrawing the story
+    too, if it hasn't finished sending today, is a separate action
+    (`POST /api/stories/{id}/withdraw`) — a correction alone doesn't stop
+    a still-in-flight send.
+    """
+    story = session.get(Story, story_id)
+    if story is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such story.")
+
+    corrected_at = now_utc()
+    session.add(
+        Correction(story_id=story.id, description=payload.description, corrected_at=corrected_at)
+    )
+    session.flush()
+
+    logger.info(
+        "story corrected",
+        extra={"story_id": str(story.id), "admin_email": admin_email},
+    )
+    return CorrectionResponse(
+        story_id=story.id, description=payload.description, corrected_at=corrected_at
+    )
+
+
+@router.get("/api/corrections", response_model=list[CorrectionSummary])
+def list_corrections(
+    admin_email: Annotated[str, Depends(require_admin)],
+    session: Annotated[Session, Depends(db_session)],
+    limit: int = DEFAULT_LIST_LIMIT,
+) -> list[CorrectionSummary]:
+    rows = session.execute(
+        select(Correction, Story)
+        .join(Story, Story.id == Correction.story_id)
+        .order_by(Correction.corrected_at.desc())
+        .limit(min(limit, MAX_LIST_LIMIT))
+    ).all()
+    return [
+        CorrectionSummary(
+            story_id=story.id,
+            headline=story.headline,
+            genre=story.genre,
+            edition_date=story.edition_date,
+            description=correction.description,
+            corrected_at=correction.corrected_at,
+            announced_on=correction.announced_on,
+        )
+        for correction, story in rows
     ]
 
 

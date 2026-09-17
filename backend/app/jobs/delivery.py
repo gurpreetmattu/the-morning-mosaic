@@ -26,10 +26,11 @@ import argparse
 import logging
 import sys
 import uuid
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -43,6 +44,7 @@ from app.email.sender import Message, Sender, SendError, SendOutcome
 from app.email.tokens import PDF, ensure_unsubscribe_token, sign
 from app.jobs.locking import job_lock
 from app.logging_config import configure_logging
+from app.models.content import Correction, Story
 from app.models.editions import Delivery, Edition, EditionRevision
 from app.models.enums import (
     DeliveryStatus,
@@ -189,6 +191,81 @@ def load_reader(session: Session, user: User) -> Reader:
     )
 
 
+def pending_corrections(session: Session, *, edition_date: date) -> list[Correction]:
+    """Corrections not yet given their day in an edition, marking them as
+    announced for `edition_date` the first time this is called for it.
+
+    "Not yet announced" rather than "announced_on is null": delivery runs
+    several times a day, and every run for the same `edition_date` must
+    still see a correction it marked earlier that day, or only the reader
+    on the very first slot would ever get the note.
+    """
+    corrections = list(
+        session.scalars(
+            select(Correction).where(
+                or_(Correction.announced_on.is_(None), Correction.announced_on == edition_date)
+            )
+        )
+    )
+    for correction in corrections:
+        if correction.announced_on is None:
+            correction.announced_on = edition_date
+    return corrections
+
+
+def correction_recipients(
+    session: Session, corrections: Sequence[Correction], stories: Mapping[uuid.UUID, Story]
+) -> dict[uuid.UUID, set[uuid.UUID]]:
+    """correction.id -> the set of user ids who were actually sent the
+    edition the corrected story first appeared in.
+
+    Approximate on purpose, and the accepted trade-off is documented in
+    docs/runbooks/incident-response.md: there is no record of which
+    specific stories within an edition a given reader's selection
+    included, only that they received *an* edition that day. Genre
+    subscription plus a sent delivery for that date over-includes rather
+    than risks missing someone.
+    """
+    recipients: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for correction in corrections:
+        story = stories.get(correction.story_id)
+        if story is None:
+            recipients[correction.id] = set()
+            continue
+        recipients[correction.id] = set(
+            session.scalars(
+                select(Delivery.user_id).where(
+                    Delivery.edition_date == story.edition_date,
+                    Delivery.type == DeliveryType.NEWSLETTER,
+                    Delivery.status == DeliveryStatus.SENT,
+                )
+            )
+        )
+    return recipients
+
+
+def correction_note_for(
+    reader: Reader,
+    *,
+    corrections: Sequence[Correction],
+    recipients: Mapping[uuid.UUID, set[uuid.UUID]],
+    stories: Mapping[uuid.UUID, Story],
+) -> str | None:
+    applicable = [
+        correction
+        for correction in corrections
+        if (story := stories.get(correction.story_id)) is not None
+        and story.genre in reader.genres
+        and reader.id in recipients.get(correction.id, set())
+    ]
+    if not applicable:
+        return None
+    return " ".join(
+        f"“{stories[correction.story_id].headline}”: {correction.description}"
+        for correction in applicable
+    )
+
+
 def build_links(
     session: Session, *, user: User, revision: EditionRevision, settings: Settings
 ) -> Links:
@@ -251,6 +328,16 @@ def run_delivery(
     edition = session.get(Edition, revision.edition_id)
     assert edition is not None
 
+    corrections = pending_corrections(session, edition_date=edition_date)
+    session.commit()
+    corrected_stories = {
+        story.id: story
+        for story in session.scalars(
+            select(Story).where(Story.id.in_([c.story_id for c in corrections]))
+        )
+    }
+    recipients = correction_recipients(session, corrections, corrected_stories)
+
     for user in due_readers(session, slot=slot, on=edition_date):
         delivery = claim(session, user_id=user.id, edition_date=edition_date)
         if delivery is None:
@@ -283,6 +370,9 @@ def run_delivery(
             special_edition=special.name if special else edition.special_edition_key,
             special_edition_note=special.note if special else None,
             special_edition_accent=special.accent if special else None,
+            corrections=correction_note_for(
+                reader, corrections=corrections, recipients=recipients, stories=corrected_stories
+            ),
         )
 
         # The claim is committed before SMTP, so a crash cannot lose it.

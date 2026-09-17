@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 from sqlalchemy import func, select
@@ -24,6 +24,7 @@ from app.db.seed import seed_cities, seed_sources
 from app.email import tokens
 from app.email.sender import Message, Sender, SendError, SendOutcome, SendResult
 from app.jobs.delivery import claim, due_readers, is_due, run_delivery
+from app.models.content import Correction, Story
 from app.models.editions import Delivery, EditionRevision
 from app.models.enums import (
     DeliveryStatus,
@@ -102,21 +103,22 @@ def make_user(
     return user
 
 
-def article(index: int) -> CollectedArticle:
+def article(index: int, *, tag: str = "") -> CollectedArticle:
+    suffix = f"{tag}-{index}" if tag else str(index)
     return CollectedArticle(
         source_key="the-hindu",
         genre="india",
-        url=f"https://example.test/deliver-{index}",
-        title=f"Corridor {index}",
+        url=f"https://example.test/deliver-{suffix}",
+        title=f"Corridor {suffix}",
         published_at=NOW,
         fetched_at=NOW,
         text=BODY,
         passages=[Passage(ordinal=1, text=BODY)],
-        content_hash=f"deliver-{index}",
+        content_hash=f"deliver-{suffix}",
     )
 
 
-def outcome(count: int = 3, genre: str = "india") -> GenreOutcome:
+def outcome(count: int = 3, genre: str = "india", *, tag: str = "") -> GenreOutcome:
     return GenreOutcome(
         genre=genre,  # type: ignore[arg-type]
         status=SectionStatus.OK,
@@ -127,7 +129,7 @@ def outcome(count: int = 3, genre: str = "india") -> GenreOutcome:
                     summary=[DraftSentence(text="Ministers approved.", passage_ids=["a1:p1"])],
                     one_liner=DraftSentence(text=f"Line {i}", passage_ids=["a1:p1"]),
                 ),
-                articles=[article(i)],
+                articles=[article(i, tag=tag)],
                 pool_rank=i + 1,
                 attempts=1,
             )
@@ -142,12 +144,16 @@ def published_edition(
     stories: int = 3,
     special_edition_key: str | None = None,
 ) -> None:
-    persist_genre(session, edition_date=on, outcome=outcome(stories))
+    # A different `on` gets its own article identities and edition number,
+    # so publishing more than one day in the same test doesn't collide on
+    # Article.url or the edition_number unique constraint.
+    tag = "" if on == EDITION else on.isoformat()
+    persist_genre(session, edition_date=on, outcome=outcome(stories, tag=tag))
     publish_revision(
         session,
         build=EditionBuild(
             edition_date=on,
-            edition_number=5,
+            edition_number=5 + (on - EDITION).days,
             genres=[],
             special_edition_key=special_edition_key,
         ),
@@ -526,3 +532,132 @@ def test_a_followed_keyword_reaches_the_rendered_email(session: Session) -> None
     deliver(session, sender)
     assert sender.messages  # the keyword must not break assembly
     assert uuid.UUID(str(deliveries(session)[0].user_id))
+
+
+# --------------------------------------------------------------- corrections
+
+NEXT_DAY = EDITION + timedelta(days=1)
+
+
+def correct(
+    session: Session, description: str = "The figure was wrong.", genre: str = "india"
+) -> Correction:
+    story = session.scalar(
+        select(Story).where(Story.edition_date == EDITION, Story.genre == genre)
+    )
+    assert story is not None
+    correction = Correction(story_id=story.id, description=description, corrected_at=NOW)
+    session.add(correction)
+    session.flush()
+    return correction
+
+
+def published_edition_with_genres(
+    session: Session, genres: dict[str, int], on: date = EDITION
+) -> None:
+    """Like published_edition, but several genres in one revision — needed to
+    tell "got the email but not the note" apart from "got no email"."""
+    tag = "" if on == EDITION else on.isoformat()
+    sections = {}
+    for genre, count in genres.items():
+        persist_genre(
+            session, edition_date=on, outcome=outcome(count, genre=genre, tag=f"{tag}{genre}")
+        )
+        sections[genre] = RenderedSection(
+            genre=genre,
+            status=SectionStatus.OK,
+            html="<p>x</p>",
+            plain_text="x",
+            story_count=count,
+        )
+    publish_revision(
+        session,
+        build=EditionBuild(edition_date=on, edition_number=5 + (on - EDITION).days, genres=[]),
+        sections=sections,
+        published_at=NOW,
+    )
+
+
+def test_a_reader_who_received_the_original_story_gets_the_note_next_time(
+    session: Session,
+) -> None:
+    make_user(session)
+    published_edition(session, on=EDITION)
+    deliver(session, FakeSender())  # so there is a SENT delivery for EDITION
+    correct(session)
+    published_edition(session, on=NEXT_DAY)
+
+    sender = FakeSender()
+    deliver(session, sender, edition_date=NEXT_DAY)
+
+    assert sender.messages
+    assert "The figure was wrong." in sender.messages[0].html
+
+
+def test_a_reader_in_a_different_genre_does_not_get_the_note(session: Session) -> None:
+    make_user(session, email="india@example.com", genres=("india",))
+    make_user(session, email="politics@example.com", genres=("politics",))
+    published_edition_with_genres(session, {"india": 3, "politics": 3}, on=EDITION)
+    deliver(session, FakeSender())
+    correct(session, genre="india")
+    published_edition_with_genres(session, {"india": 3, "politics": 3}, on=NEXT_DAY)
+
+    sender = FakeSender()
+    deliver(session, sender, edition_date=NEXT_DAY)
+
+    by_recipient = {m.to: m.html for m in sender.messages}
+    assert "The figure was wrong." in by_recipient["india@example.com"]
+    assert "The figure was wrong." not in by_recipient["politics@example.com"]
+
+
+def test_a_reader_who_never_received_the_original_edition_is_not_told(session: Session) -> None:
+    published_edition(session, on=EDITION)
+    correct(session)  # nobody was ever sent EDITION
+    make_user(session)  # only signs up after the fact
+    published_edition(session, on=NEXT_DAY)
+
+    sender = FakeSender()
+    deliver(session, sender, edition_date=NEXT_DAY)
+
+    assert sender.messages
+    assert "The figure was wrong." not in sender.messages[0].html
+
+
+def test_the_note_is_not_repeated_the_day_after(session: Session) -> None:
+    make_user(session)
+    published_edition(session, on=EDITION)
+    deliver(session, FakeSender())
+    correct(session)
+    published_edition(session, on=NEXT_DAY)
+    deliver(session, FakeSender(), edition_date=NEXT_DAY)
+
+    third_day = NEXT_DAY + timedelta(days=1)
+    published_edition(session, on=third_day)
+    sender = FakeSender()
+    deliver(session, sender, edition_date=third_day)
+
+    assert sender.messages
+    assert "The figure was wrong." not in sender.messages[0].html
+
+
+def test_a_later_slot_the_same_day_still_gets_the_note(session: Session) -> None:
+    # Both readers must have received the original story, so both are made
+    # (and sent EDITION) before the correction exists.
+    make_user(session, email="early@example.com", slot=time(6, 30))
+    make_user(session, email="late@example.com", slot=time(7, 0))
+    published_edition(session, on=EDITION)
+    deliver(session, FakeSender(), slot=time(7, 0))  # rolls both slots forward
+    correct(session)
+    published_edition(session, on=NEXT_DAY)
+
+    # First slot of NEXT_DAY announces the correction to "early" only...
+    first = FakeSender()
+    deliver(session, first, edition_date=NEXT_DAY, slot=time(6, 30))
+    assert "The figure was wrong." in first.messages[0].html
+
+    # ...a later slot the same day must still see it.
+    later = FakeSender()
+    deliver(session, later, edition_date=NEXT_DAY, slot=time(7, 0))
+
+    assert later.messages
+    assert "The figure was wrong." in later.messages[0].html

@@ -70,6 +70,13 @@ export interface ArchivedSection {
   story_count: number;
 }
 
+export interface ArchivedCorrection {
+  story_headline: string;
+  genre: string;
+  description: string;
+  corrected_at: string;
+}
+
 export interface ArchivedEdition {
   edition_date: string;
   edition_number: number;
@@ -77,6 +84,7 @@ export interface ArchivedEdition {
   is_weekend: boolean;
   revision: number;
   sections: ArchivedSection[];
+  corrections: ArchivedCorrection[];
 }
 
 export interface EditionSummary {
@@ -133,4 +141,14 @@ export interface WithdrawalSummary {
   edition_date: string;
   reason: string;
   withdrawn_at: string;
+}
+
+export interface CorrectionSummary {
+  story_id: string;
+  headline: string;
+  genre: string;
+  edition_date: string;
+  description: string;
+  corrected_at: string;
+  announced_on: string | null;
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { adminPost, ApiError, apiGet, publicPost } from "@/lib/api";
 import type {
+  CorrectionSummary,
   NoticeBatchSummary,
   RunSummary,
   StatusMessage,
@@ -83,23 +84,29 @@ function Dashboard() {
   const [stuck, setStuck] = useState<StuckDelivery[]>([]);
   const [notices, setNotices] = useState<NoticeBatchSummary[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalSummary[]>([]);
+  const [corrections, setCorrections] = useState<CorrectionSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [storyId, setStoryId] = useState("");
   const [reason, setReason] = useState("");
+  const [correctionStoryId, setCorrectionStoryId] = useState("");
+  const [description, setDescription] = useState("");
 
   async function refresh() {
     try {
-      const [runsData, stuckData, noticesData, withdrawalsData] = await Promise.all([
-        apiGet<RunSummary[]>("/admin/api/runs"),
-        apiGet<StuckDelivery[]>("/admin/api/deliveries/stuck"),
-        apiGet<NoticeBatchSummary[]>("/admin/api/notices"),
-        apiGet<WithdrawalSummary[]>("/admin/api/withdrawals"),
-      ]);
+      const [runsData, stuckData, noticesData, withdrawalsData, correctionsData] =
+        await Promise.all([
+          apiGet<RunSummary[]>("/admin/api/runs"),
+          apiGet<StuckDelivery[]>("/admin/api/deliveries/stuck"),
+          apiGet<NoticeBatchSummary[]>("/admin/api/notices"),
+          apiGet<WithdrawalSummary[]>("/admin/api/withdrawals"),
+          apiGet<CorrectionSummary[]>("/admin/api/corrections"),
+        ]);
       setRuns(runsData);
       setStuck(stuckData);
       setNotices(noticesData);
       setWithdrawals(withdrawalsData);
+      setCorrections(correctionsData);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load the dashboard.");
     }
@@ -138,6 +145,22 @@ function Dashboard() {
       await refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Withdrawal failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function correctStory(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await adminPost(`/admin/api/stories/${correctionStoryId}/correct`, { description });
+      setCorrectionStoryId("");
+      setDescription("");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Recording the correction failed.");
     } finally {
       setBusy(false);
     }
@@ -254,7 +277,7 @@ function Dashboard() {
         </form>
       </section>
 
-      <section>
+      <section className="mb-10">
         <h2 className="mb-3 text-lg font-semibold">Recent withdrawals</h2>
         {withdrawals.length === 0 ? (
           <p className="text-sm text-muted">None yet.</p>
@@ -262,6 +285,55 @@ function Dashboard() {
           <Table
             headers={["Headline", "Genre", "Edition", "Reason"]}
             rows={withdrawals.map((row) => [row.headline, row.genre, row.edition_date, row.reason])}
+          />
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="mb-3 text-lg font-semibold">Correct a story</h2>
+        <p className="mb-3 text-sm text-muted">
+          Shown alongside the story in the archive, and in the next edition for readers who
+          received it — never edits the story itself.
+        </p>
+        <form onSubmit={correctStory} className="max-w-md">
+          <Field htmlFor="correction-story-id" label="Story ID">
+            <input
+              id="correction-story-id"
+              required
+              value={correctionStoryId}
+              onChange={(e) => setCorrectionStoryId(e.target.value)}
+              className={textInputClasses("mt-1")}
+            />
+          </Field>
+          <Field htmlFor="correction-description" label="What was wrong, and what's correct">
+            <input
+              id="correction-description"
+              required
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className={textInputClasses("mt-1")}
+            />
+          </Field>
+          <Button type="submit" disabled={busy}>
+            Record correction
+          </Button>
+        </form>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Recent corrections</h2>
+        {corrections.length === 0 ? (
+          <p className="text-sm text-muted">None yet.</p>
+        ) : (
+          <Table
+            headers={["Headline", "Genre", "Edition", "Description", "Announced"]}
+            rows={corrections.map((row) => [
+              row.headline,
+              row.genre,
+              row.edition_date,
+              row.description,
+              row.announced_on ?? "not yet",
+            ])}
           />
         )}
       </section>

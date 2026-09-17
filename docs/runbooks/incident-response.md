@@ -135,42 +135,28 @@ already sent it are the next case.
 
 ### A story already reached readers
 
-**This is a real gap, not a solved path.** The `corrections` table exists
-(`app/models/content.py`) and CLAUDE.md's process — mark the story
-corrected in the archive, note the correction in the next edition for
-affected readers — is specified, but no code writes to that table, renders
-a correction in the archive, or adds a correction note to an edition yet.
-Recorded in `docs/BACKLOG.md`. Until it's built, do this by hand:
-
-1. Withdraw the story (above), so no one else receives it.
-2. Insert a row directly:
-   ```sql
-   INSERT INTO corrections (id, story_id, description, corrected_at)
-   VALUES (gen_random_uuid(), '<story_id>', '<what was wrong and what the correct information is>', now());
-   ```
-3. Identify affected readers. There is no ready-made query for "who
-   received this specific story" — deliveries record a revision, not
-   individual stories within it. As a starting point:
-   ```sql
-   SELECT DISTINCT d.user_id
-   FROM deliveries d
-   JOIN edition_revisions r ON r.id = d.revision_id
-   JOIN editions e ON e.id = r.edition_id
-   WHERE e.edition_date = '<edition_date>'
-     AND d.type = 'newsletter'
-     AND d.status = 'sent';
-   ```
-   This over-includes anyone sent *any* revision of that day, not just
-   ones containing the story before it was withdrawn — narrow it by hand
-   using `edition_sections` for the specific genre and revision range, or
-   accept the over-inclusion for a correction (better to over-notify than
-   miss someone).
-4. Send a manual correction note to that list — there's no template for
-   this yet either (`app/render/templates/system/` has failure and paused
-   notices only). Keep it short: what was wrong, what's correct, no
-   further action needed from the reader unless the error was
-   consequential (e.g. a wrong figure that materially changes the story).
-5. If the error was severe enough to warrant it, consider whether it's
+1. If the story hasn't finished sending today, withdraw it too (above), so
+   no one else receives it.
+2. Record the correction: `POST /admin/api/stories/{id}/correct` with
+   `{"description": "..."}` (or the dashboard at `/admin`, "Correct a
+   story"). This never edits the story — it adds a `Correction` row
+   (`app/models/content.py`).
+3. Two things then happen automatically, with no further action needed:
+   - The archive (`GET /api/archive/{edition_date}`, and the archive page
+     itself) shows the correction alongside the original story's frozen
+     section HTML, immediately.
+   - The next delivery run includes a correction note
+     (`app/jobs/delivery.py`'s `pending_corrections` /
+     `correction_note_for`) for any reader who both subscribes to the
+     story's genre and was actually sent a `newsletter` delivery for the
+     story's `edition_date`. This is genre-and-date matching, not
+     story-level — there is no record of which specific stories within an
+     edition a given reader's selection included, only that they received
+     *an* edition that day, so it over-includes rather than risks missing
+     someone. `Correction.announced_on` ensures the note appears exactly
+     once, on the first edition published after the correction was
+     recorded, no matter how many delivery slots run that day.
+4. If the error was severe enough to warrant it, consider whether it's
    also a data-breach or trust issue (e.g. a factual error caused by
    sending one reader's personalised content to another) — if so, follow
    section 1 too.

@@ -30,7 +30,7 @@ from app.db.publish import publish_revision
 from app.db.seed import seed_cities, seed_sources
 from app.email import tokens
 from app.email.sender import Message, Sender, SendOutcome, SendResult
-from app.models.content import Story
+from app.models.content import Correction, Story
 from app.models.editions import Feedback
 from app.models.enums import (
     EditionPreference,
@@ -562,6 +562,40 @@ class TestArchive:
         self, client: TestClient
     ) -> None:
         assert client.get("/api/archive/2099-01-01").status_code == 404
+
+    def test_a_correction_appears_alongside_the_frozen_section(
+        self, client: TestClient, session: Session
+    ) -> None:
+        story = publish(session)
+        session.add(
+            Correction(
+                story_id=story.id,
+                description="The figure was wrong; corrected to 900 crore.",
+                corrected_at=NOW,
+            )
+        )
+        session.flush()
+
+        response = client.get(f"/api/archive/{EDITION.isoformat()}")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body["corrections"]) == 1
+        assert body["corrections"][0]["story_headline"] == story.headline
+        assert body["corrections"][0]["description"] == (
+            "The figure was wrong; corrected to 900 crore."
+        )
+        # The frozen section HTML itself is untouched.
+        assert "archive copy" in body["sections"][0]["html"]
+
+    def test_no_corrections_is_an_empty_list_not_a_missing_field(
+        self, client: TestClient, session: Session
+    ) -> None:
+        publish(session)
+
+        body = client.get(f"/api/archive/{EDITION.isoformat()}").json()
+
+        assert body["corrections"] == []
 
     def test_the_listing_shows_published_editions(
         self, client: TestClient, session: Session

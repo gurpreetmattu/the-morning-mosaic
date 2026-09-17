@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import db_session
 from app.clock import now_utc, to_ist
 from app.db.publish import latest_revision
+from app.models.content import Correction, Story
 from app.models.editions import Edition, EditionSection
 from app.models.enums import SectionStatus
 
@@ -43,6 +44,15 @@ class ArchivedSection(BaseModel):
     story_count: int
 
 
+class CorrectionSummary(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    story_headline: str
+    genre: str
+    description: str
+    corrected_at: datetime
+
+
 class ArchivedEdition(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -52,6 +62,10 @@ class ArchivedEdition(BaseModel):
     is_weekend: bool
     revision: int
     sections: list[ArchivedSection]
+    # Layered on top of the frozen section HTML above, never inside it:
+    # published content is never edited, so a correction is always shown
+    # alongside the original, not as a change to it.
+    corrections: list[CorrectionSummary]
 
 
 class EditionSummary(BaseModel):
@@ -142,6 +156,12 @@ def read_edition(
         .where(EditionSection.revision_id == revision.id)
         .order_by(EditionSection.genre)
     )
+    corrections = session.execute(
+        select(Correction, Story)
+        .join(Story, Story.id == Correction.story_id)
+        .where(Story.edition_date == edition_date)
+        .order_by(Correction.corrected_at)
+    ).all()
     return ArchivedEdition(
         edition_date=edition.edition_date,
         edition_number=edition.edition_number,
@@ -156,5 +176,14 @@ def read_edition(
                 story_count=row.story_count,
             )
             for row in sections
+        ],
+        corrections=[
+            CorrectionSummary(
+                story_headline=story.headline,
+                genre=story.genre,
+                description=correction.description,
+                corrected_at=correction.corrected_at,
+            )
+            for correction, story in corrections
         ],
     )

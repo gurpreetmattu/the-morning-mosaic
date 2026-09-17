@@ -23,6 +23,18 @@ export default async function ArchiveEditionPage({
         {edition.is_weekend && " · weekend edition"}
       </p>
 
+      {edition.corrections.length > 0 && (
+        <div className="mb-8 space-y-2">
+          {edition.corrections.map((correction, index) => (
+            // Layered alongside the frozen section HTML below, never inside
+            // it: published content is never edited.
+            <Notice key={index} kind="info">
+              <strong>Correction — {correction.story_headline}.</strong> {correction.description}
+            </Notice>
+          ))}
+        </div>
+      )}
+
       {edition.sections.length === 0 && (
         <Notice kind="info">This edition has no published sections.</Notice>
       )}
