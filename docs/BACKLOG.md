@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `7ff92bf`
-- **State:** 103 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `PENDING`
+- **State:** 105 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 637 Python tests (608 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
@@ -23,7 +23,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
   the component-tests entry in Done) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
   (`terraform validate` needs `terraform init`'s cached providers, not available in this
-  environment) · **7 scheduled jobs** — see the purge-job entry in Done
+  environment) · **7 scheduled jobs** — see the purge-job entry in Done · the real Neon database
+  now has the full schema and reference data (87 cities, 27 sources, all disabled) — see the
+  accounts-provisioned entry in Done
 
 ---
 
@@ -36,11 +38,15 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 - [x] ~~LLM gateway is unreachable from production.~~ Resolved by switching
       providers rather than deploying `freellmpool` itself — see the
       llm-gateway-groq Done entry.
-- [ ] **No `.env` and no credentials** for any provider.
-- [ ] **External accounts:** Neon, GCP project (`asia-south1`), Gmail app
-      password, OpenWeatherMap, market data API, sports API with cricket
-      coverage, TMDB, Unsplash/Pexels, Cloudflare Turnstile, Langfuse.
-      Longest lead time of anything on this list.
+- [x] ~~No `.env` and no credentials.~~ A real `.env` now exists with most
+      of it filled in — see the accounts-provisioned Done entry.
+      `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` and everything under
+      `GCP_*` are still blank (see below).
+- [ ] **External accounts still needed:** GCP project (`asia-south1`,
+      for Cloud Run/Scheduler/Secret Manager/Storage — nothing is deployed
+      anywhere without this) and Cloudflare Turnstile. Neon, Gmail,
+      OpenWeatherMap, a market API, a sports API, TMDB, Unsplash, Pexels,
+      and Langfuse are done — see the accounts-provisioned Done entry.
 - [ ] **No git remote.** Nothing is pushed anywhere.
 - [x] ~~CLAUDE.md's agent table and the Orchestrator disagree.~~ Asked the
       owner: correct the table to match the code, not give the Orchestrator
@@ -903,3 +909,25 @@ noticing the count was wrong.)
       `AgentKey` to have one. Noted in `config/models.yaml` rather than
       silently left inconsistent; removing "orchestrator" from `AgentKey`
       itself is a separate, larger cleanup, not folded into this one.
+- [x] Most external accounts provisioned; the real Neon database now has a
+      schema and reference data — `PENDING`. Owner populated a real `.env`
+      (Neon, Gmail app password, OpenWeatherMap, a market API, a sports
+      API, TMDB, Unsplash, Pexels, Langfuse, and Groq — see the
+      llm-gateway-groq entry). `Settings()` loads clean against it.
+      With the owner's explicit go-ahead (this is the first real write
+      this project has ever made to a database that isn't a throwaway
+      Docker container): ran `alembic upgrade head` against the real
+      Neon database — all 6 migrations applied, 35 tables created,
+      verified by querying `information_schema.tables` directly, not just
+      trusting Alembic's own "success" output. Then `--dry-run` first,
+      then for real, `python -m app.jobs.seed`: 87 cities and 27 sources
+      loaded, verified by count. Every other table (`users`, `editions`,
+      `stories`, `articles`, `deliveries`, ...) is empty, as expected —
+      nothing has signed up, built, or sent anything yet.
+      **Still genuinely blocked:** no GCP project (nothing is deployed
+      anywhere — Terraform has never been applied) and no Cloudflare
+      Turnstile account (`TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` still
+      blank, so the signup bot-check runs in its "skip outside prod" mode
+      only). Every source in `sources` ships with `enabled = false`,
+      unchanged by this — that still needs the terms-of-use/robots.txt
+      review, a legal judgement, not a seeding step.
