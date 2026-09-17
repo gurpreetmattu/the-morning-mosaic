@@ -7,7 +7,7 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `e4b3709`
+- **Last updated:** 2026-09-17, at commit `b6c9d59`
 - **State:** 73 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 543 Python tests (514 backend + 29 evals, one of which now runs the real Alembic
