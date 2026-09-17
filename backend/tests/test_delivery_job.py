@@ -38,6 +38,7 @@ from app.models.enums import (
 from app.models.operations import PipelineRun
 from app.models.users import FollowedKeyword, User, UserGenre
 from app.render.sections import RenderedSection
+from app.render.weekend import persist_weekend_features
 from app.sources.schemas import CollectedArticle, Passage
 
 pytestmark = pytest.mark.integration
@@ -156,6 +157,7 @@ def published_edition(
             edition_number=5 + (on - EDITION).days,
             genres=[],
             special_edition_key=special_edition_key,
+            is_weekend=on.weekday() >= 5,
         ),
         sections={
             "india": RenderedSection(
@@ -542,9 +544,7 @@ NEXT_DAY = EDITION + timedelta(days=1)
 def correct(
     session: Session, description: str = "The figure was wrong.", genre: str = "india"
 ) -> Correction:
-    story = session.scalar(
-        select(Story).where(Story.edition_date == EDITION, Story.genre == genre)
-    )
+    story = session.scalar(select(Story).where(Story.edition_date == EDITION, Story.genre == genre))
     assert story is not None
     correction = Correction(story_id=story.id, description=description, corrected_at=NOW)
     session.add(correction)
@@ -661,3 +661,84 @@ def test_a_later_slot_the_same_day_still_gets_the_note(session: Session) -> None
 
     assert later.messages
     assert "The figure was wrong." in later.messages[0].html
+
+
+# --------------------------------------------------------------- weekend content
+
+
+def seed_the_week_before(session: Session, saturday: date) -> None:
+    for offset, (genre, rank) in enumerate(
+        [("sports", 1), ("business", 1), ("technology", 2), ("ai", 1), ("music", 3)]
+    ):
+        day = saturday - timedelta(days=5 - offset)
+        persist_genre(
+            session,
+            edition_date=day,
+            outcome=GenreOutcome(
+                genre=genre,  # type: ignore[arg-type]
+                status=SectionStatus.OK,
+                stories=[
+                    VerifiedStory(
+                        story=WrittenStory(
+                            headline=DraftSentence(text=f"{genre} headline", passage_ids=["a1:p1"]),
+                            summary=[DraftSentence(text="Confirmed.", passage_ids=["a1:p1"])],
+                        ),
+                        articles=[
+                            CollectedArticle(
+                                source_key="the-hindu",
+                                genre=genre,  # type: ignore[arg-type]
+                                url=f"https://example.test/week-{genre}",
+                                title=f"{genre} story",
+                                published_at=datetime.combine(day, time(12, 0), tzinfo=UTC),
+                                fetched_at=datetime.combine(day, time(12, 0), tzinfo=UTC),
+                                text=BODY,
+                                passages=[Passage(ordinal=1, text=BODY)],
+                                content_hash=f"week-{genre}",
+                            )
+                        ],
+                        pool_rank=rank,
+                        attempts=1,
+                    )
+                ],
+            ),
+        )
+
+
+def weekend_editions_config(saturday: date) -> EditionsConfig:
+    return EditionsConfig(
+        launch_date=saturday - timedelta(days=60),
+        weekend=WeekendConfig(
+            saturday_features=["top-stories", "longer-reads", "quiz"],
+            sunday_features=["top-stories", "weekly-recap", "quiz"],
+        ),
+    )
+
+
+def test_a_saturday_delivery_carries_the_weeks_longer_reads_and_quiz(session: Session) -> None:
+    make_user(session)
+    seed_the_week_before(session, SATURDAY)
+    published_edition(session, on=SATURDAY)
+    persist_weekend_features(
+        session, edition_date=SATURDAY, editions=weekend_editions_config(SATURDAY)
+    )
+    session.commit()
+    sender = FakeSender()
+
+    deliver(session, sender, edition_date=SATURDAY)
+
+    assert sender.messages
+    html = sender.messages[0].html
+    assert "This week's longer reads" in html
+    assert "Weekend quiz" in html
+    assert "The week, recapped" not in html
+
+
+def test_a_weekday_delivery_carries_no_weekend_block(session: Session) -> None:
+    make_user(session)
+    published_edition(session)  # EDITION is a Monday
+
+    sender = FakeSender()
+    deliver(session, sender)
+
+    assert sender.messages
+    assert "Weekend quiz" not in sender.messages[0].html

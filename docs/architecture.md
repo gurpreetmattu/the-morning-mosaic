@@ -169,7 +169,9 @@ expires, because there's no session table to delete a row from.
 - **Content and the audit trail** — `sources`, `articles`,
   `story_clusters`, `stories`, `story_sentences`, `sentence_citations`,
   `story_tags`, `fact_checks`, `corrections`, `story_withdrawals`,
-  `images`, extras tables, `weather_cache`.
+  `images`, extras tables, `weather_cache`, `weekend_features` (Saturday's
+  longer reads and the weekend quiz; Sunday's weekly recap and quiz —
+  `app/render/weekend.py`).
 - **Editions and delivery** — `editions`, `edition_revisions` (immutable
   once published), `edition_sections`, `deliveries` (unique on
   `user_id, edition_date, type`; a `sent` newsletter must record which

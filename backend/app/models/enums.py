@@ -86,6 +86,17 @@ class ExtraKind(StrEnum):
     QUIZ = "quiz"
 
 
+class WeekendFeatureKind(StrEnum):
+    """Saturday/Sunday-only content, distinct from `ExtraKind`: each of these
+    is built from several of the week's own already-verified stories, not
+    from one external source, so a single mandatory `source_name`/`source_url`
+    (as `Extra` requires) does not fit — see `WeekendFeature`."""
+
+    LONGER_READS = "longer_reads"
+    WEEKLY_RECAP = "weekly_recap"
+    QUIZ = "quiz"
+
+
 class RevisionReason(StrEnum):
     BUILD = "build"
     LATE_UPDATE = "late_update"

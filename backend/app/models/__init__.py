@@ -21,6 +21,7 @@ from app.models.content import (
     StoryTag,
     StoryWithdrawal,
     WeatherCache,
+    WeekendFeature,
 )
 from app.models.editions import (
     Delivery,
@@ -77,4 +78,5 @@ __all__ = [
     "UserPreference",
     "WaitlistEntry",
     "WeatherCache",
+    "WeekendFeature",
 ]

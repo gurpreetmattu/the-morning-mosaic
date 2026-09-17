@@ -70,6 +70,63 @@
     {% endfor %}
   </td></tr>
 
+  {# ------------------------------------------------------- weekend content #}
+  {% if weekend %}
+  <tr><td style="padding:0 28px;">
+    {% if weekend.longer_reads %}
+    <section style="margin:0 0 32px 0;">
+      <h2 style="margin:0 0 4px 0;padding:0 0 6px 0;font-family:'Playfair Display', Georgia, serif;font-size:22px;line-height:1.25;color:#141414;border-bottom:2px solid #141414;">
+        This week's longer reads
+      </h2>
+      {% for story in weekend.longer_reads %}
+        {% set theme = genre_themes[story.genre] %}
+        {% include "_story.html.j2" %}
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if weekend.weekly_recap %}
+    <section style="margin:0 0 32px 0;">
+      <h2 style="margin:0 0 12px 0;padding:0 0 6px 0;font-family:'Playfair Display', Georgia, serif;font-size:22px;line-height:1.25;color:#141414;border-bottom:2px solid #141414;">
+        The week, recapped
+      </h2>
+      <ul style="margin:0;padding:0 0 0 18px;font-family:Georgia, serif;font-size:13px;line-height:1.6;color:#3a3a3a;">
+        {% for item in weekend.weekly_recap %}
+        <li style="margin:0 0 8px 0;">
+          <strong>{{ item.headline }}</strong>{% if item.one_liner %} — {{ item.one_liner }}{% endif %}
+          {% if item.sources %}
+          (<a href="{{ item.sources[0].url }}" style="color:#141414;">{{ item.sources[0].name }}</a>)
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if weekend.quiz %}
+    <section style="margin:0 0 32px 0;">
+      <h2 style="margin:0 0 12px 0;padding:0 0 6px 0;font-family:'Playfair Display', Georgia, serif;font-size:22px;line-height:1.25;color:#141414;border-bottom:2px solid #141414;">
+        Weekend quiz
+      </h2>
+      {% for question in weekend.quiz %}
+      <p style="margin:0 0 6px 0;font-family:Georgia, serif;font-size:14px;color:#242424;">
+        <strong>{{ loop.index }}.</strong> {{ question.question }}
+      </p>
+      <ol type="A" style="margin:0 0 6px 0;padding:0 0 0 22px;font-family:Georgia, serif;font-size:13px;color:#3a3a3a;">
+        {% for option in question.options %}
+        <li style="margin:0 0 2px 0;">{{ option }}</li>
+        {% endfor %}
+      </ol>
+      <p style="margin:0 0 18px 0;font-family:Georgia, serif;font-size:12px;color:#6a6a6a;">
+        Answer: {{ ["A", "B", "C", "D"][question.correct_index] }}
+        {% if question.source_url %} — <a href="{{ question.source_url }}" style="color:#141414;">{{ question.source_name }}</a>{% endif %}
+      </p>
+      {% endfor %}
+    </section>
+    {% endif %}
+  </td></tr>
+  {% endif %}
+
   {# -------------------------------------------------------------- footer #}
   <tr><td style="padding:8px 28px 26px 28px;border-top:1px solid #d8d4cc;">
     {% if corrections %}

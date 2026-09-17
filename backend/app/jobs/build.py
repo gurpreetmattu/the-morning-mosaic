@@ -43,6 +43,7 @@ from app.logging_config import configure_logging
 from app.models.enums import JobName, RunStatus
 from app.models.operations import PipelineRun
 from app.render.sections import RenderedSection, SectionRenderer
+from app.render.weekend import persist_weekend_features
 from app.sources.fetch import Fetcher, user_agent_for
 from app.sources.robots import RobotsPolicy
 
@@ -59,6 +60,7 @@ class BuildReport:
     published_revision: int | None = None
     stories_persisted: int = 0
     sections: dict[str, str] = field(default_factory=dict)
+    weekend_features: list[str] = field(default_factory=list)
     deadline_missed: bool = False
     error: str | None = None
 
@@ -130,6 +132,9 @@ def run_build(
         rendered[outcome.genre] = section
         report.sections[outcome.genre] = section.status.value
 
+    for feature in persist_weekend_features(session, edition_date=edition_date):
+        report.weekend_features.append(feature.kind.value)
+
     try:
         revision = publish_revision(session, build=build, sections=rendered, published_at=now_utc())
     except PublishError as exc:
@@ -153,6 +158,7 @@ def _finish(run: PipelineRun, status: RunStatus, report: BuildReport) -> None:
     run.detail = {
         "sections": report.sections,
         "stories_persisted": report.stories_persisted,
+        "weekend_features": report.weekend_features,
         "published_revision": report.published_revision,
         "error": report.error,
     }
@@ -257,6 +263,8 @@ def _print(report: BuildReport) -> None:
     print(" ".join(f"{key}={value}" for key, value in summary.items()))
     for genre, status in sorted(report.sections.items()):
         print(f"  {genre:12} {status}")
+    for feature in report.weekend_features:
+        print(f"  weekend: {feature}")
     if report.error:
         print(f"  error: {report.error}")
 

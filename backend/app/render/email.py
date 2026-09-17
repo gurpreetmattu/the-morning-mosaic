@@ -22,6 +22,7 @@ from app.config.loader import load_genres
 from app.config.schemas import GenreKey, GenresConfig
 from app.render.sections import build_environment, text_environment, tidy
 from app.render.selection import Candidate
+from app.render.weekend import WeekendContent
 
 BRAND = "The Morning Mosaic"
 TAGLINE = "India's morning, in the pieces that matter."
@@ -99,6 +100,7 @@ class EmailRenderer:
         special_edition_note: str | None = None,
         special_edition_accent: str | None = None,
         corrections: str | None = None,
+        weekend: WeekendContent | None = None,
     ) -> RenderedEmail:
         by_key = self._genres.by_key()
         # Config order, so a reader's sections do not shuffle between days.
@@ -131,6 +133,8 @@ class EmailRenderer:
             "reading_minutes": minutes,
             "sections": sections,
             "corrections": corrections,
+            "weekend": weekend if weekend else None,
+            "genre_themes": {key: by_key[key].theme.model_dump() for key in by_key},
             "unsubscribe_url": links.unsubscribe_url,
             "preferences_url": links.preferences_url,
             "pdf_url": links.pdf_url,

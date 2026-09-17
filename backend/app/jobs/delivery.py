@@ -58,6 +58,7 @@ from app.models.operations import PipelineRun
 from app.models.users import FollowedKeyword, OutageState, User, UserGenre, UserPreference
 from app.render.email import EmailRenderer, Links
 from app.render.selection import Reader, load_candidates, select_for_reader
+from app.render.weekend import WeekendContent, load_weekend_features
 
 logger = logging.getLogger(__name__)
 
@@ -328,6 +329,12 @@ def run_delivery(
     edition = session.get(Edition, revision.edition_id)
     assert edition is not None
 
+    weekend_content = (
+        load_weekend_features(session, edition_date=edition_date)
+        if edition.is_weekend
+        else WeekendContent()
+    )
+
     corrections = pending_corrections(session, edition_date=edition_date)
     session.commit()
     corrected_stories = {
@@ -373,6 +380,7 @@ def run_delivery(
             corrections=correction_note_for(
                 reader, corrections=corrections, recipients=recipients, stories=corrected_stories
             ),
+            weekend=weekend_content,
         )
 
         # The claim is committed before SMTP, so a crash cannot lose it.

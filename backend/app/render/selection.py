@@ -176,6 +176,31 @@ def load_candidates(
             )
         )
     )
+    return _candidates_from_stories(session, stories)
+
+
+def load_week_candidates(session: Session, *, dates: Sequence[date]) -> list[Candidate]:
+    """Every verified story, any genre, across several days.
+
+    Backs the weekend edition's "longer reads" and "weekly recap"
+    (`app/render/weekend.py`), which look back across the week rather than
+    at one day. Ordered deterministically, since callers pick a stable-sized
+    slice of the result rather than consuming all of it.
+    """
+    if not dates:
+        return []
+
+    stories = list(
+        session.scalars(
+            select(Story)
+            .where(Story.edition_date.in_(list(dates)), Story.status == StoryStatus.VERIFIED)
+            .order_by(Story.edition_date, Story.genre, Story.pool_rank, Story.id)
+        )
+    )
+    return _candidates_from_stories(session, stories)
+
+
+def _candidates_from_stories(session: Session, stories: Sequence[Story]) -> list[Candidate]:
     if not stories:
         return []
 

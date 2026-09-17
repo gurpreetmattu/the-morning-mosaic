@@ -7,16 +7,17 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `2d1eb6a`
-- **State:** 91 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 93 commits · 79 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 588 Python tests (559 backend + 29 evals, two migrations now verified against a real
+  runbook · 618 Python tests (589 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
-  the critical fix in Done, and three of which race real concurrent database connections against
-  each other), 8 frontend tests (all green, database included) ·
+  the critical fix in Done, three of which race real concurrent database connections against each
+  other, and thirty of which cover the weekend edition's selection logic and its build/delivery
+  wiring — see the weekend-content entry in Done), 8 frontend tests (all green, database included) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
   (`terraform validate` needs `terraform init`'s cached providers, not available in this
-  environment) · **7 scheduled jobs now** (was 6) — see the purge-job entry in Done
+  environment) · **7 scheduled jobs** — see the purge-job entry in Done
 
 ---
 
@@ -171,16 +172,15 @@ noticing the count was wrong.)
 **Delivery path**
 - [x] Link-scanner-safe GET endpoints — opt-in, unsubscribe, feedback and now
       the magic link all follow the GET-renders/POST-acts shape.
-- [ ] Jinja templates: full email shell with masthead, special, weekend,
+- [x] Jinja templates: full email shell with masthead, special, weekend,
       system notices
-- [ ] **The weekend edition has no content behind it, only a flag.**
-      `is_weekend` is computed (`Edition.is_weekend`, weekday >= 5) and
-      threaded through late update, but nothing reads it: CLAUDE.md's
-      Saturday "longer reads" (extended summaries of the week's most
-      significant verified stories) and Sunday "weekly recap" (built from
-      stories already verified Mon–Sat) need their own selection logic —
-      querying the week's published stories and choosing/extending
-      them — that doesn't exist anywhere yet, template or otherwise.
+- [x] ~~The weekend edition has no content behind it, only a flag.~~ See the
+      weekend-content Done entry. **Still open, deliberately out of scope for
+      that batch:** the archive (`GET /api/archive/{date}`) shows only genre
+      sections, not weekend features, and the PDF has no weekend pages —
+      CLAUDE.md's Archive and PDF descriptions both talk only in terms of
+      genre sections, so extending either was a separate decision rather than
+      part of "give the weekend flag some content."
 - [x] PDF assembly and caching — `LocalObjectStorage` in dev, `GcsObjectStorage`
       behind the same interface for prod (untested against a real bucket)
 - [ ] Bounce handling over IMAP
@@ -716,3 +716,36 @@ noticing the count was wrong.)
       step and got two "successful" claims back, which is correct given
       what the function actually promises, not a false pass — fixed by
       making the test mirror `run_delivery`'s real sequence.
+- [x] Weekend edition content: Saturday's "longer reads" and Sunday's
+      "weekly recap", plus the weekend quiz — `PENDING`. New
+      `app/render/weekend.py`, driven by `config/editions.yaml`'s
+      `weekend.saturday_features`/`sunday_features` (parsed since the
+      initial schema but never read until now — "top-stories" needs no code
+      of its own, since it is just that day's ordinary per-genre sections).
+      Everything is selected from stories already verified and persisted
+      earlier the same week (a story counts as "significant" if it was
+      pool-ranked 1–3 in its own genre that day) — no LLM call and nothing
+      invented, per CLAUDE.md's "No per-user LLM generation": longer reads
+      carry a picked story's own already-checked headline/summary/why-this-
+      matters; the recap is the same stories as a compact headline list; the
+      quiz is multiple-choice with the real headline as the correct answer
+      against decoys that are themselves other stories' real, already-
+      checked headlines — nothing is invented, and the grounded answer links
+      back to its own source, deterministically shuffled per edition date so
+      a rerun produces the same quiz. New `weekend_features` table (one row
+      per edition_date + kind, replaced wholesale on a rerun rather than
+      versioned — a late update cannot change what earlier in the week
+      already said, so there is nothing to re-render). Wired into the build
+      job (right after the day's own genre sections persist) and the
+      delivery job (loaded once per run, same content for every reader,
+      same as "today in 60 seconds"). New email template blocks, HTML and
+      plain text. Deliberately **not** extended to the public archive or the
+      PDF this batch — see the note left in "Not built yet" — since
+      CLAUDE.md's Archive and PDF sections both talk only in terms of genre
+      sections, and stretching either was a separate decision from "give the
+      weekend flag some content." 30 new tests: pure selection/quiz-shape
+      tests, a persist/load round trip against a real database (including
+      that a rerun replaces rather than duplicates), a `run_build` test that
+      seeds a real preceding week and checks the Saturday build's own
+      report, and two `run_delivery` tests (a Saturday email carries the
+      block, an ordinary weekday email carries none).

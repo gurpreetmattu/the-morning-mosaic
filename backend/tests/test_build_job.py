@@ -12,6 +12,7 @@ from app.agents.orchestrator import CollectorLike, Orchestrator, VerifyFn
 from app.agents.schemas import (
     Corroboration,
     DraftSentence,
+    GenreOutcome,
     PooledStory,
     StoryPool,
     VerificationOutcome,
@@ -20,12 +21,13 @@ from app.agents.schemas import (
 )
 from app.config.loader import load_editions, load_genres
 from app.config.schemas import EditionsConfig, GenreKey
+from app.db.persist import persist_genre
 from app.db.seed import seed_sources
 from app.jobs.build import BUILD_DEADLINE_IST, BuildReport, deadline_for, run_build
 from app.jobs.locking import job_lock, lock_key
-from app.models.content import SentenceCitation, Story
+from app.models.content import SentenceCitation, Story, WeekendFeature
 from app.models.editions import Edition, EditionRevision, EditionSection
-from app.models.enums import JobName, RunStatus, SectionStatus
+from app.models.enums import JobName, RunStatus, SectionStatus, WeekendFeatureKind
 from app.models.operations import PipelineRun
 from app.render.sections import SectionRenderer
 from app.sources.schemas import CollectedArticle, CollectionResult, Passage
@@ -193,6 +195,75 @@ def test_the_audit_trail_is_written_alongside_the_revision(session: Session) -> 
     assert count(session, Story) == 3
     # Every published sentence cites a real passage.
     assert count(session, SentenceCitation) == 6  # 3 stories x (headline + summary)
+
+
+def test_a_saturday_build_also_persists_weekend_features(session: Session) -> None:
+    """A Saturday build must produce that day's own section (as any day does)
+    plus the week's longer reads and quiz — built from stories verified on
+    the preceding weekdays, already persisted before this build runs."""
+    saturday = date(2026, 10, 10)
+    for day, genre, rank in [
+        (date(2026, 10, 5), "sports", 1),
+        (date(2026, 10, 6), "business", 1),
+        (date(2026, 10, 7), "technology", 2),
+        (date(2026, 10, 8), "ai", 1),
+    ]:
+        persist_genre(
+            session,
+            edition_date=day,
+            outcome=GenreOutcome(
+                genre=genre,  # type: ignore[arg-type]
+                status=SectionStatus.OK,
+                stories=[
+                    VerifiedStory(
+                        story=WrittenStory(
+                            headline=DraftSentence(text=f"{genre} headline", passage_ids=["a1:p1"]),
+                            summary=[
+                                DraftSentence(text="It was confirmed.", passage_ids=["a1:p1"])
+                            ],
+                        ),
+                        articles=[
+                            CollectedArticle(
+                                source_key="the-hindu",
+                                genre=genre,  # type: ignore[arg-type]
+                                url=f"https://example.test/{genre}",
+                                title=f"{genre} story",
+                                published_at=datetime.combine(day, NOW.time(), tzinfo=UTC),
+                                fetched_at=datetime.combine(day, NOW.time(), tzinfo=UTC),
+                                text=BODY,
+                                passages=[Passage(ordinal=1, text=BODY)],
+                                content_hash=f"hash-{genre}",
+                            )
+                        ],
+                        pool_rank=rank,
+                        attempts=1,
+                    )
+                ],
+            ),
+        )
+    session.commit()
+
+    report = run_build(
+        session,
+        edition_date=saturday,
+        deadline=DEADLINE,
+        orchestrator=orchestrator(),
+        renderer=SectionRenderer(),
+        genres=["india"],
+        now=NOW,
+    )
+
+    assert report.succeeded
+    assert report.sections == {"india": "ok"}
+    assert set(report.weekend_features) == {"longer_reads", "quiz"}
+
+    rows = session.scalars(
+        select(WeekendFeature).where(WeekendFeature.edition_date == saturday)
+    ).all()
+    assert {row.kind for row in rows} == {
+        WeekendFeatureKind.LONGER_READS,
+        WeekendFeatureKind.QUIZ,
+    }
 
 
 def test_the_run_is_recorded_as_succeeded(session: Session) -> None:

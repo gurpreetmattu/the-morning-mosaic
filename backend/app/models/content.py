@@ -48,6 +48,7 @@ from app.models.enums import (
     SentenceRole,
     StoryStatus,
     TagKind,
+    WeekendFeatureKind,
 )
 
 
@@ -364,6 +365,27 @@ class Extra(Base):
     __table_args__ = (Index("ix_extras_edition_date_kind", "edition_date", "kind"),)
 
 
+class WeekendFeature(Base):
+    """Saturday's "longer reads" and Sunday's "weekly recap" and quiz.
+
+    Built once at build time from stories already verified earlier in the
+    week (`app/render/weekend.py`), not per revision: a late update cannot
+    change what Monday already said, so there is nothing to re-render.
+    """
+
+    __tablename__ = "weekend_features"
+
+    id: Mapped[UuidPk]
+    edition_date: Mapped[EditionDate]
+    kind: Mapped[WeekendFeatureKind] = mapped_column(
+        pg_enum(WeekendFeatureKind, "weekend_feature_kind"), nullable=False
+    )
+    payload: Mapped[dict[str, Any]] = mapped_column(nullable=False)
+    created_at: Mapped[CreatedAt]
+
+    __table_args__ = (UniqueConstraint("edition_date", "kind"),)
+
+
 class WeatherCache(Base):
     __tablename__ = "weather_cache"
 
@@ -395,4 +417,5 @@ __all__ = [
     "StoryTag",
     "StoryWithdrawal",
     "WeatherCache",
+    "WeekendFeature",
 ]

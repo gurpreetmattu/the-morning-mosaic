@@ -36,6 +36,39 @@ About {{ reading_minutes }} minute{{ '' if reading_minutes == 1 else 's' }} to r
   {{ 'Sources' if story.sources | length > 1 else 'Source' }}: {% for source in story.sources %}{{ source.name }} <{{ source.url }}>{% if not loop.last %}, {% endif %}{% endfor %}
 {% endfor %}
 {% endfor %}
+{% if weekend %}
+{% if weekend.longer_reads %}
+
+THIS WEEK'S LONGER READS
+{% for story in weekend.longer_reads %}
+
+* {{ story.headline }}
+  {{ story.summary }}
+{% if story.why_this_matters %}
+  Why this matters: {{ story.why_this_matters }}
+{% endif %}
+  {{ 'Sources' if story.sources | length > 1 else 'Source' }}: {% for source in story.sources %}{{ source.name }} <{{ source.url }}>{% if not loop.last %}, {% endif %}{% endfor %}
+{% endfor %}
+{% endif %}
+{% if weekend.weekly_recap %}
+
+THE WEEK, RECAPPED
+{% for item in weekend.weekly_recap %}
+- {{ item.headline }}{% if item.one_liner %} - {{ item.one_liner }}{% endif %}{% if item.sources %} ({{ item.sources[0].name }} <{{ item.sources[0].url }}>){% endif %}
+{% endfor %}
+{% endif %}
+{% if weekend.quiz %}
+
+WEEKEND QUIZ
+{% for question in weekend.quiz %}
+{{ loop.index }}. {{ question.question }}
+{% for option in question.options %}
+  {{ ["A", "B", "C", "D"][loop.index0] }}. {{ option }}
+{% endfor %}
+  Answer: {{ ["A", "B", "C", "D"][question.correct_index] }}{% if question.source_url %} ({{ question.source_name }} <{{ question.source_url }}>){% endif %}
+{% endfor %}
+{% endif %}
+{% endif %}
 {% if corrections %}
 
 CORRECTION

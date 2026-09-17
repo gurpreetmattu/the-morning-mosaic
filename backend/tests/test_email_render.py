@@ -17,6 +17,7 @@ from app.render.email import (
     reading_minutes,
 )
 from app.render.selection import Candidate, SourceLink
+from app.render.weekend import LongerRead, QuizQuestion, RecapItem, WeekendContent
 
 EDITION = date(2026, 10, 5)
 
@@ -197,3 +198,73 @@ def test_the_email_reports_what_it_contains() -> None:
     email = render({"india": [candidate(1), candidate(2), candidate(3)]})
     assert email.story_count == 3
     assert email.reading_minutes >= 1
+
+
+# ---------------------------------------------------------- weekend content
+
+
+def weekend_content() -> WeekendContent:
+    return WeekendContent(
+        longer_reads=(
+            LongerRead(
+                genre="india",
+                headline="Corridor cleared",
+                summary="Ministers approved the plan.",
+                why_this_matters="It relieves freight capacity.",
+                hedged=False,
+                sources=(SourceLink(name="The Hindu", url="https://example.test/a"),),
+            ),
+        ),
+        weekly_recap=(
+            RecapItem(
+                genre="sports",
+                headline="Final decided on penalties",
+                one_liner="A dramatic finish.",
+                sources=(SourceLink(name="ESPN", url="https://example.test/b"),),
+            ),
+        ),
+        quiz=(
+            QuizQuestion(
+                question="Which of these actually happened in ai this week?",
+                options=("Model launched", "Rover lands", "Budget passed", "Final decided"),
+                correct_index=0,
+                source_name="The Hindu",
+                source_url="https://example.test/c",
+            ),
+        ),
+    )
+
+
+def test_no_weekend_block_appears_on_an_ordinary_weekday() -> None:
+    email = render()
+    assert "Weekend quiz" not in email.html
+    assert "WEEKEND QUIZ" not in email.text
+
+
+def test_longer_reads_appear_with_their_source() -> None:
+    email = render(weekend=weekend_content())
+    assert "Corridor cleared" in email.html
+    assert "It relieves freight capacity" in email.html
+    assert 'href="https://example.test/a"' in email.html
+
+
+def test_the_recap_appears_as_a_compact_list() -> None:
+    email = render(weekend=weekend_content())
+    assert "Final decided on penalties" in email.html
+    assert "A dramatic finish" in email.html
+    assert "ESPN" in email.text
+
+
+def test_the_quiz_shows_the_options_and_the_grounded_answer() -> None:
+    email = render(weekend=weekend_content())
+    assert "Which of these actually happened in ai this week?" in email.html
+    assert "Model launched" in email.html
+    assert "Answer: A" in email.html
+    assert 'href="https://example.test/c"' in email.html
+    assert "Answer: A" in email.text
+
+
+def test_an_empty_weekend_content_renders_nothing_extra() -> None:
+    without = render()
+    empty = render(weekend=WeekendContent())
+    assert without.html == empty.html
