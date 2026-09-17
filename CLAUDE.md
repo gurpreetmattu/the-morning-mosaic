@@ -61,20 +61,24 @@ releases, deals). If an item has no reliable source for the day, omit it.
 ## Architecture
 
 ### Jobs (all Cloud Run jobs, triggered by Cloud Scheduler, IST)
-1. **Feedback aggregation** — 04:00. Updates per-user topic preferences from new feedback.
-2. **Edition build** — 04:15. Genres run in parallel (bounded by LLM rate limits). Produces, per
+1. **Raw-text purge** — 03:00 daily. Clears `Article.raw_text` for articles fetched more than
+   30 days ago, per the retention rule under "Data sources". Never touches the audit trail:
+   published sentences, their citations' frozen excerpts, and source URLs live elsewhere
+   (`SentenceCitation`), not in `Article.raw_text`.
+2. **Feedback aggregation** — 04:00. Updates per-user topic preferences from new feedback.
+3. **Edition build** — 04:15. Genres run in parallel (bounded by LLM rate limits). Produces, per
    genre, a *verified story pool* (up to 10 stories) with a one-liner and topic tags per story,
    plus section HTML and PDF pages pre-rendered with the Layout module. Publishes the day's first
    revision. Hard deadline: 05:30. If it fails, the admin can start a manual rerun until 07:30
    (rerun deadline 08:45, so the last delivery run can still use it).
-3. **Late update** — 05:35 (deadline 05:55) and 07:05 (deadline 07:25). Runs only if a revision
+4. **Late update** — 05:35 (deadline 05:55) and 07:05 (deadline 07:25). Runs only if a revision
    already exists. Re-collects and verifies breaking/developing stories, re-renders affected
    sections, and publishes a new *edition revision*. Published revisions are never mutated.
    A late update that misses its deadline publishes nothing.
-4. **Delivery** — every 30 minutes, 06:00–09:00. Sends to users whose slot is due, using the
+5. **Delivery** — every 30 minutes, 06:00–09:00. Sends to users whose slot is due, using the
    latest published revision at the moment the job starts.
-5. **Failure notice** — 09:05. Sends the failure notice to affected users (see below).
-6. **Bounce processing** — 05:00 daily. Reads bounce messages from the sender inbox and marks
+6. **Failure notice** — 09:05. Sends the failure notice to affected users (see below).
+7. **Bounce processing** — 05:00 daily. Reads bounce messages from the sender inbox and marks
    addresses `bounced` before the day's deliveries.
 
 Only one instance of each job runs at a time. Cloud Scheduler's free tier covers a small number of
@@ -203,8 +207,8 @@ newsletter and record provider + terms link in config.
 - **PDF:** WeasyPrint. Genre pages rendered once per revision; per-user PDFs assembled on first
   download, cached in Cloud Storage (30-day lifecycle rule), served via signed links through the API.
 - **Region:** GCP `asia-south1` (Mumbai) for Cloud Run, Cloud Storage, and Artifact Registry.
-- **Deployment:** Cloud Run (services: web, api; jobs: feedback, build, late-update, delivery,
-  failure-notice, bounces), Cloud Scheduler, Cloud Monitoring, Secret Manager, Artifact Registry, Cloud Storage. Terraform in `/infra`,
+- **Deployment:** Cloud Run (services: web, api; jobs: purge, feedback, build, late-update,
+  delivery, failure-notice, bounces), Cloud Scheduler, Cloud Monitoring, Secret Manager, Artifact Registry, Cloud Storage. Terraform in `/infra`,
   state in a GCS bucket. Job timeouts set explicitly. Environments: `dev` (local), `prod`.
   **Dev never emails real subscribers:** outside prod, sending is restricted to an allowlist of
   test addresses (or written to a local mail sink).
@@ -309,7 +313,7 @@ Any prompt or model change requires rerunning evals; regressions block merge.
   /api               FastAPI routes
   /agents            one module per agent
   /graph             LangGraph definitions (build, late update)
-  /jobs              Cloud Run job entry points (feedback, build, late_update, delivery,
+  /jobs              Cloud Run job entry points (purge, feedback, build, late_update, delivery,
                      failure_notice, bounces)
   /llm               client wrapper, versioned prompts
   /sources           fetchers, text extraction

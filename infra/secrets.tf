@@ -49,7 +49,7 @@ resource "google_secret_manager_secret" "this" {
   depends_on = [google_project_service.required]
 }
 
-# Every backend workload (the api service and all six jobs) reads the same
+# Every backend workload (the api service and all seven jobs) reads the same
 # Settings class, so all of them can read all of these secrets.
 resource "google_secret_manager_secret_iam_member" "backend_access" {
   for_each = {

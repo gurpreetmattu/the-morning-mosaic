@@ -19,17 +19,17 @@ resource "google_service_account" "api" {
 resource "google_service_account" "jobs" {
   account_id   = "mosaic-jobs"
   display_name = "The Morning Mosaic — scheduled jobs"
-  # Shared by all six jobs rather than one account each: they need
-  # identical permissions, so per-job accounts would just be six copies of
+  # Shared by all seven jobs rather than one account each: they need
+  # identical permissions, so per-job accounts would just be seven copies of
   # the same policy to keep in sync (see secrets.tf).
-  description = "Runs the six scheduled jobs: feedback, build, late_update, delivery, failure_notice, bounces."
+  description = "Runs the seven scheduled jobs: purge, feedback, build, late_update, delivery, failure_notice, bounces."
   depends_on  = [google_project_service.required]
 }
 
 resource "google_service_account" "scheduler" {
   account_id   = "mosaic-scheduler"
   display_name = "The Morning Mosaic — Cloud Scheduler invoker"
-  description  = "Cloud Scheduler authenticates as this account to call each job's :run endpoint. Holds no permission beyond run.invoker on those six jobs (see cloud_scheduler.tf)."
+  description  = "Cloud Scheduler authenticates as this account to call each job's :run endpoint. Holds no permission beyond run.invoker on those seven jobs (see cloud_scheduler.tf)."
   depends_on   = [google_project_service.required]
 }
 

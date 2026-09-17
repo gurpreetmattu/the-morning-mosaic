@@ -16,7 +16,7 @@ flowchart LR
     end
 
     api["api — FastAPI<br/>(Cloud Run service)"]
-    jobs["6 scheduled jobs<br/>(Cloud Run jobs)"]
+    jobs["7 scheduled jobs<br/>(Cloud Run jobs)"]
     db[(Postgres — Neon)]
     llm[["LLM gateway<br/>(freellmpool)"]]
     secrets[(Secret Manager)]
@@ -35,7 +35,7 @@ flowchart LR
     jobs --> secrets
 ```
 
-Two Cloud Run services, six Cloud Run jobs, one Postgres database, one LLM
+Two Cloud Run services, seven Cloud Run jobs, one Postgres database, one LLM
 gateway. `web` is the only thing a browser or an email client ever talks
 to — see [ADR 0002](adr/0002-web-is-the-single-public-origin.md) for why
 there is no load balancer here despite two backend services existing.
@@ -51,6 +51,7 @@ gantt
     dateFormat  HH:mm
     axisFormat  %H:%M
     section Jobs
+    raw-text purge           :milestone, 03:00, 0m
     feedback aggregation     :milestone, 04:00, 0m
     bounce processing        :milestone, 05:00, 0m
     build (deadline 05:30)   :04:15, 75m
@@ -66,27 +67,32 @@ gantt
     failure notice           :milestone, 09:05, 0m
 ```
 
-1. **Feedback aggregation** (04:00) folds the previous day's thumbs up/down
+1. **Raw-text purge** (03:00) clears `Article.raw_text` for articles fetched
+   more than 30 days ago (`app/jobs/purge.py`), per CLAUDE.md's retention
+   promise. Never touches the audit trail: published sentences, their
+   citations' frozen excerpts, and source URLs live in `SentenceCitation`,
+   not in `Article.raw_text`.
+2. **Feedback aggregation** (04:00) folds the previous day's thumbs up/down
    into per-user topic preferences (`user_preferences`).
-2. **Bounce processing** (05:00) reads delivery-failure messages from the
+3. **Bounce processing** (05:00) reads delivery-failure messages from the
    sender's own inbox over IMAP and marks addresses `bounced`, before the
    day's sends.
-3. **Build** (04:15, hard deadline 05:30) runs the agent pipeline per genre
+4. **Build** (04:15, hard deadline 05:30) runs the agent pipeline per genre
    in parallel and publishes the day's first `edition_revision`. If it
    fails, CLAUDE.md allows a manual rerun until 07:30 — today that means an
    operator re-invoking the Cloud Run job directly (`gcloud run jobs
    execute mosaic-build`); the admin dashboard has no "rerun the build"
    button of its own yet.
-4. **Late update** (05:35 and 07:05, 20-minute windows) re-collects
+5. **Late update** (05:35 and 07:05, 20-minute windows) re-collects
    breaking stories for genres worth revisiting and publishes a new
    revision that carries every unchanged section forward byte for byte.
    Never touches a day with no revision yet, and publishes nothing if its
    deadline passes mid-assembly.
-5. **Delivery** (every 30 minutes, 06:00–09:00) sends to readers whose slot
+6. **Delivery** (every 30 minutes, 06:00–09:00) sends to readers whose slot
    is due, using whatever revision is newest at the moment each run
    starts — so a 09:00 reader can get content a 06:00 reader's late update
    added.
-6. **Failure notice** (09:05, after the last delivery run) sends a
+7. **Failure notice** (09:05, after the last delivery run) sends a
    build-independent apology to anyone who should have received an edition
    and didn't.
 
@@ -177,7 +183,7 @@ expires, because there's no session table to delete a row from.
 
 ## Infrastructure
 
-- **Compute:** Cloud Run — two services (`web`, `api`), six jobs sharing
+- **Compute:** Cloud Run — two services (`web`, `api`), seven jobs sharing
   one backend image (`backend/Dockerfile`; the command differs per
   resource, set in Terraform, not baked into the image).
 - **Scheduling:** Cloud Scheduler calls each job's `:run` endpoint on the

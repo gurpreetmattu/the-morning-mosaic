@@ -1,7 +1,7 @@
 # Terraform — The Morning Mosaic
 
 Provisions everything CLAUDE.md's Deployment section names: two Cloud Run
-services (`web`, `api`), six Cloud Run jobs, Cloud Scheduler triggers for
+services (`web`, `api`), seven Cloud Run jobs, Cloud Scheduler triggers for
 each at the times in CLAUDE.md's "Jobs" section, Secret Manager containers,
 Artifact Registry, the PDF cache bucket, and two Cloud Monitoring alerts.
 

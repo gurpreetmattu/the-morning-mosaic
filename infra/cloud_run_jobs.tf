@@ -1,13 +1,14 @@
-# The six scheduled jobs (CLAUDE.md "Jobs" section). One resource per job
-# via for_each rather than six near-identical blocks — they differ only in
+# The seven scheduled jobs (CLAUDE.md "Jobs" section). One resource per job
+# via for_each rather than seven near-identical blocks — they differ only in
 # name and which module Cloud Scheduler tells them to run (cloud_scheduler.tf
 # sets the actual cadence; none of these need CLI flags, since every job's
-# `main()` defaults --edition-date/--slot/--deadline-minutes from the
-# current time when Scheduler invokes it).
+# `main()` defaults --edition-date/--slot/--deadline-minutes/--older-than-days
+# from the current time when Scheduler invokes it).
 
 locals {
   # Cloud Run job name -> Python module. Matches app/models/enums.py:JobName.
   job_modules = {
+    "purge"          = "app.jobs.purge"
     "feedback"       = "app.jobs.feedback"
     "build"          = "app.jobs.build"
     "late-update"    = "app.jobs.late_update"

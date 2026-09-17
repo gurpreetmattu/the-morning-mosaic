@@ -13,6 +13,7 @@ locals {
   # 30 minutes from 06:00 to 09:00 inclusive) instead of one cron
   # expression, because plain cron can't express "this exact set of times."
   single_schedules = {
+    "purge"          = { cron = "0 3 * * *", job = "purge" }
     "feedback"       = { cron = "0 4 * * *", job = "feedback" }
     "build"          = { cron = "15 4 * * *", job = "build" }
     "late-update-1"  = { cron = "35 5 * * *", job = "late-update" }

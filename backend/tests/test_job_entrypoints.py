@@ -17,6 +17,7 @@ import sys
 import pytest
 
 JOB_MODULES = [
+    "app.jobs.purge",
     "app.jobs.feedback",
     "app.jobs.build",
     "app.jobs.late_update",

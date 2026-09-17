@@ -13,7 +13,7 @@ locals {
   backend_image = coalesce(var.backend_image, "${local.repo_path}/backend:unset")
   web_image     = coalesce(var.web_image, "${local.repo_path}/web:unset")
 
-  # Every Cloud Run workload (the api service and all six jobs) shares this
+  # Every Cloud Run workload (the api service and all seven jobs) shares this
   # non-secret configuration. Job-specific and service-specific values
   # (BASE_URL, BACKEND_ORIGIN, the job's own module) are added where each
   # is defined.

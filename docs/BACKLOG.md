@@ -7,15 +7,15 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `b6c9d59`
-- **State:** 73 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 75 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 543 Python tests (514 backend + 29 evals, one of which now runs the real Alembic
-  chain against a throwaway database, and six of which actually launch every scheduled job as a
-  subprocess — see the critical fix in Done), 8 frontend tests (all green, database included) ·
+  runbook · 550 Python tests (521 backend + 29 evals, one of which now runs the real Alembic
+  chain against a throwaway database, and seven of which actually launch every scheduled job as
+  a subprocess — see the critical fix in Done), 8 frontend tests (all green, database included) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
   (`terraform validate` needs `terraform init`'s cached providers, not available in this
-  environment)
+  environment) · **7 scheduled jobs now** (was 6) — see the purge-job entry in Done
 
 ---
 
@@ -61,12 +61,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       but nothing pushes to anyone, which is what "alert" actually means. That
       still needs a GCP project (see Blockers).
 - [ ] **No Langfuse tracing** wired, though it is a dependency and in the spec.
-- [ ] **Raw article text is never actually purged after 30 days.**
-      `Article.raw_text_purged_at` is a column ready for it
-      (`app/models/content.py`), but no job or scheduled task ever sets it
-      or deletes the text — there's no 7th job, and none of the six
-      existing ones touch it either. CLAUDE.md's specific retention promise
-      has a column, not code, behind it.
 - [ ] **Ranker cannot ask the Collector for more coverage.** CLAUDE.md gives it
       that ability ("may ask the Collector for more coverage, whitelisted
       sources only"); it is not implemented. Matters most for strict genres,
@@ -609,3 +603,20 @@ noticing the count was wrong.)
       (`test_job_entrypoints.py::test_the_job_module_actually_runs_as_a_
       script`) runs all six as real subprocesses; verified it fails
       without the fix by reverting one file and rerunning it.
+- [x] **Raw article text is now purged after 30 days: the 7th scheduled
+      job.** `app/jobs/purge.py`, at 03:00 IST, before feedback
+      aggregation — the earliest job of the day, so it never races the
+      build. Clears `Article.raw_text` and stamps `raw_text_purged_at` for
+      articles fetched past the retention window (default 30 days,
+      `--older-than-days` overridable); the audit trail is untouched,
+      since it lives in `SentenceCitation`'s own frozen excerpts, never in
+      `Article.raw_text`. This was explicitly an architecture change (CLAUDE.md's
+      Jobs list said "all Cloud Run jobs," numbered 1–6) rather than a drive-by
+      fix, so it was raised as a question first; the owner chose a real 7th
+      scheduled job over folding it into an existing one. CLAUDE.md,
+      `docs/architecture.md`, and every job-count comment in `/infra`
+      updated from six jobs to seven. New migration (`424df135328b`) adds
+      `'purge'` to the `job_name` enum (`ADD VALUE IF NOT EXISTS`, so a
+      partial downgrade/upgrade cycle can't fail on "already exists");
+      Terraform gets the new Cloud Run job and its Cloud Scheduler triggers,
+      never applied since no GCP project exists yet (Blockers).

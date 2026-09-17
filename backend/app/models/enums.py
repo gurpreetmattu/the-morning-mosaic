@@ -118,6 +118,7 @@ class Vote(StrEnum):
 
 
 class JobName(StrEnum):
+    PURGE = "purge"
     FEEDBACK = "feedback"
     BUILD = "build"
     LATE_UPDATE = "late_update"
