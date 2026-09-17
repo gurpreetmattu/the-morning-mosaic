@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `411b5c4`
-- **State:** 75 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 77 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 550 Python tests (521 backend + 29 evals, one of which now runs the real Alembic
   chain against a throwaway database, and seven of which actually launch every scheduled job as
@@ -48,12 +48,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 2. Defects and gaps in code that already exists
 
-- [ ] **Integration tests share a database with manual runs.** Tests roll back
-      their own transactions, but a real `python -m app.jobs.build` commits,
-      and one already left a `pipeline_runs` row that broke two tests asserting
-      a table held exactly one row. Those assertions are now scoped, but the
-      next "count the rows" test will hit it again. A dedicated test database,
-      or a truncate fixture, is the real fix.
 - [ ] **No admin alerting.** CLAUDE.md wants Cloud Monitoring notifications on
       build failure, deadline miss, send failures and sharp drops in verified
       story counts. The build job records everything needed in `pipeline_runs`,
@@ -620,3 +614,11 @@ noticing the count was wrong.)
       partial downgrade/upgrade cycle can't fail on "already exists");
       Terraform gets the new Cloud Run job and its Cloud Scheduler triggers,
       never applied since no GCP project exists yet (Blockers).
+- [x] Integration tests no longer share pollutable state with manual runs
+      against the same database. `conftest.py`'s `engine` fixture now
+      truncates every table once per test session, before any test runs,
+      so a `python -m app.jobs.build` (or any other) run against
+      `TEST_DATABASE_URL` by hand can no longer leave rows a later
+      `count(session, Model) == N` assertion would see. Verified directly,
+      outside pytest: committed a `pipeline_runs` row by hand, ran the full
+      suite (still green), and confirmed the row was gone afterward.
