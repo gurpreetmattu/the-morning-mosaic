@@ -7,14 +7,16 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `96eb0f6`
-- **State:** 93 commits · 79 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 95 commits · 79 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 618 Python tests (589 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
   other, and thirty of which cover the weekend edition's selection logic and its build/delivery
-  wiring — see the weekend-content entry in Done), 8 frontend tests (all green, database included) ·
+  wiring — see the weekend-content entry in Done), 31 frontend tests (8 pure-logic + 23 new
+  component/interaction tests under jsdom and React Testing Library — see the component-tests
+  entry in Done) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
   (`terraform validate` needs `terraform init`'s cached providers, not available in this
   environment) · **7 scheduled jobs** — see the purge-job entry in Done
@@ -108,13 +110,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, matching the backend's own "skip
       outside prod" behaviour — so signup works end to end in dev, but the
       actual challenge flow has never run.
-- [ ] **The frontend has no component or interaction tests.** `frontend/src/lib/api.test.ts`
-      (8 tests) covers only the CSRF cookie-parsing and error-formatting
-      logic; signup, the preferences dashboard, and the admin dashboard
-      have zero automated coverage of rendering or interaction — only the
-      manual, one-off Docker smoke test done while reviewing the frontend
-      build. A form field silently breaking would only be caught by
-      someone clicking through it.
+- [x] ~~The frontend has no component or interaction tests.~~ See the
+      component-tests Done entry.
 - [ ] **No website-downtime status message.** CLAUDE.md wants site
       downtime shown as a status message on the site rather than emailed,
       unless it stops the newsletter. Low priority: there's no monitoring
@@ -749,3 +746,33 @@ noticing the count was wrong.)
       seeds a real preceding week and checks the Saturday build's own
       report, and two `run_delivery` tests (a Saturday email carries the
       block, an ordinary weekday email carries none).
+- [x] Frontend component and interaction tests for signup, preferences, and
+      the admin dashboard — `PENDING`. Added the standard Next.js/Vitest
+      pieces the project didn't have yet (`jsdom`, `@vitejs/plugin-react`,
+      `@testing-library/react` + `/dom` + `/user-event` + `/jest-dom`) —
+      `frontend/src/lib/api.test.ts` existed only because it tests plain
+      functions in a Node environment, never actually rendering a
+      component. `vitest.config.mts` now runs under `jsdom` and uses Vite's
+      native `resolve.tsconfigPaths` for the `@/*` import alias rather than
+      the `vite-tsconfig-paths` plugin the docs still suggest — the
+      installed Vite already warned that its own option supersedes it.
+      New `frontend/src/lib/test-fetch.ts`: a tiny router over a mocked
+      `fetch` (exact-path or longest-prefix match) so each test states
+      what a path returns rather than hand-rolling `Response`-shaped
+      objects. 23 new tests across the three pages: config loading and its
+      failure notice, both client-side validation messages on signup,
+      genre-checkbox toggling, the exact signup payload sent (including
+      that a Turnstile-less dev environment omits `turnstile_token`
+      entirely rather than sending it as `null`), the waitlisted-vs-pending
+      confirmation heading, magic-link sign-in on both reader and admin
+      login forms, saving edited preferences, pause/resume, the delete-
+      account confirmation step, approving a held notice batch, and
+      submitting a withdrawal and a correction with their exact bodies.
+      One real race condition surfaced while writing these, not a bug in
+      the pages: the admin dashboard's own heading renders before its
+      `Promise.all` of five endpoints resolves, so a test that waited only
+      for the heading before clicking "Approve" was reading the DOM before
+      the button existed — intermittently, not on every run. Fixed by
+      waiting on data-dependent content (the loaded run, the notice text)
+      instead of the always-present heading; confirmed stable across
+      repeated runs once fixed.
