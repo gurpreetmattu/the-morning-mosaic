@@ -7,7 +7,7 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `PENDING`
+- **Last updated:** 2026-09-18, at commit `f0cdd02`
 - **State:** 105 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 637 Python tests (608 backend + 29 evals, three migrations now verified against a real
@@ -910,7 +910,7 @@ noticing the count was wrong.)
       silently left inconsistent; removing "orchestrator" from `AgentKey`
       itself is a separate, larger cleanup, not folded into this one.
 - [x] Most external accounts provisioned; the real Neon database now has a
-      schema and reference data — `PENDING`. Owner populated a real `.env`
+      schema and reference data — `f0cdd02`. Owner populated a real `.env`
       (Neon, Gmail app password, OpenWeatherMap, a market API, a sports
       API, TMDB, Unsplash, Pexels, Langfuse, and Groq — see the
       llm-gateway-groq entry). `Settings()` loads clean against it.
