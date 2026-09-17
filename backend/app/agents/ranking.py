@@ -73,6 +73,33 @@ _STOPWORDS = frozenset(
 
 TITLE_SIMILARITY_THRESHOLD = 0.5
 
+# A run of 8 words matching exactly, by chance, between two independently
+# written articles about the same event is vanishingly unlikely — this is
+# the same specificity principle as the Writer's own copy check
+# (app/agents/writing.py's MAX_VERBATIM_WORDS), applied here to whole
+# articles instead of one sentence against a passage.
+SYNDICATION_SHINGLE_SIZE = 8
+SYNDICATION_OVERLAP_THRESHOLD = 0.5
+
+
+def _shingles(text: str, size: int = SYNDICATION_SHINGLE_SIZE) -> frozenset[tuple[str, ...]]:
+    words = _WORD.findall(text.lower())
+    if len(words) < size:
+        return frozenset({tuple(words)}) if words else frozenset()
+    return frozenset(tuple(words[i : i + size]) for i in range(len(words) - size + 1))
+
+
+def syndication_overlap(left: CollectedArticle, right: CollectedArticle) -> float:
+    """Fraction of the shorter article's word-shingles that also appear in
+    the other. High overlap means one is a lightly rewritten copy of the
+    other — syndicated wire copy, not independent reporting — which plain
+    text equality (the Collector's content hash) does not catch."""
+    left_shingles, right_shingles = _shingles(left.text), _shingles(right.text)
+    if not left_shingles or not right_shingles:
+        return 0.0
+    shared = len(left_shingles & right_shingles)
+    return shared / min(len(left_shingles), len(right_shingles))
+
 
 def title_tokens(title: str) -> frozenset[str]:
     return frozenset(w for w in _WORD.findall(title.lower()) if w not in _STOPWORDS and len(w) > 2)
@@ -137,20 +164,26 @@ def reconcile_clusters(
 
 
 def independent_sources(articles: Sequence[CollectedArticle], tiers: Mapping[str, int]) -> int:
-    """Count distinct tier-1/2 sources.
+    """Count distinct tier-1/2 *voices* — not just distinct source keys.
 
-    "Independent" means a distinct whitelisted source. Two outlets running the
-    same wire copy are not truly independent; identical text is already caught
-    by the Collector's content hash, but a lightly rewritten syndication is
-    not. Treat this as an upper bound on independence.
+    Two outlets running the same wire copy are not truly independent.
+    Identical text is already caught by the Collector's content hash before
+    this ever runs; a lightly rewritten syndication is caught here instead,
+    by shingle overlap (`syndication_overlap`), so it counts as one voice
+    rather than two.
     """
-    return len(
-        {
-            article.source_key
-            for article in articles
-            if tiers.get(article.source_key, 3) <= TIER_ESTABLISHED
-        }
-    )
+    eligible = [a for a in articles if tiers.get(a.source_key, 3) <= TIER_ESTABLISHED]
+    voices: list[CollectedArticle] = []
+    for article in eligible:
+        if any(article.source_key == voice.source_key for voice in voices):
+            continue
+        if any(
+            syndication_overlap(article, voice) >= SYNDICATION_OVERLAP_THRESHOLD
+            for voice in voices
+        ):
+            continue
+        voices.append(article)
+    return len(voices)
 
 
 def best_tier(articles: Sequence[CollectedArticle], tiers: Mapping[str, int]) -> int:

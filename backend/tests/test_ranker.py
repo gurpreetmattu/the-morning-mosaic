@@ -13,9 +13,11 @@ from app.agents.ranker import Ranker
 from app.agents.ranking import (
     cluster_by_title,
     corroboration_for,
+    independent_sources,
     meets_gate,
     reconcile_clusters,
     score_cluster,
+    syndication_overlap,
     title_similarity,
 )
 from app.agents.schemas import Corroboration, PoolDropReason
@@ -32,7 +34,12 @@ TIERS = {"wire": 1, "daily": 2, "herald": 2, "chronicle": 2, "gossip": 3, "tattl
 
 
 def article(source: str, title: str, *, hours_old: float = 2.0, body: str = "") -> CollectedArticle:
-    text = body or f"{title}. " + "Supporting detail that runs long enough to be a passage. " * 2
+    # Alternating source/title tokens rather than shared boilerplate: two
+    # articles from different (source, title) pairs must never look like
+    # syndicated copies of each other just because this fixture padded them
+    # out to passage length the same way.
+    filler = " ".join([source, title] * 6)
+    text = body or f"{title}. {filler} provides supporting detail for this report."
     return CollectedArticle(
         source_key=source,
         genre="india",
@@ -172,6 +179,61 @@ def test_one_outlet_alone_is_single_source() -> None:
 def test_gossip_only_coverage_is_tier3() -> None:
     cluster = [article("gossip", "Rumour"), article("tattle", "Rumour too")]
     assert corroboration_for(cluster, TIERS) == Corroboration.TIER3_ONLY
+
+
+def test_syndicated_wire_copy_counts_as_one_voice_not_two() -> None:
+    """Two outlets running the same wire report, lightly rewritten, are not
+    independent — identical text is already caught by the Collector's
+    content hash before this ever runs, so this has to be near-identical
+    rather than byte-identical to exercise the check at all."""
+    body = (
+        "The union cabinet approved a new eastern freight rail corridor on "
+        "Tuesday, clearing the way for construction to begin in the next "
+        "financial year, officials briefed on the decision said."
+    )
+    original = article("wire", "Cabinet clears freight corridor", body=body)
+    # A second outlet's rewrite: one clause reordered, everything else verbatim.
+    rewrite = article(
+        "daily",
+        "Corridor plan cleared by cabinet",
+        body=(
+            "Officials briefed on the decision said the union cabinet approved "
+            "a new eastern freight rail corridor on Tuesday, clearing the way "
+            "for construction to begin in the next financial year."
+        ),
+    )
+
+    assert syndication_overlap(original, rewrite) >= 0.5
+    assert independent_sources([original, rewrite], TIERS) == 1
+    assert corroboration_for([original, rewrite], TIERS) == Corroboration.PRIMARY_OFFICIAL
+
+
+def test_independently_written_coverage_of_the_same_event_is_not_syndication() -> None:
+    """Two outlets covering the same event in their own words share topical
+    vocabulary, which must not be mistaken for one being a copy of the
+    other."""
+    daily = article(
+        "daily",
+        "Corridor cleared",
+        body=(
+            "The union cabinet gave its approval on Tuesday to a long-delayed "
+            "freight corridor project connecting the eastern coalfields to the "
+            "port network, a step planners have sought for over a decade."
+        ),
+    )
+    herald = article(
+        "herald",
+        "Freight line gets go-ahead",
+        body=(
+            "Ministers signed off on plans for a rail link intended to move "
+            "coal more cheaply toward the coast, ending years of delay that "
+            "industry groups had blamed on land acquisition disputes."
+        ),
+    )
+
+    assert syndication_overlap(daily, herald) < 0.5
+    assert independent_sources([daily, herald], TIERS) == 2
+    assert corroboration_for([daily, herald], TIERS) == Corroboration.CORROBORATED
 
 
 def test_strict_genres_reject_single_source_and_gossip() -> None:

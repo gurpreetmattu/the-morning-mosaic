@@ -7,10 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `4cb91e6`
-- **State:** 79 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 81 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 554 Python tests (525 backend + 29 evals, one of which now runs the real Alembic
+  runbook · 556 Python tests (527 backend + 29 evals, one of which now runs the real Alembic
   chain against a throwaway database, and seven of which actually launch every scheduled job as
   a subprocess — see the critical fix in Done), 8 frontend tests (all green, database included) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
@@ -65,10 +65,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       reports differ, or drop". Nothing compares figures or claims across the
       articles in a cluster yet. Probably belongs with the Fact-checker, but it
       has no owner today.
-- [ ] **Syndication is not detected.** "Independent sources" counts distinct
-      source keys, so two outlets running lightly rewritten wire copy count as
-      two. Identical text is caught by the Collector's content hash; a rewrite
-      is not. Treat the corroboration count as an upper bound.
 - [ ] **The deterministic clustering fallback measurably misses paraphrased
       duplicates.** `evals/clustering.py`'s title-baseline eval scores it at
       80% pairwise accuracy on a small labelled fixture: it correctly never
@@ -628,3 +624,17 @@ noticing the count was wrong.)
       make this possible; `StoryPool.requested_more_coverage` records
       whether it happened. Wired into the real pipeline in
       `build.py:build_orchestrator()`.
+- [x] Syndication is now detected: `independent_sources` (`app/agents/ranking.py`)
+      no longer counts distinct source keys directly — it groups articles by
+      shingle overlap first (`syndication_overlap`, 8-word shingles, same
+      specificity principle as the Writer's own copy check) and counts
+      distinct *voices*, so two outlets running the same wire report with
+      light rewrites now count as one independent source instead of two.
+      Two new tests distinguish a real rewrite (counts as one) from two
+      outlets independently covering the same event, which necessarily
+      share topical vocabulary without being a copy of each other (still
+      counts as two). Exposed a latent flaw in the test fixtures'
+      shared filler text along the way — every `article()` helper call used
+      the same boilerplate padding, which would have made any two test
+      articles look syndicated with each other; fixed by making the filler
+      source/title-specific.
