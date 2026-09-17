@@ -70,6 +70,9 @@ class StoryPool(Base):
     # True when clustering fell back to the deterministic path because the
     # model was unavailable or returned nothing usable.
     used_fallback_clustering: bool = False
+    # True when a thinly-corroborated cluster sent the Ranker back to the
+    # Collector for wider coverage before the pool below was finalised.
+    requested_more_coverage: bool = False
 
 
 # --------------------------------------------------------------------- writer

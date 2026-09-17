@@ -51,8 +51,20 @@ class Collector:
         self._sources = sources or load_sources()
         self._max_articles = max_articles
 
-    def collect(self, genre: GenreKey, *, now: datetime | None = None) -> CollectionResult:
+    def collect(
+        self,
+        genre: GenreKey,
+        *,
+        now: datetime | None = None,
+        max_articles: int | None = None,
+    ) -> CollectionResult:
+        """`max_articles`, when given, overrides the cap for this call only —
+        the Ranker uses this to ask for wider coverage (still whitelisted
+        sources only, still the same freshness window) when a cluster it
+        would otherwise drop for thin sourcing might be one article away
+        from clearing the corroboration gate."""
         reference = now or now_utc()
+        cap = max_articles if max_articles is not None else self._max_articles
         articles: list[CollectedArticle] = []
         dropped: list[Dropped] = []
 
@@ -63,7 +75,7 @@ class Collector:
         seen_hashes: set[str] = set()
 
         for item in items:
-            if len(articles) >= self._max_articles:
+            if len(articles) >= cap:
                 break
 
             if item.url in seen_urls:

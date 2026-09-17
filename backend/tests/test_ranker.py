@@ -212,6 +212,121 @@ def test_a_tier3_only_story_is_marked_hedged() -> None:
     assert pool.stories[0].hedged is True
 
 
+# ---------------------------------------------------- asking for more coverage
+
+
+class FakeCollector:
+    def __init__(self, *, second_pass: CollectionResult | None = None) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self._second_pass = second_pass
+
+    def collect(
+        self, genre: Any, *, now: datetime | None = None, max_articles: int | None = None
+    ) -> CollectionResult:
+        self.calls.append({"genre": genre, "now": now, "max_articles": max_articles})
+        return self._second_pass or CollectionResult(genre=genre, articles=[])
+
+
+def two_cluster_replies(first: list[dict[str, Any]], second: list[dict[str, Any]]) -> None:
+    def reply(groups: list[dict[str, Any]]) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "id": "c",
+                "object": "chat.completion",
+                "created": 0,
+                "model": "rank-1",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": json.dumps({"clusters": groups}),
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            },
+        )
+
+    respx.post(f"{PRIMARY}/chat/completions").mock(side_effect=[reply(first), reply(second)])
+
+
+@respx.mock
+def test_a_thinly_sourced_strict_story_asks_for_more_coverage() -> None:
+    # Two articles so clustering actually calls the model rather than taking
+    # the single-article shortcut in _cluster() — both from "daily", so still
+    # only one independent source.
+    first_report = article("daily", "Corridor cleared, initial report")
+    second_report = article("daily", "More on the corridor plan")
+    rescuing_article = article("herald", "Corridor approved")
+    two_cluster_replies(
+        first=[{"event": "corridor", "article_ids": ["a1", "a2"]}],
+        second=[{"event": "corridor", "article_ids": ["a1", "a2", "a3"]}],
+    )
+    widened = CollectionResult(
+        genre="india", articles=[first_report, second_report, rescuing_article]
+    )
+    collector = FakeCollector(second_pass=widened)
+
+    pool = Ranker(
+        llm=LlmClient(settings=settings(), models=models_config(), sleep=lambda _: None),
+        genres=load_genres_with("strict"),
+        sources=sources_config(),
+        collector=collector,
+    ).rank(collected(first_report, second_report), now=NOW)
+
+    assert len(collector.calls) == 1
+    assert collector.calls[0]["max_articles"] == 80
+    assert len(pool.stories) == 1
+    assert pool.stories[0].source_keys == ["daily", "herald"]
+    assert pool.requested_more_coverage is True
+
+
+@respx.mock
+def test_no_collector_means_no_retry() -> None:
+    llm_clusters([{"event": "solo", "article_ids": ["a1"]}])
+    pool = ranker("strict").rank(collected(article("daily", "Only we have this")), now=NOW)
+
+    assert pool.stories == []
+    assert pool.requested_more_coverage is False
+
+
+@respx.mock
+def test_a_standard_genre_never_asks_for_more_coverage() -> None:
+    llm_clusters([{"event": "solo", "article_ids": ["a1"]}])
+    collector = FakeCollector()
+
+    Ranker(
+        llm=LlmClient(settings=settings(), models=models_config(), sleep=lambda _: None),
+        genres=load_genres_with("standard"),
+        sources=sources_config(),
+        collector=collector,
+    ).rank(collected(article("daily", "Only we have this")), now=NOW)
+
+    assert collector.calls == []
+
+
+@respx.mock
+def test_no_new_coverage_leaves_the_original_pool_unchanged() -> None:
+    llm_clusters([{"event": "solo", "article_ids": ["a1"]}])
+    solo = article("daily", "Only we have this")
+    # The Collector found the same single article again; nothing to rescue it with.
+    collector = FakeCollector(second_pass=CollectionResult(genre="india", articles=[solo]))
+
+    pool = Ranker(
+        llm=LlmClient(settings=settings(), models=models_config(), sleep=lambda _: None),
+        genres=load_genres_with("strict"),
+        sources=sources_config(),
+        collector=collector,
+    ).rank(collected(solo), now=NOW)
+
+    assert len(collector.calls) == 1
+    assert pool.stories == []
+    assert pool.requested_more_coverage is False
+
+
 # -------------------------------------------------------------- neutrality
 
 

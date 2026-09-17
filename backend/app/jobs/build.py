@@ -169,7 +169,9 @@ def build_orchestrator(llm: LlmClient, fetcher: Fetcher) -> Orchestrator:
     def verify(pooled: PooledStory, genre: GenreKey) -> VerificationOutcome:
         return write_and_verify(writer=writer, checker=checker, pooled=pooled, genre=genre)
 
-    return Orchestrator(collector=collector, ranker=Ranker(llm=llm), verify=verify)
+    return Orchestrator(
+        collector=collector, ranker=Ranker(llm=llm, collector=collector), verify=verify
+    )
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -7,10 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `0c01388`
-- **State:** 77 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 79 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 550 Python tests (521 backend + 29 evals, one of which now runs the real Alembic
+  runbook · 554 Python tests (525 backend + 29 evals, one of which now runs the real Alembic
   chain against a throwaway database, and seven of which actually launch every scheduled job as
   a subprocess — see the critical fix in Done), 8 frontend tests (all green, database included) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
@@ -55,11 +55,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       but nothing pushes to anyone, which is what "alert" actually means. That
       still needs a GCP project (see Blockers).
 - [ ] **No Langfuse tracing** wired, though it is a dependency and in the spec.
-- [ ] **Ranker cannot ask the Collector for more coverage.** CLAUDE.md gives it
-      that ability ("may ask the Collector for more coverage, whitelisted
-      sources only"); it is not implemented. Matters most for strict genres,
-      where a story dropped for thin sourcing might be rescued by looking
-      wider before giving up on it.
 - [x] ~~Planted-error catch rate is measured by hand, not by an eval.~~ Now
       `evals/fact_checker_catch_rate.py`: 10 deterministic cases (control +
       4 error categories, across 2 base stories) pass today at 100%; the
@@ -622,3 +617,14 @@ noticing the count was wrong.)
       `count(session, Model) == N` assertion would see. Verified directly,
       outside pytest: committed a `pipeline_runs` row by hand, ran the full
       suite (still green), and confirmed the row was gone afterward.
+- [x] The Ranker can now ask the Collector for more coverage, matching
+      CLAUDE.md's agent table exactly. When a strict genre's cluster is
+      dropped for `INSUFFICIENT_CORROBORATION`, `Ranker.rank()` calls back
+      into the Collector once with a doubled article cap (still whitelisted
+      sources only, still the same 24-hour freshness window — CLAUDE.md's
+      freshness rule is never loosened to rescue a story) and rebuilds the
+      pool from the wider result if it actually found more articles.
+      `Collector.collect()` gained a per-call `max_articles` override to
+      make this possible; `StoryPool.requested_more_coverage` records
+      whether it happened. Wired into the real pipeline in
+      `build.py:build_orchestrator()`.

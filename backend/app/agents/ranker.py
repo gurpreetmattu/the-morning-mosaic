@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from typing import Protocol
 
 from app.agents.ranking import (
     cluster_by_title,
@@ -28,7 +29,7 @@ from app.agents.schemas import (
 )
 from app.clock import now_utc
 from app.config.loader import load_genres, load_sources
-from app.config.schemas import GenresConfig, SourcesConfig
+from app.config.schemas import GenreKey, GenresConfig, SourcesConfig
 from app.llm.client import LlmClient, Message
 from app.llm.errors import LlmError
 from app.llm.guard import redact_identifiers
@@ -39,6 +40,24 @@ from app.sources.schemas import CollectedArticle, CollectionResult
 # whole article on a grouping task.
 EXCERPT_CHARS = 300
 
+# Roughly double app.agents.collector.Collector's own default cap, for the
+# one retry with wider coverage below. Whitelisted sources only, same
+# freshness window — CLAUDE.md's 24-hour rule is never loosened to rescue a
+# story; only how much of that same window's feed backlog gets fetched.
+COVERAGE_RETRY_MAX_ARTICLES = 80
+
+
+class CollectorLike(Protocol):
+    """Structural, so a test can substitute a stub without a network."""
+
+    def collect(
+        self,
+        genre: GenreKey,
+        *,
+        now: datetime | None = None,
+        max_articles: int | None = None,
+    ) -> CollectionResult: ...
+
 
 class Ranker:
     def __init__(
@@ -47,13 +66,47 @@ class Ranker:
         llm: LlmClient,
         genres: GenresConfig | None = None,
         sources: SourcesConfig | None = None,
+        collector: CollectorLike | None = None,
+        coverage_retry_max_articles: int = COVERAGE_RETRY_MAX_ARTICLES,
     ) -> None:
         self._llm = llm
         self._genres = genres or load_genres()
         self._tiers = {source.key: source.tier for source in (sources or load_sources()).sources}
+        self._collector = collector
+        self._coverage_retry_max_articles = coverage_retry_max_articles
 
     def rank(self, collected: CollectionResult, *, now: datetime | None = None) -> StoryPool:
         reference = now or now_utc()
+        pool = self._build_pool(collected, reference)
+
+        if not self._worth_asking_for_more_coverage(collected, pool):
+            return pool
+
+        assert self._collector is not None  # narrowed by the check above
+        widened = self._collector.collect(
+            collected.genre, now=reference, max_articles=self._coverage_retry_max_articles
+        )
+        if len(widened.articles) <= len(collected.articles):
+            # Nothing new turned up; the first pass already stands.
+            return pool
+
+        rebuilt = self._build_pool(widened, reference)
+        return rebuilt.model_copy(update={"requested_more_coverage": True})
+
+    def _worth_asking_for_more_coverage(
+        self, collected: CollectionResult, pool: StoryPool
+    ) -> bool:
+        if self._collector is None:
+            return False
+        genre = self._genres.by_key()[collected.genre]
+        if genre.corroboration != "strict":
+            return False
+        return any(
+            dropped.reason is PoolDropReason.INSUFFICIENT_CORROBORATION
+            for dropped in pool.dropped
+        )
+
+    def _build_pool(self, collected: CollectionResult, reference: datetime) -> StoryPool:
         genre = self._genres.by_key()[collected.genre]
         strict = genre.corroboration == "strict"
 
