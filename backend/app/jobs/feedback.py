@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -227,3 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         f"pruned={report.pruned}"
     )
     return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

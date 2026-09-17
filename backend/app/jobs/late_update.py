@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -278,3 +279,7 @@ def main(argv: list[str] | None = None) -> int:
     if report.reason:
         print(f"  {report.reason}")
     return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
@@ -155,3 +156,7 @@ def main(argv: list[str] | None = None) -> int:
         f"unknown={report.unknown_addresses}"
     )
     return 0 if not report.errors else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

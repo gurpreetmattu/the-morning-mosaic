@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time
 
@@ -361,3 +362,7 @@ def main(argv: list[str] | None = None) -> int:
     if report.reason:
         print(f"  {report.reason}")
     return 0 if not report.failed else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

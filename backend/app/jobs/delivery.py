@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
@@ -390,3 +391,7 @@ def main(argv: list[str] | None = None) -> int:
 def current_ist_slot() -> time:
     """The current IST wall-clock time; Cloud Scheduler aligns runs to slots."""
     return to_ist(now_utc()).time().replace(second=0, microsecond=0)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

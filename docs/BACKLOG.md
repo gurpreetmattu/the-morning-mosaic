@@ -8,10 +8,11 @@ as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
 - **Last updated:** 2026-09-17, at commit `e4b3709`
-- **State:** 71 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **State:** 73 commits · 77 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 537 Python tests (508 backend + 29 evals, one of which now runs the real Alembic
-  chain against a throwaway database), 8 frontend tests (all green, database included) ·
+  runbook · 543 Python tests (514 backend + 29 evals, one of which now runs the real Alembic
+  chain against a throwaway database, and six of which actually launch every scheduled job as a
+  subprocess — see the critical fix in Done), 8 frontend tests (all green, database included) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
   (`terraform validate` needs `terraform init`'s cached providers, not available in this
   environment)
@@ -593,3 +594,18 @@ noticing the count was wrong.)
       them; only the UI was missing. Verified via `tsc`, `eslint`, and
       `next build`; not click-tested in a real browser this session (no
       browser automation connection available).
+- [x] **Critical: five of the six scheduled jobs never ran when invoked
+      the way Terraform actually invokes them.** `infra/cloud_run_jobs.tf`
+      runs each as `python -m app.jobs.<module>`, which only executes code
+      inside `if __name__ == "__main__":`. `feedback.py`, `late_update.py`,
+      `delivery.py`, `failure_notice.py`, and `bounces.py` were all missing
+      that guard — `main()` was defined but never called, so each would
+      fire on schedule, exit 0 immediately, and do nothing, silently. Never
+      caught because every job's own tests call `main()` directly,
+      bypassing the module-as-script path entirely. Found and fixed by
+      actually running `python -m app.jobs.<module> --help` for all six —
+      only `build.py` and `seed.py` (which already had the guard) printed
+      anything. New regression test
+      (`test_job_entrypoints.py::test_the_job_module_actually_runs_as_a_
+      script`) runs all six as real subprocesses; verified it fails
+      without the fix by reverting one file and rerunning it.
