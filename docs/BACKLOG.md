@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `dfced8f`
-- **State:** 97 commits · 79 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 99 commits · 79 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 625 Python tests (596 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
@@ -40,16 +40,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       coverage, TMDB, Unsplash/Pexels, Cloudflare Turnstile, Langfuse.
       Longest lead time of anything on this list.
 - [ ] **No git remote.** Nothing is pushed anywhere.
-- [ ] **CLAUDE.md's agent table and the Orchestrator disagree.** The table
-      lists agent 1 as "Yes + code" (uses an LLM), but every responsibility it
-      names — supervising, routing retries, enforcing deadlines, applying the
-      calendar — is control flow, and `app/agents/orchestrator.py` is built
-      with no LLM call. Routing a build through a model would make it
-      non-reproducible and would make deadline enforcement depend on a call
-      that can itself hang. CLAUDE.md says "keep this honest in docs", so
-      either the table moves agent 1 to the code-only list, or there is an LLM
-      role here that has not been described. Owner's call; not changed
-      unilaterally.
+- [x] ~~CLAUDE.md's agent table and the Orchestrator disagree.~~ Asked the
+      owner: correct the table to match the code, not give the Orchestrator
+      an LLM role. See the agent-table Done entry.
 
 ## 2. Defects and gaps in code that already exists
 
@@ -803,3 +796,13 @@ noticing the count was wrong.)
       sentence when a story has no one-liner, and is absent on a quiet or
       failed AI day — covering both the fresh-build and the
       render-from-persisted-rows paths.
+- [x] CLAUDE.md's agent table now matches the code — `PENDING`. Asked the
+      owner directly rather than guessing: correct the table, or give the
+      Orchestrator a real LLM-backed responsibility? Answer was to correct
+      the table. Agent 1 moved to "No" (uses an LLM: No) in the table, and
+      the line-133 summary now reads "LLM agents: 3, 4, 5, 6. Tool/code
+      agents: 1, 2, 7, 8, 9, 10." `app/agents/orchestrator.py`'s own
+      docstring and `docs/architecture.md`'s pipeline diagram note both
+      described this exact disagreement as deliberate — updated to say the
+      table now matches, rather than leaving a resolved discrepancy
+      documented as still open in three different places.

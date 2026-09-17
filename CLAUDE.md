@@ -119,7 +119,7 @@ update to pre-render sections. Agent 10 runs in the feedback job.
 
 | # | Agent | Uses LLM? | Responsibility |
 |---|-------|-----------|----------------|
-| 1 | Orchestrator | Yes + code | Supervises the graph, routes retries/failures, enforces deadlines, applies special-edition calendar |
+| 1 | Orchestrator | No | Supervises the graph, routes retries/failures, enforces deadlines, applies special-edition calendar |
 | 2 | Collector | No | Fetches whitelisted RSS + news APIs, extracts full text |
 | 3 | Ranker | Yes + code | Dedups, clusters same-event articles, scores, builds the story pool; may ask the Collector for more coverage (whitelisted sources only) |
 | 4 | Writer | Yes | Headline, summary, one-liner, tags, and "Why this matters" strictly from source passages, with per-sentence citations |
@@ -130,7 +130,7 @@ update to pre-render sections. Agent 10 runs in the feedback job.
 | 9 | Delivery | No | Sends emails, records status, retries |
 | 10 | Feedback | No | Aggregates thumbs up/down into per-user topic preferences |
 
-LLM agents: 1, 3, 4, 5, 6. Tool/code agents: 2, 7, 8, 9, 10. Keep this honest in docs.
+LLM agents: 3, 4, 5, 6. Tool/code agents: 1, 2, 7, 8, 9, 10. Keep this honest in docs.
 
 ## Grounding, freshness, and balance rules (enforce in code, not just prompts)
 - **Freshness:** daily stories need a reliable `published_at` within 24h before the build

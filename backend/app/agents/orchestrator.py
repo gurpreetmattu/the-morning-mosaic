@@ -7,8 +7,7 @@ Deliberately contains no LLM call. Every responsibility here is control flow:
 which genre runs next, whether the deadline has passed, whether a section has
 enough verified stories to publish. Routing a build through a model would make
 it non-reproducible, and would make deadline enforcement depend on a call that
-can itself hang. CLAUDE.md's agent table still lists this agent as using an
-LLM; that table and this module disagree, and the disagreement is deliberate.
+can itself hang. CLAUDE.md's agent table lists this agent as code-only, to match.
 
 Failure policy, from CLAUDE.md:
 - a genre that fails or misses the deadline has its section omitted;

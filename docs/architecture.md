@@ -117,12 +117,13 @@ selecting and ordering already-verified stories per reader from keyword
 matches, learned preferences, and edition preference — never a second LLM
 call per reader. See CLAUDE.md's "No per-user LLM generation."
 
-**Known discrepancy:** CLAUDE.md's agent table lists the Orchestrator as
-using an LLM ("Yes + code"); `app/agents/orchestrator.py` is built with no
-LLM call — every one of its responsibilities (deadline enforcement, retry
-routing, the special-edition calendar) is control flow that would become
-non-reproducible and deadline-fragile behind a model call. Recorded in
-`docs/BACKLOG.md` as the owner's call, not resolved unilaterally.
+The Orchestrator itself is code-only, "(code only — see below)" above:
+CLAUDE.md's agent table once listed it as using an LLM, but every one of
+its responsibilities (deadline enforcement, retry routing, the
+special-edition calendar) is control flow that would become
+non-reproducible and deadline-fragile behind a model call. The owner
+confirmed the table should match the code; see `docs/BACKLOG.md`'s Done
+entry.
 
 ## The grounding chain
 
