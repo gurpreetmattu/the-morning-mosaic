@@ -198,7 +198,9 @@ newsletter and record provider + terms link in config.
   `evals/`), TypeScript for the frontend.
 - **Backend:** FastAPI, Pydantic v2, pydantic-settings, SQLAlchemy 2 + Alembic.
 - **Agents:** LangGraph for the build and late-update graphs.
-- **LLM access:** freellmpool (OpenAI-compatible gateway over free-tier providers).
+- **LLM access:** Groq (OpenAI-compatible; a real, publicly reachable endpoint — previously
+  the local `freellmpool` aggregator, which only ever served `127.0.0.1` and so was unreachable
+  once deployed).
   - All LLM calls go through `backend/app/llm/client.py`.
   - Writer and Fact-checker use pinned models from `config/models.yaml`; others may use failover.
   - The client supports a configured fallback provider (free tiers can change or restrict use).
@@ -304,7 +306,7 @@ Any prompt or model change requires rerunning evals; regressions block merge.
 ## Configuration
 - All settings via environment variables (pydantic-settings). Never hardcode URLs, sender details,
   or model names. Key variables: `BASE_URL` (currently the Cloud Run `.run.app` URL; later the
-  custom domain), `SENDER_EMAIL`, `SENDER_NAME`, `DATABASE_URL`, `FREELLMPOOL_URL`,
+  custom domain), `SENDER_EMAIL`, `SENDER_NAME`, `DATABASE_URL`, `LLM_GATEWAY_URL`,
   `ADMIN_EMAIL`, `APP_ENV` (dev/prod), `TEST_EMAIL_ALLOWLIST`, `MAX_ACTIVE_SUBSCRIBERS`,
   `FAILURE_NOTICE_AUTO_LIMIT`, `TIMEZONE=Asia/Kolkata`.
 - Secrets (Gmail app password, token signing key, LLM provider keys, news/weather/market/sports

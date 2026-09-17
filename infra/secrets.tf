@@ -9,7 +9,7 @@
 #   echo -n "<value>" | gcloud secrets versions add database-url --project=<project> --data-file=-
 #
 # ...and likewise for gmail-app-password, token-signing-key, and
-# freellmpool-api-key. Everything else here is optional in Settings and can
+# llm-gateway-api-key. Everything else here is optional in Settings and can
 # stay empty until the corresponding provider account exists (see
 # docs/BACKLOG.md's blockers) — a job that needs one and finds it unset
 # fails exactly as it would locally with a missing .env entry.
@@ -19,7 +19,7 @@ locals {
     "database-url",
     "gmail-app-password",
     "token-signing-key",
-    "freellmpool-api-key",
+    "llm-gateway-api-key",
     "llm-fallback-api-key",
     "turnstile-secret-key",
     "newsdata-api-key",

@@ -18,7 +18,7 @@ flowchart LR
     api["api — FastAPI<br/>(Cloud Run service)"]
     jobs["7 scheduled jobs<br/>(Cloud Run jobs)"]
     db[(Postgres — Neon)]
-    llm[["LLM gateway<br/>(freellmpool)"]]
+    llm[["LLM gateway<br/>(Groq)"]]
     secrets[(Secret Manager)]
     pdf[(PDF cache —<br/>Cloud Storage)]
     gmail[Gmail SMTP / IMAP]

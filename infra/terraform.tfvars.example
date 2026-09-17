@@ -4,9 +4,9 @@ project_id   = "" # an existing, billing-enabled GCP project
 sender_email = "" # the Gmail address the app sends from
 admin_email  = "" # the one allowlisted admin-dashboard address
 
-# Unreachable from Cloud Run until this is resolved — see the LLM gateway
-# blocker in docs/BACKLOG.md. Set to whatever it becomes.
-freellmpool_url = "http://127.0.0.1:8080/v1"
+# A real, publicly reachable OpenAI-compatible endpoint (Groq, as of this
+# writing) — see docs/BACKLOG.md's now-closed gateway-reachability blocker.
+llm_gateway_url = "https://api.groq.com/openai/v1"
 
 # Leave these on their defaults for the first apply; see infra/README.md
 # for why base_url needs a second apply once web's real URL is known, and

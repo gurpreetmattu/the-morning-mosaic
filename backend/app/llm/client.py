@@ -9,10 +9,12 @@ Routing rules, from CLAUDE.md:
   `fallbacks`, then to the configured fallback provider. Their output is
   re-checked downstream, so a substitution is recoverable.
 
-freellmpool is an OpenAI-compatible gateway, and this talks to that wire format
-directly over httpx rather than through the `openai` SDK. The SDK is built on
-httpx2, a parallel stack our test tooling cannot intercept, which would leave
-the routing rules above untested.
+The configured gateway (`LLM_GATEWAY_URL`/`LLM_GATEWAY_API_KEY` — Groq as of
+this writing, previously the local `freellmpool` aggregator, see
+docs/BACKLOG.md) is an OpenAI-compatible endpoint, and this talks to that wire
+format directly over httpx rather than through the `openai` SDK. The SDK is
+built on httpx2, a parallel stack our test tooling cannot intercept, which
+would leave the routing rules above untested.
 """
 
 from __future__ import annotations
@@ -140,8 +142,8 @@ class LlmClient:
                 "set a real model id in config/models.yaml"
             )
 
-        primary_url = str(self._settings.freellmpool_url)
-        primary_key = self._settings.freellmpool_api_key.get_secret_value()
+        primary_url = str(self._settings.llm_gateway_url)
+        primary_key = self._settings.llm_gateway_api_key.get_secret_value()
 
         if spec.pinned:
             # Exactly one route, by design. No model and no provider failover.
@@ -152,10 +154,13 @@ class LlmClient:
 
         fallback_url = self._settings.llm_fallback_url
         fallback_key = self._settings.llm_fallback_api_key
-        if fallback_url is not None and fallback_key is not None:
+        # A blank (but present) env value resolves to SecretStr(""), not
+        # None — check the actual value, not just whether the field is set,
+        # same reasoning as verify_turnstile's identical check.
+        fallback_key_value = fallback_key.get_secret_value() if fallback_key else None
+        if fallback_url is not None and fallback_key_value:
             routes += [
-                Route(str(fallback_url), fallback_key.get_secret_value(), model, "fallback")
-                for model in models
+                Route(str(fallback_url), fallback_key_value, model, "fallback") for model in models
             ]
         return routes
 

@@ -109,8 +109,8 @@ variable "failure_notice_auto_limit" {
   default = 50
 }
 
-variable "freellmpool_url" {
-  description = "The LLM gateway's URL. Not reachable from Cloud Run while it only serves 127.0.0.1 — see the blocker in docs/BACKLOG.md."
+variable "llm_gateway_url" {
+  description = "The LLM gateway's URL — a real, publicly reachable endpoint (Groq, as of this writing), not the local freellmpool aggregator this project used to run against 127.0.0.1. See docs/BACKLOG.md's now-closed gateway-reachability blocker."
   type        = string
 }
 

@@ -173,8 +173,8 @@ def settings() -> Settings:
             "gmail_app_password": "x",
             "imap_host": "imap.example.com",
             "admin_email": "admin@example.com",
-            "freellmpool_url": PRIMARY,
-            "freellmpool_api_key": "x",
+            "llm_gateway_url": PRIMARY,
+            "llm_gateway_api_key": "x",
             "token_signing_key": "x",
         }
     )

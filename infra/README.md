@@ -39,7 +39,7 @@ Then:
 ```
 cd infra
 terraform init -backend-config="bucket=<project-id>-tfstate"
-cp terraform.tfvars.example terraform.tfvars   # fill in project_id, sender_email, admin_email, freellmpool_url
+cp terraform.tfvars.example terraform.tfvars   # fill in project_id, sender_email, admin_email, llm_gateway_url
 ```
 
 ## Images
@@ -97,7 +97,7 @@ cannot start without:
 printf '%s' '<value>' | gcloud secrets versions add database-url         --data-file=-
 printf '%s' '<value>' | gcloud secrets versions add gmail-app-password   --data-file=-
 printf '%s' '<value>' | gcloud secrets versions add token-signing-key    --data-file=-
-printf '%s' '<value>' | gcloud secrets versions add freellmpool-api-key    --data-file=-
+printf '%s' '<value>' | gcloud secrets versions add llm-gateway-api-key    --data-file=-
 ```
 
 Everything else in `secrets.tf` corresponds to an optional field in

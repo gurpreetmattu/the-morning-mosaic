@@ -3,10 +3,9 @@ name: Nightly evals
 # CLAUDE.md: "full evals nightly." Today this runs the exact same suite as
 # the PR job (ci.yml) — the suite is small enough that there is no
 # meaningful "subset" to carve out of it yet — but it exists as its own
-# workflow so a genuinely larger nightly-only run (bigger fixtures, or a
-# real LLM gateway once the blocker in docs/BACKLOG.md is resolved) has
-# somewhere to grow without touching what PRs wait on. If FREELLMPOOL_URL and
-# FREELLMPOOL_API_KEY are ever set as repository secrets/variables pointing
+# workflow so a genuinely larger nightly-only run (bigger fixtures, say) has
+# somewhere to grow without touching what PRs wait on. If LLM_GATEWAY_URL and
+# LLM_GATEWAY_API_KEY are ever set as repository secrets/variables pointing
 # at a reachable gateway, the LLM-dependent evals (see evals/README.md)
 # start scoring for real here with no workflow change needed.
 
@@ -28,8 +27,8 @@ jobs:
       GMAIL_APP_PASSWORD: unused-in-ci
       IMAP_HOST: imap.example.com
       ADMIN_EMAIL: admin@example.com
-      FREELLMPOOL_URL: ${{ vars.FREELLMPOOL_URL || 'http://127.0.0.1:8080/v1' }}
-      FREELLMPOOL_API_KEY: ${{ secrets.FREELLMPOOL_API_KEY || 'unused-in-ci' }}
+      LLM_GATEWAY_URL: ${{ vars.LLM_GATEWAY_URL || 'http://127.0.0.1:8080/v1' }}
+      LLM_GATEWAY_API_KEY: ${{ secrets.LLM_GATEWAY_API_KEY || 'unused-in-ci' }}
       TOKEN_SIGNING_KEY: unused-in-ci
     steps:
       - uses: actions/checkout@v4

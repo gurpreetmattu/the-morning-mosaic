@@ -7,16 +7,18 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `a2de574`
-- **State:** 101 commits · 81 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `PENDING`
+- **State:** 103 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 631 Python tests (602 backend + 29 evals, three migrations now verified against a real
+  runbook · 637 Python tests (608 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
   other, thirty of which cover the weekend edition's selection logic and its build/delivery
   wiring — see the weekend-content entry in Done, seven of which cover "AI tool of the day" —
-  see its own Done entry, and six of which cover the two real LangGraph graphs the build and
-  late-update jobs now run on — see the langgraph-pipeline entry in Done), 31 frontend tests
+  see its own Done entry, six of which cover the two real LangGraph graphs the build and
+  late-update jobs now run on — see the langgraph-pipeline entry in Done, and six of which catch
+  a real Turnstile bug a blank-but-present `TURNSTILE_SECRET_KEY=` caused — see the
+  llm-gateway-groq entry in Done), 31 frontend tests
   (8 pure-logic + 23 new component/interaction tests under jsdom and React Testing Library — see
   the component-tests entry in Done) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
@@ -31,10 +33,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       disabled, so the Collector returns nothing on real config. Each outlet
       needs its terms-of-use and robots.txt checked before `enabled: true`.
       This is a legal judgement, not a code change. *Biggest blocker.*
-- [ ] **LLM gateway is unreachable from production.** `freellmpool` serves
-      `127.0.0.1:8080`; Cloud Run jobs cannot reach localhost. Decide: deploy
-      the gateway as its own Cloud Run service with provider keys in Secret
-      Manager, or call providers directly. An architecture gap, not config.
+- [x] ~~LLM gateway is unreachable from production.~~ Resolved by switching
+      providers rather than deploying `freellmpool` itself — see the
+      llm-gateway-groq Done entry.
 - [ ] **No `.env` and no credentials** for any provider.
 - [ ] **External accounts:** Neon, GCP project (`asia-south1`), Gmail app
       password, OpenWeatherMap, market data API, sports API with cricket
@@ -847,3 +848,58 @@ noticing the count was wrong.)
       `recursion_limit` override was drafted, tested, found unnecessary,
       and removed rather than left in as defensive code against a premise
       that turned out to be false.
+- [x] The LLM gateway is a real, publicly reachable endpoint — `PENDING`.
+      Closes the "LLM gateway is unreachable from production" Blockers
+      entry. Considered Alibaba Cloud Model Studio first (owner checked it
+      personally): its free tier is a one-time 90-day/1M-token trial per
+      model, not ongoing, and only on the Singapore endpoint — confirmed
+      against Alibaba's own docs rather than trusting the first search
+      result. Compared against several genuinely-ongoing free-tier
+      providers (Groq, Cerebras, OpenRouter, Mistral, Google AI Studio);
+      owner picked Groq for its higher daily request ceiling and no
+      training-data use.
+      `Settings.freellmpool_url`/`freellmpool_api_key` renamed to
+      `llm_gateway_url`/`llm_gateway_api_key` — CLAUDE.md named
+      "freellmpool" specifically as the LLM access layer, and that was no
+      longer true once Groq replaced it everywhere (dev and prod both, not
+      just behind it), the same reasoning as the agent-table fix. Renamed
+      across `Settings`, `.env`/`.env.example`, `infra/*.tf`,
+      `infra/terraform.tfvars.example`, all three GitHub Actions
+      workflows, CLAUDE.md, `docs/architecture.md`,
+      `docs/runbooks/incident-response.md`, `evals/README.md`,
+      `evals/llm_probe.py`, and every test fixture that built a `Settings`
+      by hand — the same shape of rename `docs/BACKLOG.md` already
+      records once before (`LLMBUFFET_*` → `FREELLMPOOL_*`).
+      `config/models.yaml` rebuilt against Groq's actual live catalog
+      (`GET /openai/v1/models` with the real key), not its published docs:
+      the docs-recommended `llama-3.3-70b-versatile` and
+      `llama-3.1-8b-instant` both 404 on this account. Verified live,
+      end to end through `Writer`/`FactChecker`/`write_and_verify`, not
+      just a bare completion: pinned Writer on `openai/gpt-oss-120b`,
+      pinned Fact-checker on `qwen/qwen3.8-27b` (deliberately a different
+      vendor lineage, per the existing CLAUDE.md rule). One real defect
+      surfaced by that live run, unrelated to the gateway swap: a fresh
+      `.env` with `TURNSTILE_SECRET_KEY=` (present but blank) made
+      `verify_turnstile` treat the secret as configured — pydantic-settings
+      resolves a blank env value to `SecretStr("")`, not `None` — so real
+      local signups were silently failing Turnstile verification outside
+      prod, where CLAUDE.md wants an unconfigured secret to skip the check
+      entirely. Fixed in `app/api/security.py` (and the identical latent
+      gap in `LlmClient`'s own fallback-provider check), with 6 new tests
+      in `test_turnstile.py` — confirmed to actually fail without the fix,
+      not just pass with it. Also fixed `.env.example`'s own template bug
+      that helped cause this: `KEY=   # trailing comment` lines are read
+      literally by the `.env` parser when the value is otherwise blank
+      (`APP_ENV`/`BASE_URL` inherited the comment text as their value on
+      this same setup) — comments now sit on their own line above the key,
+      and every optional non-string field (`LLM_FALLBACK_URL`,
+      `LANGFUSE_HOST`, `MAX_ACTIVE_SUBSCRIBERS`,
+      `FAILURE_NOTICE_AUTO_LIMIT`) is commented out by default rather than
+      left blank, since blank breaks those specifically while working fine
+      for a plain optional string or secret.
+      `orchestrator`'s model-config entry is unused dead weight now (it has
+      never made an LLM call since the agent-table fix) but could not be
+      removed outright: `ModelsConfig`'s own validator requires every
+      `AgentKey` to have one. Noted in `config/models.yaml` rather than
+      silently left inconsistent; removing "orchestrator" from `AgentKey`
+      itself is a separate, larger cleanup, not folded into this one.

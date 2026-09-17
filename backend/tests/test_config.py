@@ -184,8 +184,8 @@ def _settings(**overrides: Any) -> Settings:
         "gmail_app_password": "secret",
         "imap_host": "imap.example.com",
         "admin_email": "admin@example.com",
-        "freellmpool_url": "https://llm.example.com",
-        "freellmpool_api_key": "secret",
+        "llm_gateway_url": "https://llm.example.com",
+        "llm_gateway_api_key": "secret",
         "token_signing_key": "secret",
     }
     # model_validate bypasses the env/.env sources, so a developer's local .env

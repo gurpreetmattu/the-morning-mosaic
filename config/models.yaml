@@ -1,66 +1,68 @@
 # Model assignment per LLM agent.
 #
-# Ids come from the freellmpool gateway, listed with `freellmpool models` and
-# served at http://127.0.0.1:8080/v1.
+# Ids come from Groq's actual live catalog for this account, queried via
+# GET /openai/v1/models and each one round-tripped through
+# backend/app/llm/client.py with a Writer-shaped task (numbered passages,
+# reply as strict JSON, cite passage ids) on 2026-09-18 — not from Groq's
+# published docs, which listed several models (llama-3.3-70b-versatile,
+# llama-3.1-8b-instant) that 404 on this account. The catalog moves fast;
+# re-verify against /v1/models before trusting a doc or a blog post.
 #
-# Every id below was verified on 2026-09-16 by sending a Writer-shaped task
-# through backend/app/llm/client.py: rewrite from numbered passages, cite the
-# passage ids, reply as strict JSON. Each one returned valid JSON with correct
-# citations. Latency is the single measured sample, not an average.
+# Served at https://api.groq.com/openai/v1. Groq replaced freellmpool
+# everywhere (dev and prod both) — see docs/BACKLOG.md — because freellmpool
+# only ever served 127.0.0.1, which Cloud Run cannot reach.
 #
-# PROVISIONAL. These are chosen on verified behaviour and latency, not on
-# measured output quality — most of these models postdate any benchmark we
-# hold. CLAUDE.md requires an eval run for any model change, so treat the
-# Writer and Fact-checker choices as hypotheses until /evals has run.
+# PROVISIONAL. These are chosen on live availability and vendor diversity,
+# not on measured output quality. CLAUDE.md requires an eval run for any
+# model change, so treat the Writer and Fact-checker choices as hypotheses
+# until /evals has run.
 #
-# Pinned agents must name a CONCRETE model, never a routing alias. The gateway
-# offers aliases (llm7/default, kilo/kilo-auto/free, kilo/openrouter/free)
-# that pick a model per request. Those are fine for agents whose output is
-# re-checked downstream, but they defeat the purpose of pinning, which is that
-# published wording cannot change without an eval.
+# Pinned agents must name a CONCRETE model, never a routing alias — published
+# wording cannot change without an eval, which an alias that picks a
+# different model per request would defeat.
 #
-# The free tiers are genuinely unreliable: during verification the whole OVH
-# provider was rate-limited into a circuit-open state, Pollinations returned
-# 402 Payment Required, and four ids in the gateway's own catalogue 404'd or
-# 401'd upstream. The client fails loudly rather than substituting silently,
-# which is correct, but it means a vanished pinned model stops the build.
+# `orchestrator` has no real caller: app/agents/orchestrator.py has never
+# made an LLM call (see its own module docstring and CLAUDE.md's agent
+# table). The entry stays only because ModelsConfig's own validator requires
+# every AgentKey to have one — removing it means removing "orchestrator"
+# from AgentKey itself, a separate, larger cleanup, not folded in here.
 
 request_timeout_seconds: 90.0
 max_attempts: 3
 
 agents:
-  # Light supervisory calls; alias is fine, output is not published.
+  # Unused — see the module note above. Kept valid rather than a stale
+  # reference to a gateway that no longer exists.
   orchestrator:
-    model: llm7/default
+    model: openai/gpt-oss-20b
     temperature: 0.0
     max_output_tokens: 2048
     pinned: false
-    fallbacks:
-      - kilo/kilo-auto/free
 
-  # Clustering and scoring need judgement, so this uses the same capable model
-  # as the Writer, but may fail over because the Fact-checker re-checks after.
+  # Clustering and scoring need judgement, so this uses the same capable
+  # model as the Writer, but may fail over because the Fact-checker
+  # re-checks after.
   ranker:
-    model: kilo/nvidia/nemotron-3-super-120b-a12b:free
+    model: openai/gpt-oss-120b
     temperature: 0.0
     max_output_tokens: 4096
     pinned: false
     fallbacks:
-      - kilo/kilo-auto/free
-      - llm7/default
+      - openai/gpt-oss-20b
 
-  # Verified: valid JSON, correct passage citations, ~2.3s.
+  # The largest model on this account's live catalog. Verified: valid JSON,
+  # correct passage citations, against a Writer-shaped prompt.
   writer:
-    model: kilo/nvidia/nemotron-3-super-120b-a12b:free
+    model: openai/gpt-oss-120b
     temperature: 0.2
     max_output_tokens: 4096
     pinned: true
 
-  # Deliberately a different vendor from the Writer: a checker that shares the
-  # Writer's blind spots is worth much less. Verified: valid JSON, ~2.5s.
-  # Note its "code" naming — confirm suitability for prose claims in evals.
+  # Deliberately a different vendor lineage from the Writer (Qwen/Alibaba,
+  # not OpenAI-OSS): a checker that shares the Writer's blind spots is worth
+  # much less. Verified: valid JSON, correct passage citations.
   fact_checker:
-    model: kilo/cohere/north-mini-code:free
+    model: qwen/qwen3.8-27b
     temperature: 0.0
     max_output_tokens: 4096
     pinned: true
@@ -68,9 +70,7 @@ agents:
   # Judges image relevance from captions and metadata only; a small model is
   # sufficient and keeps the build inside its deadline.
   image_finder:
-    model: llm7/default
+    model: openai/gpt-oss-20b
     temperature: 0.0
     max_output_tokens: 1024
     pinned: false
-    fallbacks:
-      - kilo/liquid/lfm-2.5-2.6b:free

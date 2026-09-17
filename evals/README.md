@@ -15,10 +15,12 @@ the failing ones.
 ## Two tiers, not one report
 
 Several of CLAUDE.md's evals depend on code that itself calls the LLM
-gateway (`freellmpool`, unreachable from wherever this actually runs today
-— see the blocker in `docs/BACKLOG.md`). Rather than let the whole suite
-fail whenever the gateway is down, each eval that needs it is split, or
-skipped outright, so a run always says something true:
+gateway (Groq — a real, publicly reachable endpoint; see
+`docs/BACKLOG.md`'s now-closed gateway-reachability blocker for why that
+matters). It can still be down, rate-limited, or between free-tier quota
+and a real key, so rather than let the whole suite fail whenever it's
+unreachable, each eval that needs it is split, or skipped outright, so a
+run always says something true:
 
 | Eval | Needs the LLM? | What runs without it |
 |---|---|---|

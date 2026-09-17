@@ -34,7 +34,7 @@ locals {
     TEST_EMAIL_ALLOWLIST      = var.test_email_allowlist
     MAX_ACTIVE_SUBSCRIBERS    = tostring(var.max_active_subscribers)
     FAILURE_NOTICE_AUTO_LIMIT = tostring(var.failure_notice_auto_limit)
-    FREELLMPOOL_URL           = var.freellmpool_url
+    LLM_GATEWAY_URL           = var.llm_gateway_url
     LLM_FALLBACK_URL          = var.llm_fallback_url
     TURNSTILE_SITE_KEY        = var.turnstile_site_key
     GCS_PDF_BUCKET            = google_storage_bucket.pdf_cache.name
@@ -48,7 +48,7 @@ locals {
     DATABASE_URL           = google_secret_manager_secret.this["database-url"].secret_id
     GMAIL_APP_PASSWORD     = google_secret_manager_secret.this["gmail-app-password"].secret_id
     TOKEN_SIGNING_KEY      = google_secret_manager_secret.this["token-signing-key"].secret_id
-    FREELLMPOOL_API_KEY    = google_secret_manager_secret.this["freellmpool-api-key"].secret_id
+    LLM_GATEWAY_API_KEY    = google_secret_manager_secret.this["llm-gateway-api-key"].secret_id
     LLM_FALLBACK_API_KEY   = google_secret_manager_secret.this["llm-fallback-api-key"].secret_id
     TURNSTILE_SECRET_KEY   = google_secret_manager_secret.this["turnstile-secret-key"].secret_id
     NEWSDATA_API_KEY       = google_secret_manager_secret.this["newsdata-api-key"].secret_id

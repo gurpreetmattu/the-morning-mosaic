@@ -136,7 +136,12 @@ async def verify_turnstile(
     exactly the outcome this guard exists to prevent.
     """
     secret = settings.turnstile_secret_key
-    if secret is None:
+    if secret is None or not secret.get_secret_value():
+        # A blank env value ("TURNSTILE_SECRET_KEY=" with nothing after it,
+        # as opposed to the variable being absent entirely) still means
+        # "not configured" — pydantic-settings resolves it to SecretStr(""),
+        # not None, so this must be checked explicitly rather than relying
+        # on `is None` alone.
         if settings.is_prod:
             raise TurnstileError("TURNSTILE_SECRET_KEY is not configured")
         logger.warning("turnstile check skipped: no secret configured (non-prod)")
