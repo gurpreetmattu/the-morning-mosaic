@@ -29,7 +29,7 @@ from app.models.editions import (
     EditionSection,
     Feedback,
 )
-from app.models.operations import LlmCall, NoticeBatch, PipelineRun
+from app.models.operations import LlmCall, NoticeBatch, PipelineRun, RateLimitHit
 from app.models.users import (
     City,
     Consent,
@@ -63,6 +63,7 @@ __all__ = [
     "NoticeBatch",
     "OutageState",
     "PipelineRun",
+    "RateLimitHit",
     "SentenceCitation",
     "Source",
     "Story",

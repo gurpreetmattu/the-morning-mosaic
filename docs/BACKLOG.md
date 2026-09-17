@@ -7,12 +7,12 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `76f7ea2`
-- **State:** 87 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 89 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 575 Python tests (546 backend + 29 evals, one of which now runs the real Alembic
-  chain against a throwaway database, and seven of which actually launch every scheduled job as
-  a subprocess — see the critical fix in Done), 8 frontend tests (all green, database included) ·
+  runbook · 585 Python tests (556 backend + 29 evals, two migrations now verified against a real
+  throwaway database, and seven of which actually launch every scheduled job as a subprocess —
+  see the critical fix in Done), 8 frontend tests (all green, database included) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
   (`terraform validate` needs `terraform init`'s cached providers, not available in this
   environment) · **7 scheduled jobs now** (was 6) — see the purge-job entry in Done
@@ -78,11 +78,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       to the email-safe rules (inline styles, no classes, no flexbox) and tests
       assert those, but CLAUDE.md requires checking Gmail web and mobile plus
       Outlook. Nothing has been sent anywhere.
-- [ ] **Rate limiting is per process, not per deployment.** `RateLimiter` keeps
-      its windows in memory, so with N Cloud Run instances the real signup
-      limit is 5 × N per five minutes. Enough to blunt a script, useless
-      against a distributed flood. A shared counter (Redis, or a database
-      table) is the honest fix if abuse ever appears.
 - [ ] **Turnstile has never been exercised against Cloudflare.** Without a
       secret configured the check is skipped outside prod and raises in prod,
       and the verify call itself is covered only by its own error paths. It
@@ -687,3 +682,25 @@ noticing the count was wrong.)
         block on the archive edition page. Frontend verified via `tsc`,
         `eslint`, and `next build`; not click-tested in a real browser this
         session (no browser automation connection available).
+- [x] Rate limiting is now a real shared counter, not one per process.
+      `RateLimiter` (`app/api/security.py`) is backed by a new
+      `rate_limit_hits` table (migration `1972f27b165b`, verified
+      upgrade/downgrade against a real Postgres): an atomic
+      `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` fixed-window upsert,
+      keyed by `(bucket, key, window_start)`, so N Cloud Run instances now
+      share one count instead of each enforcing the limit on its own — the
+      previous 5×N gap is gone. Uses the caller's own request-scoped
+      session rather than an independent one (unlike `DatabaseCallRecorder`
+      in `app/llm/recorder.py`): every call site is a route's first line,
+      and an independent session is exactly what the test suite's
+      dependency-injected session can't accommodate without real settings
+      behind it — a documented, deliberate trade-off, not an oversight. All
+      four limiters (signup, feedback, reader login, admin login) updated
+      to pass the request session; the admin-login route gained one, since
+      it never needed the database before. `app/jobs/purge.py` also clears
+      `rate_limit_hits` rows older than a day, so the table doesn't grow
+      forever — every window is a few minutes at most. 10 new tests: 8
+      unit tests for the limiter itself (including one directly proving
+      two independently constructed `RateLimiter` objects with the same
+      name share one count, standing in for two Cloud Run instances), 2
+      for the new purge behaviour.

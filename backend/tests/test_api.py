@@ -103,8 +103,8 @@ def client(
     monkeypatch.setattr(tokens, "get_settings", settings)
     monkeypatch.setattr(public, "Sender", CapturingSender)
     # Windows are per process, so they would survive between tests.
-    public.signup_limiter.reset()
-    public.feedback_limiter.reset()
+    public.signup_limiter.reset(session)
+    public.feedback_limiter.reset(session)
 
     app = create_app(config["settings"])
     app.dependency_overrides[db_session] = lambda: session

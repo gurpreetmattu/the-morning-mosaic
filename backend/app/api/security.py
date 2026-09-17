@@ -10,15 +10,18 @@ button that POSTs.
 from __future__ import annotations
 
 import logging
-import time
-from collections import deque
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 
 import httpx
 from fastapi import HTTPException, Request, Response, status
+from sqlalchemy import delete
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config.settings import Settings
+from app.models.operations import RateLimitHit
 
 logger = logging.getLogger(__name__)
 
@@ -48,34 +51,58 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimiter:
-    """Fixed-capacity sliding window, per key.
+    """Fixed-window request count, shared across every Cloud Run instance
+    via the `rate_limit_hits` table (app/models/operations.py), keyed by
+    (bucket, key, window_start).
 
-    In-process, so each Cloud Run instance keeps its own counts and the real
-    limit is per instance rather than global. Good enough to blunt a script;
-    not a defence against a distributed flood. Recorded in the backlog.
+    An atomic upsert (`INSERT ... ON CONFLICT DO UPDATE ... RETURNING`)
+    means the count is correct under real concurrent requests, not just
+    within one process — the previous in-memory version kept a separate
+    count per instance, so the real limit was 5 x N Cloud Run instances.
+
+    Uses the caller's own request-scoped session (`db_session`) rather than
+    an independent one, since every call site is a route's first line,
+    before anything that could fail: a route whose *own* later write rolls
+    back would take an already-recorded hit down with it, but that window
+    is deliberately small rather than zero, since an independent session
+    is exactly what the test suite's dependency-injected session can't
+    accommodate (see `app/llm/recorder.py` for where that trade-off goes
+    the other way, in a job context with real settings behind it).
     """
 
-    def __init__(self, *, limit: int, window_seconds: float) -> None:
+    def __init__(self, *, name: str, limit: int, window_seconds: float) -> None:
+        self._name = name
         self._limit = limit
         self._window = window_seconds
-        self._hits: dict[str, deque[float]] = {}
 
-    def check(self, key: str, *, now: float | None = None) -> bool:
-        moment = now if now is not None else time.monotonic()
-        hits = self._hits.setdefault(key, deque())
-        while hits and moment - hits[0] > self._window:
-            hits.popleft()
-        if len(hits) >= self._limit:
-            return False
-        hits.append(moment)
-        return True
+    def _window_start(self, moment: datetime) -> datetime:
+        epoch = moment.timestamp()
+        return datetime.fromtimestamp(epoch - (epoch % self._window), tz=UTC)
 
-    def reset(self) -> None:
-        """Forget every window. Counts are per process, so tests need this."""
-        self._hits.clear()
+    def check(self, session: Session, key: str, *, now: datetime | None = None) -> bool:
+        moment = now or datetime.now(UTC)
+        window_start = self._window_start(moment)
+        statement = (
+            insert(RateLimitHit)
+            .values(bucket=self._name, key=key, window_start=window_start, count=1)
+            .on_conflict_do_update(
+                index_elements=["bucket", "key", "window_start"],
+                set_={"count": RateLimitHit.count + 1},
+            )
+            .returning(RateLimitHit.count)
+        )
+        count = session.execute(statement).scalar_one()
+        return count <= self._limit
 
-    def enforce(self, key: str) -> None:
-        if not self.check(key):
+    def reset(self, session: Session) -> None:
+        """Clear this limiter's own rows. Counts are shared across the
+        whole database now, so tests need this to isolate one test's
+        window from the next, the same as the in-memory version needed it
+        to isolate one process's counts from another test run."""
+        session.execute(delete(RateLimitHit).where(RateLimitHit.bucket == self._name))
+
+    def enforce(self, session: Session, key: str) -> None:
+        if not self.check(session, key):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many requests. Please try again shortly.",

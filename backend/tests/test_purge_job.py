@@ -1,4 +1,4 @@
-"""Raw-article purge: only stale raw text is cleared, nothing else."""
+"""Raw-article and rate-limit-hit purge: only stale rows are cleared."""
 
 from __future__ import annotations
 
@@ -16,10 +16,10 @@ from app.agents.schemas import (
 )
 from app.db.persist import persist_genre
 from app.db.seed import seed_sources
-from app.jobs.purge import DEFAULT_RETENTION_DAYS, run_purge
+from app.jobs.purge import DEFAULT_RETENTION_DAYS, RATE_LIMIT_HIT_RETENTION_DAYS, run_purge
 from app.models.content import Article
 from app.models.enums import RunStatus, SectionStatus
-from app.models.operations import PipelineRun
+from app.models.operations import PipelineRun, RateLimitHit
 from app.sources.schemas import CollectedArticle, Passage
 
 pytestmark = pytest.mark.integration
@@ -138,4 +138,37 @@ def test_the_run_is_recorded(session: Session) -> None:
     run = session.scalar(select(PipelineRun).where(PipelineRun.started_at == NOW))
     assert run is not None
     assert run.status is RunStatus.SUCCEEDED
-    assert run.detail == {"purged": 1, "retention_days": DEFAULT_RETENTION_DAYS}
+    assert run.detail == {
+        "purged": 1,
+        "retention_days": DEFAULT_RETENTION_DAYS,
+        "rate_limit_hits_cleared": 0,
+    }
+
+
+def test_a_stale_rate_limit_hit_is_cleared(session: Session) -> None:
+    session.add(
+        RateLimitHit(
+            bucket="signup",
+            key="1.2.3.4",
+            window_start=NOW - timedelta(days=RATE_LIMIT_HIT_RETENTION_DAYS + 1),
+            count=5,
+        )
+    )
+    session.flush()
+
+    report = run_purge(session, now=NOW)
+
+    assert report.rate_limit_hits_cleared == 1
+    assert session.scalar(select(RateLimitHit)) is None
+
+
+def test_a_fresh_rate_limit_hit_is_left_alone(session: Session) -> None:
+    session.add(
+        RateLimitHit(bucket="signup", key="1.2.3.4", window_start=NOW, count=1),
+    )
+    session.flush()
+
+    report = run_purge(session, now=NOW)
+
+    assert report.rate_limit_hits_cleared == 0
+    assert session.scalar(select(RateLimitHit)) is not None

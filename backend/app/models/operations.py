@@ -14,6 +14,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -93,4 +94,24 @@ class NoticeBatch(Base):
     __table_args__ = (CheckConstraint("recipient_count >= 0", name="recipient_count_non_negative"),)
 
 
-__all__ = ["LlmCall", "NoticeBatch", "PipelineRun"]
+class RateLimitHit(Base):
+    """A fixed-window request count, shared across every Cloud Run instance.
+
+    One row per (bucket, key, window_start); `count` is incremented with an
+    atomic upsert (`RateLimiter.check` in app/api/security.py), so the limit
+    holds under real concurrency instead of being per-process.
+    """
+
+    __tablename__ = "rate_limit_hits"
+
+    id: Mapped[UuidPk]
+    bucket: Mapped[str] = mapped_column(String(64), nullable=False)
+    key: Mapped[str] = mapped_column(String(64), nullable=False)
+    window_start: Mapped[Instant]
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[CreatedAt]
+
+    __table_args__ = (UniqueConstraint("bucket", "key", "window_start"),)
+
+
+__all__ = ["LlmCall", "NoticeBatch", "PipelineRun", "RateLimitHit"]

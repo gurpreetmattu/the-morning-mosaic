@@ -56,9 +56,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Signup is the only unauthenticated write, so it is the one worth limiting.
-signup_limiter = RateLimiter(limit=5, window_seconds=300)
+signup_limiter = RateLimiter(name="signup", limit=5, window_seconds=300)
 # Feedback is one click per story, but a scanner can hammer it.
-feedback_limiter = RateLimiter(limit=60, window_seconds=60)
+feedback_limiter = RateLimiter(name="feedback", limit=60, window_seconds=60)
 
 CURRENT_POLICY_VERSION = "2026-09-01"
 
@@ -99,7 +99,7 @@ async def signup(
     session: Annotated[Session, Depends(db_session)],
     config: Annotated[Settings, Depends(get_request_settings)],
 ) -> JSONResponse:
-    signup_limiter.enforce(client_key(request))
+    signup_limiter.enforce(session, client_key(request))
 
     if not payload.age_confirmed:
         return _error("This service is for readers aged 18 and over.")
@@ -275,7 +275,7 @@ def feedback_page(token: str) -> HTMLResponse:
 def feedback(
     token: str, request: Request, session: Annotated[Session, Depends(db_session)]
 ) -> HTMLResponse:
-    feedback_limiter.enforce(client_key(request))
+    feedback_limiter.enforce(session, client_key(request))
 
     try:
         claims = tokens.verify(token, tokens.FEEDBACK)

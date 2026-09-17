@@ -44,7 +44,7 @@ router = APIRouter()
 
 # A magic link, like signup, is an unauthenticated write (it sends mail), so
 # it gets the same protection.
-login_limiter = RateLimiter(limit=5, window_seconds=300)
+login_limiter = RateLimiter(name="account_login", limit=5, window_seconds=300)
 
 
 # ------------------------------------------------------------------ request
@@ -63,7 +63,7 @@ def request_login(
     session: Annotated[Session, Depends(db_session)],
     config: Annotated[Settings, Depends(get_request_settings)],
 ) -> JSONResponse:
-    login_limiter.enforce(client_key(request))
+    login_limiter.enforce(session, client_key(request))
 
     address = payload.email.lower()
     user = session.scalar(select(User).where(User.email == address))

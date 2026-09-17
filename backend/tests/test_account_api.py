@@ -65,7 +65,7 @@ def client(session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestCl
     CapturingSender.sent = []
     monkeypatch.setattr(tokens, "get_settings", settings)
     monkeypatch.setattr(account, "Sender", CapturingSender)
-    account.login_limiter.reset()
+    account.login_limiter.reset(session)
 
     app = create_app(settings())
     app.dependency_overrides[db_session] = lambda: session

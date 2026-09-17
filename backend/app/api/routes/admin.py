@@ -70,7 +70,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin")
 
-admin_login_limiter = RateLimiter(limit=5, window_seconds=300)
+admin_login_limiter = RateLimiter(name="admin_login", limit=5, window_seconds=300)
 
 DEFAULT_LIST_LIMIT = 30
 MAX_LIST_LIMIT = 100
@@ -96,9 +96,10 @@ class AdminLoginRequest(BaseModel):
 def request_admin_login(
     payload: AdminLoginRequest,
     request: Request,
+    session: Annotated[Session, Depends(db_session)],
     config: Annotated[Settings, Depends(get_request_settings)],
 ) -> JSONResponse:
-    admin_login_limiter.enforce(client_key(request))
+    admin_login_limiter.enforce(session, client_key(request))
 
     if _is_admin_email(payload.email, config):
         _send_admin_login_link(config)

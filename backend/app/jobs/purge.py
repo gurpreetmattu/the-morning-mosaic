@@ -9,6 +9,10 @@ own frozen excerpts (app/models/content.py), never in `Article.raw_text`,
 so clearing it here loses nothing the audit trail depends on — only the
 now-unneeded full text an already-published or already-dropped article was
 fetched with.
+
+Also clears old `rate_limit_hits` rows (app/api/security.py): every window
+is at most a few minutes, so nothing past a day is ever read again, and
+without this the table would grow forever.
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, cast
 
-from sqlalchemy import update
+from sqlalchemy import delete, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -31,16 +35,18 @@ from app.jobs.locking import job_lock
 from app.logging_config import configure_logging
 from app.models.content import Article
 from app.models.enums import JobName, RunStatus
-from app.models.operations import PipelineRun
+from app.models.operations import PipelineRun, RateLimitHit
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_RETENTION_DAYS = 30
+RATE_LIMIT_HIT_RETENTION_DAYS = 1
 
 
 @dataclass
 class PurgeReport:
     purged: int = 0
+    rate_limit_hits_cleared: int = 0
 
 
 def run_purge(
@@ -48,6 +54,7 @@ def run_purge(
     *,
     now: datetime | None = None,
     retention_days: int = DEFAULT_RETENTION_DAYS,
+    rate_limit_hit_retention_days: int = RATE_LIMIT_HIT_RETENTION_DAYS,
 ) -> PurgeReport:
     started = now or now_utc()
     report = PurgeReport()
@@ -69,9 +76,19 @@ def run_purge(
     )
     report.purged = cast(CursorResult[Any], result).rowcount
 
+    rate_limit_cutoff = started - timedelta(days=rate_limit_hit_retention_days)
+    rate_limit_result = session.execute(
+        delete(RateLimitHit).where(RateLimitHit.window_start < rate_limit_cutoff)
+    )
+    report.rate_limit_hits_cleared = cast(CursorResult[Any], rate_limit_result).rowcount
+
     run.status = RunStatus.SUCCEEDED
     run.finished_at = now_utc()
-    run.detail = {"purged": report.purged, "retention_days": retention_days}
+    run.detail = {
+        "purged": report.purged,
+        "retention_days": retention_days,
+        "rate_limit_hits_cleared": report.rate_limit_hits_cleared,
+    }
     session.commit()
     return report
 
@@ -101,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         dispose_engine()
 
-    print(f"purged={report.purged}")
+    print(f"purged={report.purged} rate_limit_hits_cleared={report.rate_limit_hits_cleared}")
     return 0
 
 

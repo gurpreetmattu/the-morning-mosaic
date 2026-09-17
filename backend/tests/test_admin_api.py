@@ -97,7 +97,7 @@ def client(session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestCl
     CapturingSender.sent = []
     monkeypatch.setattr(tokens, "get_settings", settings)
     monkeypatch.setattr(admin_route, "Sender", CapturingSender)
-    admin_route.admin_login_limiter.reset()
+    admin_route.admin_login_limiter.reset(session)
 
     config = settings()
     app = create_app(config)
