@@ -7,7 +7,7 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `PENDING`
+- **Last updated:** 2026-09-18, at commit `7ff92bf`
 - **State:** 103 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 637 Python tests (608 backend + 29 evals, three migrations now verified against a real
@@ -848,7 +848,7 @@ noticing the count was wrong.)
       `recursion_limit` override was drafted, tested, found unnecessary,
       and removed rather than left in as defensive code against a premise
       that turned out to be false.
-- [x] The LLM gateway is a real, publicly reachable endpoint — `PENDING`.
+- [x] The LLM gateway is a real, publicly reachable endpoint — `7ff92bf`.
       Closes the "LLM gateway is unreachable from production" Blockers
       entry. Considered Alibaba Cloud Model Studio first (owner checked it
       personally): its free tier is a one-time 90-day/1M-token trial per
