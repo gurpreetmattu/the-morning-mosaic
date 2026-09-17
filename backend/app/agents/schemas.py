@@ -29,6 +29,7 @@ class Corroboration(StrEnum):
 class PoolDropReason(StrEnum):
     INSUFFICIENT_CORROBORATION = "insufficient_corroboration"
     BELOW_POOL_CAP = "below_pool_cap"
+    CONFLICTING_FACTS = "conflicting_facts"
 
 
 class Base(BaseModel):

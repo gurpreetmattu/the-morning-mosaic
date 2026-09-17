@@ -12,6 +12,7 @@ import respx
 from app.agents.ranker import Ranker
 from app.agents.ranking import (
     cluster_by_title,
+    conflicting_facts,
     corroboration_for,
     independent_sources,
     meets_gate,
@@ -234,6 +235,94 @@ def test_independently_written_coverage_of_the_same_event_is_not_syndication() -
     assert syndication_overlap(daily, herald) < 0.5
     assert independent_sources([daily, herald], TIERS) == 2
     assert corroboration_for([daily, herald], TIERS) == Corroboration.CORROBORATED
+
+
+def test_a_genuine_figure_conflict_is_detected() -> None:
+    daily = article(
+        "daily",
+        "Corridor incident",
+        body="Officials said about 25 workers were injured when the scaffolding collapsed.",
+    )
+    herald = article(
+        "herald",
+        "Corridor incident update",
+        body="Officials said about 30 workers were injured when the scaffolding collapsed.",
+    )
+
+    assert conflicting_facts([daily, herald]) != []
+
+
+def test_agreeing_figures_are_not_a_conflict() -> None:
+    daily = article(
+        "daily",
+        "Corridor incident",
+        body="Officials said about 25 workers were injured when the scaffolding collapsed.",
+    )
+    herald = article(
+        "herald",
+        "Corridor incident update",
+        body="Officials said about 25 workers were injured when the scaffolding collapsed.",
+    )
+
+    assert conflicting_facts([daily, herald]) == []
+
+
+def test_unrelated_numbers_in_different_contexts_are_not_a_conflict() -> None:
+    """Both articles contain numbers, and the numbers differ, but they are
+    about different things — this must not be mistaken for disagreement."""
+    daily = article(
+        "daily",
+        "Corridor budget",
+        body=(
+            "Officials said about 25 workers were injured when the scaffolding "
+            "collapsed. The project itself carries a budget of 500 crore rupees."
+        ),
+    )
+    herald = article(
+        "herald",
+        "Corridor budget update",
+        body=(
+            "Officials said about 25 workers were injured when the scaffolding "
+            "collapsed. Contractors put the total project cost near 900 crore rupees."
+        ),
+    )
+
+    assert conflicting_facts([daily, herald]) == []
+
+
+def test_the_same_outlet_repeating_itself_is_not_a_conflict() -> None:
+    first = article(
+        "daily",
+        "Corridor incident, early report",
+        body="Officials initially said about 25 workers were injured in the collapse.",
+    )
+    correction = article(
+        "daily",
+        "Corridor incident, updated toll",
+        body="Officials later said about 30 workers were injured in the collapse.",
+    )
+
+    assert conflicting_facts([first, correction]) == []
+
+
+@respx.mock
+def test_a_cluster_with_conflicting_facts_is_dropped() -> None:
+    daily = article(
+        "daily",
+        "Corridor incident",
+        body="Officials said about 25 workers were injured when the scaffolding collapsed.",
+    )
+    herald = article(
+        "herald",
+        "Corridor incident update",
+        body="Officials said about 30 workers were injured when the scaffolding collapsed.",
+    )
+    llm_clusters([{"event": "corridor", "article_ids": ["a1", "a2"]}])
+
+    pool = ranker("standard").rank(collected(daily, herald), now=NOW)
+
+    assert pool.stories == []
+    assert pool.dropped[0].reason == PoolDropReason.CONFLICTING_FACTS
 
 
 def test_strict_genres_reject_single_source_and_gossip() -> None:

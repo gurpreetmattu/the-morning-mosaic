@@ -15,6 +15,7 @@ from typing import Protocol
 
 from app.agents.ranking import (
     cluster_by_title,
+    conflicting_facts,
     corroboration_for,
     meets_gate,
     reconcile_clusters,
@@ -122,6 +123,20 @@ class Ranker:
         for index, member_ids in enumerate(groups):
             members = [articles[member_id] for member_id in member_ids]
             label = labels.get(index) or members[0].title[:80]
+
+            # Checked before the corroboration gate, and regardless of it:
+            # a conflict is a reason to drop on its own, not something more
+            # sourcing could excuse.
+            if conflicting_facts(members):
+                dropped.append(
+                    PoolDropped(
+                        event_label=label,
+                        source_keys=sorted({m.source_key for m in members}),
+                        reason=PoolDropReason.CONFLICTING_FACTS,
+                    )
+                )
+                continue
+
             corroboration = corroboration_for(members, self._tiers)
 
             if not meets_gate(corroboration, strict=strict):

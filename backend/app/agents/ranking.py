@@ -16,6 +16,7 @@ import re
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 
+from app.agents.checking import numbers_in
 from app.agents.schemas import Corroboration
 from app.sources.schemas import CollectedArticle
 
@@ -131,6 +132,70 @@ def title_similarity(left: str, right: str) -> float:
     if not a or not b:
         return 0.0
     return len(a & b) / len(a | b)
+
+
+# CLAUDE.md: "Conflicting key facts -> state that reports differ, or drop."
+# This can only ever say "these two sentences read like the same claim with
+# different figures," never resolve which source is right, so a drop is the
+# only response that doesn't risk publishing a guess.
+CONFLICTING_FACTS_CONTEXT_THRESHOLD = 0.6
+
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+
+
+def _sentence_context(sentence: str) -> frozenset[str]:
+    """Like title_tokens, but with pure-number tokens excluded — they're
+    exactly what this check needs to vary, not match on."""
+    return frozenset(token for token in title_tokens(sentence) if not token.isdigit())
+
+
+def conflicting_facts(articles: Sequence[CollectedArticle]) -> list[str]:
+    """Sentence pairs, from different articles in the same cluster, whose
+    surrounding wording matches closely but whose numbers don't share a
+    single value — the same specificity principle as syndication_overlap,
+    pointed at disagreement instead of duplication.
+
+    Deliberately conservative: most real conflicts won't phrase the
+    disagreement in near-identical sentences, so this misses plenty. It is
+    a floor, not a complete solution — same posture as the deterministic
+    clustering fallback.
+    """
+    sentences = [
+        (article.source_key, sentence)
+        for article in articles
+        for sentence in _SENTENCE_SPLIT.split(article.text.strip())
+        if sentence
+    ]
+
+    conflicts: list[str] = []
+    for index, (source_a, sentence_a) in enumerate(sentences):
+        numbers_a = numbers_in(sentence_a)
+        if not numbers_a:
+            continue
+        context_a = _sentence_context(sentence_a)
+        if not context_a:
+            continue
+
+        for source_b, sentence_b in sentences[index + 1 :]:
+            if source_b == source_a:
+                continue  # the same outlet repeating itself is not a conflict
+
+            numbers_b = numbers_in(sentence_b)
+            if not numbers_b or numbers_a & numbers_b:
+                continue  # no numbers to disagree on, or they share one
+
+            context_b = _sentence_context(sentence_b)
+            if not context_b:
+                continue
+
+            overlap = len(context_a & context_b) / len(context_a | context_b)
+            if overlap >= CONFLICTING_FACTS_CONTEXT_THRESHOLD:
+                conflicts.append(
+                    f"{source_a} ({sorted(numbers_a)}) vs {source_b} ({sorted(numbers_b)}): "
+                    f"{sentence_a!r} / {sentence_b!r}"
+                )
+
+    return conflicts
 
 
 def cluster_by_title(

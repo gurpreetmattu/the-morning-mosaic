@@ -7,10 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `dfcef58`
-- **State:** 83 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 85 commits · 78 backend modules, 16 eval modules, 22 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 558 Python tests (529 backend + 29 evals, one of which now runs the real Alembic
+  runbook · 563 Python tests (534 backend + 29 evals, one of which now runs the real Alembic
   chain against a throwaway database, and seven of which actually launch every scheduled job as
   a subprocess — see the critical fix in Done), 8 frontend tests (all green, database included) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
@@ -61,10 +61,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       other 3 categories (invented prose fact, reversed meaning, unstated
       causation) are built and ready but need a live model to actually
       score — see `evals/README.md`.
-- [ ] **Conflicting key facts are not detected.** The rule is "state that
-      reports differ, or drop". Nothing compares figures or claims across the
-      articles in a cluster yet. Probably belongs with the Fact-checker, but it
-      has no owner today.
 - [ ] **Neon-specific engine settings untested against Neon.** `pool_pre_ping`
       and `prepare_threshold=None` were reasoned from PgBouncer behaviour and
       have only run against local PostgreSQL.
@@ -641,3 +637,24 @@ noticing the count was wrong.)
       without risking a false merge elsewhere; that remains exactly what
       the LLM clustering step exists to catch. `TITLE_BASELINE_THRESHOLD`
       raised from 0.75 to 0.85 to hold the gain.
+- [x] Conflicting key facts are now detected and dropped, in the Ranker
+      (`conflicting_facts` in `app/agents/ranking.py`), not the
+      Fact-checker — it needs the full set of raw source articles in a
+      cluster, which only the Ranker has at that point. Scoped and
+      confirmed with the owner first: this can only ever say "these two
+      sentences read like the same claim with different figures," never
+      resolve which source is right, so it takes CLAUDE.md's "or drop"
+      branch rather than the riskier "state that reports differ" one
+      (Writer hedging + Fact-checker verifying it happened). Detection:
+      sentence pairs from different articles whose non-numeric wording
+      overlaps heavily (≥0.6, same technique as `syndication_overlap`) but
+      whose numbers share no value. Checked before the corroboration gate
+      and regardless of it — a conflict is a reason to drop on its own, not
+      something more sourcing could excuse, so it does not interact with
+      the Ranker's own "ask for more coverage" retry. Deliberately
+      conservative — most real conflicts won't phrase the disagreement in
+      near-identical sentences, so this is a floor, not a complete
+      solution, same posture as the clustering fallback above. Five new
+      tests, including one proving two *different* facts that both happen
+      to be numbers (an injury count and a budget figure) are correctly
+      left alone.
