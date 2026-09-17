@@ -4,26 +4,22 @@ CLAUDE.md: "Unsupported claim -> back to Writer with the specific error. Max 2
 retries. If the core headline/summary still fails, drop the story."
 
 The Writer and Fact-checker know nothing about each other; this joins them.
-Feedback is the Fact-checker's own wording, naming the element and what is
-missing, rather than a generic "try again" — re-running an identical prompt
-and hoping is not a retry strategy.
+The retry loop itself is a LangGraph graph (`app/graph/write_and_verify.py`)
+rather than a hand-rolled Python loop — CLAUDE.md's own architecture diagram
+already draws it as one: `checker -->|feedback on failure, max 2 retries|
+writer`. This module stays as the stable call site every agent build wires
+into, so nothing outside `app/graph` needs to know a graph is involved.
 """
 
 from __future__ import annotations
 
 from app.agents.fact_checker import FactChecker
-from app.agents.schemas import (
-    PooledStory,
-    VerificationOutcome,
-    VerifiedStory,
-    WriterIssue,
-    WriterProblem,
-)
+from app.agents.schemas import PooledStory, VerificationOutcome
 from app.agents.writer import Writer
 from app.agents.writing import build_passages
 from app.config.schemas import GenreKey
-
-MAX_RETRIES = 2
+from app.graph.write_and_verify import MAX_RETRIES
+from app.graph.write_and_verify import run as run_write_and_verify
 
 
 def write_and_verify(
@@ -35,45 +31,11 @@ def write_and_verify(
     max_retries: int = MAX_RETRIES,
 ) -> VerificationOutcome:
     passages = build_passages(pooled.articles)
-    feedback: str | None = None
-    attempt = 0
-
-    # One initial attempt plus `max_retries` further attempts.
-    for attempt in range(1, max_retries + 2):
-        written = writer.write(pooled, genre, feedback=feedback)
-        if written.story is None:
-            feedback = _problems_as_feedback(written.problems)
-            continue
-
-        copied = [p for p in written.problems if p.issue is WriterIssue.COPIED_TEXT]
-        if copied:
-            # validate_draft() drops a copied sentence rather than failing
-            # the story outright, so a story can come back here missing a
-            # sentence it silently lost. Accepting it would publish
-            # disjointed prose; retry instead, same as any other rejection.
-            feedback = _problems_as_feedback(copied)
-            continue
-
-        checked = checker.check(written.story, passages)
-        if checked.story is not None and checked.feedback is None:
-            return VerificationOutcome(
-                verified=VerifiedStory(
-                    story=checked.story,
-                    articles=list(pooled.articles),
-                    pool_rank=pooled.rank,
-                    findings=checked.findings,
-                    attempts=attempt,
-                ),
-                attempts=attempt,
-            )
-        feedback = checked.feedback or _problems_as_feedback(written.problems)
-
-    return VerificationOutcome(
-        verified=None,
-        attempts=attempt,
-        reason=feedback or "no verifiable story after all attempts",
+    return run_write_and_verify(
+        writer=writer,
+        checker=checker,
+        pooled=pooled,
+        genre=genre,
+        passages=passages,
+        max_retries=max_retries,
     )
-
-
-def _problems_as_feedback(problems: list[WriterProblem]) -> str:
-    return "\n".join(f"- {problem.issue.value}: {problem.detail}" for problem in problems)

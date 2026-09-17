@@ -7,17 +7,18 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `0ae8b62`
-- **State:** 99 commits · 79 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-17, at commit `PENDING`
+- **State:** 101 commits · 81 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 625 Python tests (596 backend + 29 evals, three migrations now verified against a real
+  runbook · 631 Python tests (602 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
   other, thirty of which cover the weekend edition's selection logic and its build/delivery
-  wiring — see the weekend-content entry in Done, and seven of which cover "AI tool of the day" —
-  see its own Done entry), 31 frontend tests (8 pure-logic + 23 new
-  component/interaction tests under jsdom and React Testing Library — see the component-tests
-  entry in Done) ·
+  wiring — see the weekend-content entry in Done, seven of which cover "AI tool of the day" —
+  see its own Done entry, and six of which cover the two real LangGraph graphs the build and
+  late-update jobs now run on — see the langgraph-pipeline entry in Done), 31 frontend tests
+  (8 pure-logic + 23 new component/interaction tests under jsdom and React Testing Library — see
+  the component-tests entry in Done) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
   (`terraform validate` needs `terraform init`'s cached providers, not available in this
   environment) · **7 scheduled jobs** — see the purge-job entry in Done
@@ -148,9 +149,12 @@ noticing the count was wrong.)
       strip, quiz, quote and "On this day" are not built).
 
 **Pipeline**
-- [ ] LangGraph build graph · [ ] late-update graph. The Orchestrator runs the
-      per-genre pipeline as plain code today; CLAUDE.md specifies LangGraph.
-      Decide whether to wrap it or amend the spec.
+- [x] ~~LangGraph build graph · late-update graph.~~ Asked the owner:
+      actually wrap the pipeline in LangGraph, not amend the spec. See the
+      langgraph-pipeline Done entry. The late-update graph is the same
+      `build_genre` graph — late update already called the same
+      `Orchestrator.build()` the build job does; nothing genre-pipeline-
+      specific was ever unique to either job.
 - [ ] **Bounce parsing has never seen a real Gmail DSN.** The parser is built
       to RFC 3464 and tested against synthetic reports; `ImapBounceSource` has
       never spoken to an actual IMAP server. Both need a live check once the
@@ -705,7 +709,7 @@ noticing the count was wrong.)
       what the function actually promises, not a false pass — fixed by
       making the test mirror `run_delivery`'s real sequence.
 - [x] Weekend edition content: Saturday's "longer reads" and Sunday's
-      "weekly recap", plus the weekend quiz — `PENDING`. New
+      "weekly recap", plus the weekend quiz — `96eb0f6`. New
       `app/render/weekend.py`, driven by `config/editions.yaml`'s
       `weekend.saturday_features`/`sunday_features` (parsed since the
       initial schema but never read until now — "top-stories" needs no code
@@ -738,7 +742,7 @@ noticing the count was wrong.)
       report, and two `run_delivery` tests (a Saturday email carries the
       block, an ordinary weekday email carries none).
 - [x] Frontend component and interaction tests for signup, preferences, and
-      the admin dashboard — `PENDING`. Added the standard Next.js/Vitest
+      the admin dashboard — `59a99f0`. Added the standard Next.js/Vitest
       pieces the project didn't have yet (`jsdom`, `@vitejs/plugin-react`,
       `@testing-library/react` + `/dom` + `/user-event` + `/jest-dom`) —
       `frontend/src/lib/api.test.ts` existed only because it tests plain
@@ -767,7 +771,7 @@ noticing the count was wrong.)
       waiting on data-dependent content (the loaded run, the notice text)
       instead of the always-present heading; confirmed stable across
       repeated runs once fixed.
-- [x] "AI tool of the day" — `PENDING`. CLAUDE.md's own wording ("picked
+- [x] "AI tool of the day" — `dfced8f`. CLAUDE.md's own wording ("picked
       from tools covered in that day's verified AI stories") leaves the
       actual selection open: stories carry untyped entity tags (people,
       companies, places all mixed together), not a "this one names a tool"
@@ -796,7 +800,7 @@ noticing the count was wrong.)
       sentence when a story has no one-liner, and is absent on a quiet or
       failed AI day — covering both the fresh-build and the
       render-from-persisted-rows paths.
-- [x] CLAUDE.md's agent table now matches the code — `PENDING`. Asked the
+- [x] CLAUDE.md's agent table now matches the code — `0ae8b62`. Asked the
       owner directly rather than guessing: correct the table, or give the
       Orchestrator a real LLM-backed responsibility? Answer was to correct
       the table. Agent 1 moved to "No" (uses an LLM: No) in the table, and
@@ -806,3 +810,40 @@ noticing the count was wrong.)
       described this exact disagreement as deliberate — updated to say the
       table now matches, rather than leaving a resolved discrepancy
       documented as still open in three different places.
+- [x] The build/late-update pipeline actually runs on LangGraph — `PENDING`.
+      Asked the owner: amend CLAUDE.md to drop the LangGraph claim, or
+      actually build it? Answer was to build it — real, non-trivial work,
+      not a doc fix. Two new graphs, matching the two loops
+      `docs/architecture.md`'s own diagram already drew:
+      `app/graph/build_genre.py` (agents 2-3: one genre's
+      collect -> rank -> verify-every-candidate pipeline, replacing
+      `Orchestrator.build_genre`'s hand-rolled loop) and
+      `app/graph/write_and_verify.py` (agents 4-5: the Writer/Fact-checker
+      retry loop, replacing `write_and_verify`'s hand-rolled `for` loop) —
+      the first graph's "verify one candidate" step calls the second as an
+      ordinary function call, so the retry loop exists in exactly one
+      place rather than being duplicated. Agent 1 (the Orchestrator) stays
+      outside both graphs, supervising rather than participating, matching
+      the agent-table entry above.
+      `Orchestrator.build_genre()` and `write_and_verify()` keep their
+      exact original signatures and behaviour on purpose: every existing
+      test that exercises them (`test_orchestrator.py`'s 17 tests,
+      `test_fact_checker.py`'s 4 loop tests, including exact LLM-call-count
+      assertions against a mocked gateway) passes unmodified, which is the
+      real proof the refactor changed nothing observable. `CollectorLike`/
+      `RankerLike`/`VerifyFn`/`QUIET_DAY_NOTE`/`FAILED_NOTE` now live in
+      `app/graph/build_genre.py` and are re-exported from
+      `app/agents/orchestrator.py` for the existing call sites, rather than
+      being defined in both places and risking drift.
+      6 new tests: each compiled graph is asserted to actually be a
+      LangGraph `CompiledStateGraph`; `build_genre`'s loop is exercised at
+      pool_size 20 (`config/schemas.py`'s real ceiling), and
+      `write_and_verify`'s loop is exercised at 30 retries and at zero —
+      well past CLAUDE.md's mandated 2 — with lightweight fakes rather
+      than a mocked LLM, since this is about the loop's own mechanics, not
+      grounding. One assumption corrected while investigating: LangGraph's
+      default recursion limit in the installed version (1.2.11) is 10007,
+      not the 25 an earlier version's docs suggested — an explicit
+      `recursion_limit` override was drafted, tested, found unnecessary,
+      and removed rather than left in as defensive code against a premise
+      that turned out to be false.

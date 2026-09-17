@@ -98,32 +98,45 @@ gantt
 
 ## The agent pipeline (build and late update)
 
+Two real LangGraph graphs, not a diagram of one: `app/graph/build_genre.py`
+runs one genre's collect -> rank -> verify-every-candidate pipeline, and
+`app/graph/write_and_verify.py` is the Writer/Fact-checker retry loop it
+calls once per pooled candidate. The Orchestrator (agent 1) supervises the
+per-genre graph — deciding which genres run, running them in parallel,
+isolating one genre's exception from the rest — rather than being a node
+inside it; it has never made an LLM call, and CLAUDE.md's agent table
+lists it as code-only to match.
+
 ```mermaid
 flowchart LR
-    orch["Orchestrator<br/>(code only — see below)"]
-    collector["Collector<br/>(no LLM)"]
-    ranker["Ranker<br/>(LLM: clustering)"]
-    writer["Writer<br/>(LLM)"]
-    checker["Fact-checker<br/>(LLM + code)"]
+    orch["Orchestrator<br/>(code only, supervises —<br/>not a graph node)"]
+
+    subgraph "build_genre graph, per genre"
+        collector["Collector<br/>(no LLM)"]
+        ranker["Ranker<br/>(LLM: clustering)"]
+        verify_step["verify one candidate<br/>(calls the graph below)"]
+        collector --> ranker --> verify_step
+    end
+
+    subgraph "write_and_verify graph, per candidate"
+        writer["Writer<br/>(LLM)"]
+        checker["Fact-checker<br/>(LLM + code)"]
+        writer --> checker
+        checker -->|feedback on failure, max 2 retries| writer
+    end
+
     layout["Layout<br/>(no LLM)"]
 
-    orch --> collector --> ranker --> writer --> checker
-    checker -->|feedback on failure, max 2 retries| writer
-    checker -->|verified stories| layout
+    orch -->|runs, one per genre,<br/>bounded and parallel| collector
+    verify_step --> writer
+    checker -->|verified or dropped| verify_step
+    verify_step -->|every candidate tried| layout
 ```
 
 Personalization happens after this, in plain code, at delivery time:
 selecting and ordering already-verified stories per reader from keyword
 matches, learned preferences, and edition preference — never a second LLM
 call per reader. See CLAUDE.md's "No per-user LLM generation."
-
-The Orchestrator itself is code-only, "(code only — see below)" above:
-CLAUDE.md's agent table once listed it as using an LLM, but every one of
-its responsibilities (deadline enforcement, retry routing, the
-special-edition calendar) is control flow that would become
-non-reproducible and deadline-fragile behind a model call. The owner
-confirmed the table should match the code; see `docs/BACKLOG.md`'s Done
-entry.
 
 ## The grounding chain
 

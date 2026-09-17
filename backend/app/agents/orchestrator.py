@@ -9,6 +9,12 @@ enough verified stories to publish. Routing a build through a model would make
 it non-reproducible, and would make deadline enforcement depend on a call that
 can itself hang. CLAUDE.md's agent table lists this agent as code-only, to match.
 
+The Orchestrator supervises the per-genre pipeline; it is not itself a graph
+node. Each genre's actual collect -> rank -> verify work is a LangGraph graph
+(`app/graph/build_genre.py`) — this module decides which genres run, runs
+them in parallel bounded by `max_workers`, and isolates one genre's exception
+from the rest, none of which is a step inside any single genre's own graph.
+
 Failure policy, from CLAUDE.md:
 - a genre that fails or misses the deadline has its section omitted;
 - fewer than `min_stories` verified leaves a short "quiet news day" note;
@@ -21,42 +27,28 @@ import logging
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
-from typing import Protocol
 
-from app.agents.schemas import (
-    EditionBuild,
-    GenreOutcome,
-    PooledStory,
-    StoryPool,
-    VerificationOutcome,
-    VerifiedStory,
-)
+from app.agents.schemas import EditionBuild, GenreOutcome
 from app.clock import now_utc
 from app.config.loader import load_editions, load_genres
 from app.config.schemas import EditionsConfig, GenreKey, GenresConfig
+from app.graph.build_genre import FAILED_NOTE, QUIET_DAY_NOTE, CollectorLike, RankerLike, VerifyFn
+from app.graph.build_genre import run as run_build_genre
 from app.models.enums import SectionStatus
-from app.sources.schemas import CollectionResult
+
+__all__ = [
+    "FAILED_NOTE",
+    "QUIET_DAY_NOTE",
+    "CollectorLike",
+    "Orchestrator",
+    "RankerLike",
+    "VerifyFn",
+]
 
 logger = logging.getLogger(__name__)
 
-QUIET_DAY_NOTE = "A quiet news day: too few stories met our sourcing bar."
-FAILED_NOTE = "This section could not be prepared in time."
-
 # Genres run in parallel, bounded so the free-tier gateway is not overrun.
 DEFAULT_MAX_WORKERS = 3
-
-
-class CollectorLike(Protocol):
-    """Structural, so a test can substitute a stub without a network."""
-
-    def collect(self, genre: GenreKey, *, now: datetime | None = None) -> CollectionResult: ...
-
-
-class RankerLike(Protocol):
-    def rank(self, collected: CollectionResult, *, now: datetime | None = None) -> StoryPool: ...
-
-
-VerifyFn = Callable[[PooledStory, GenreKey], VerificationOutcome]
 
 
 class Orchestrator:
@@ -136,58 +128,14 @@ class Orchestrator:
 
     def build_genre(self, genre: GenreKey, *, deadline: datetime, now: datetime) -> GenreOutcome:
         settings = self._genres.by_key()[genre]
-
-        if self._past(deadline):
-            return GenreOutcome(
-                genre=genre,
-                status=SectionStatus.FAILED,
-                note=FAILED_NOTE,
-                deadline_hit=True,
-            )
-
-        collected = self._collector.collect(genre, now=now)
-        if not collected.articles:
-            return GenreOutcome(genre=genre, status=SectionStatus.QUIET_DAY, note=QUIET_DAY_NOTE)
-
-        pool = self._ranker.rank(collected, now=now)
-
-        verified: list[VerifiedStory] = []
-        attempted = 0
-        cut_short = False
-        # The whole pool is verified, not just the six a section shows: per-user
-        # selection picks from the pool, so truncating here would erase the
-        # choice personalisation depends on.
-        for candidate in pool.stories[: settings.pool_size]:
-            if self._past(deadline):
-                # Stop cleanly and keep what is already verified rather than
-                # throwing away good work.
-                cut_short = True
-                break
-            attempted += 1
-            outcome = self._verify(candidate, genre)
-            if outcome.verified is not None:
-                verified.append(outcome.verified)
-
-        if len(verified) < settings.min_stories:
-            return GenreOutcome(
-                genre=genre,
-                status=SectionStatus.QUIET_DAY,
-                collected=len(collected.articles),
-                pooled=len(pool.stories),
-                attempted=attempted,
-                note=QUIET_DAY_NOTE,
-                deadline_hit=cut_short,
-            )
-
-        return GenreOutcome(
+        return run_build_genre(
+            collector=self._collector,
+            ranker=self._ranker,
+            verify=self._verify,
+            clock=self._clock,
             genre=genre,
-            status=SectionStatus.OK,
-            stories=verified,
-            collected=len(collected.articles),
-            pooled=len(pool.stories),
-            attempted=attempted,
-            deadline_hit=cut_short,
+            deadline=deadline,
+            now=now,
+            pool_size=settings.pool_size,
+            min_stories=settings.min_stories,
         )
-
-    def _past(self, deadline: datetime) -> bool:
-        return self._clock() >= deadline

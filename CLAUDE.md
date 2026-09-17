@@ -113,9 +113,14 @@ feedback preferences, and edition preference.
   alerts still arrive when sending is broken.
 
 ### Agents
-Agents 1–6 run inside the LangGraph graph for the build and late-update jobs. Agents 7–9 run in
-the delivery job (plain code); the Layout module (agent 8) is also called by the build and late
-update to pre-render sections. Agent 10 runs in the feedback job.
+Agents 2–5 run inside two LangGraph graphs for the build and late-update jobs: one graph per
+genre's collect/rank/verify pipeline (`app/graph/build_genre.py`), which calls the Writer/
+Fact-checker retry loop as its own nested graph (`app/graph/write_and_verify.py`). Agent 1 (the
+Orchestrator) supervises the per-genre graph — deciding which genres run, running them in
+parallel, isolating one genre's failure from the rest — rather than being a node inside it.
+Agent 6 (Image finder) is not built yet. Agents 7–9 run in the delivery job (plain code); the
+Layout module (agent 8) is also called by the build and late update to pre-render sections.
+Agent 10 runs in the feedback job.
 
 | # | Agent | Uses LLM? | Responsibility |
 |---|-------|-----------|----------------|
