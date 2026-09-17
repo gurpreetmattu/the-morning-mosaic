@@ -7,7 +7,7 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-17, at commit `PENDING`
+- **Last updated:** 2026-09-17, at commit `a2de574`
 - **State:** 101 commits · 81 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 631 Python tests (602 backend + 29 evals, three migrations now verified against a real
@@ -810,7 +810,7 @@ noticing the count was wrong.)
       described this exact disagreement as deliberate — updated to say the
       table now matches, rather than leaving a resolved discrepancy
       documented as still open in three different places.
-- [x] The build/late-update pipeline actually runs on LangGraph — `PENDING`.
+- [x] The build/late-update pipeline actually runs on LangGraph — `a2de574`.
       Asked the owner: amend CLAUDE.md to drop the LangGraph claim, or
       actually build it? Answer was to build it — real, non-trivial work,
       not a doc fix. Two new graphs, matching the two loops
