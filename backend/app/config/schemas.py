@@ -231,6 +231,16 @@ class ModelSpec(ConfigBase):
     # "primary"; there is no further fallback beyond the fallback gateway
     # itself, and this never routes to "secondary".
     fallback_model: str | None = None
+    # A narrow, separate escape hatch for a PINNED agent only: a second
+    # model/gateway tried only when every attempt on the agent's own
+    # (pinned) route failed with an availability error (429/5xx) — never
+    # for a fatal one, which the fallback provider would likely fail on
+    # too. Unlike `fallback_model`, this does not change what routes_for()
+    # returns for a pinned agent (still exactly one route); LlmClient.
+    # complete() reaches for it only after that one route is exhausted.
+    # A healthy primary never touches this at all.
+    availability_fallback_model: str | None = None
+    availability_fallback_gateway: Literal["primary", "fallback", "secondary"] | None = None
 
     @property
     def is_configured(self) -> bool:
@@ -238,6 +248,8 @@ class ModelSpec(ConfigBase):
         ids = {self.model, *self.fallbacks}
         if self.fallback_model:
             ids.add(self.fallback_model)
+        if self.availability_fallback_model:
+            ids.add(self.availability_fallback_model)
         return UNSET_MODEL not in ids
 
     @model_validator(mode="after")
@@ -246,6 +258,14 @@ class ModelSpec(ConfigBase):
             raise ValueError("a pinned model must not declare fallbacks")
         if self.fallback_model and self.gateway != "primary":
             raise ValueError("fallback_model requires gateway: primary")
+        has_model = self.availability_fallback_model is not None
+        has_gateway = self.availability_fallback_gateway is not None
+        if has_model != has_gateway:
+            raise ValueError(
+                "availability_fallback_model and availability_fallback_gateway must be set together"
+            )
+        if has_gateway and self.availability_fallback_gateway == self.gateway:
+            raise ValueError("availability_fallback_gateway must differ from gateway")
         return self
 
 

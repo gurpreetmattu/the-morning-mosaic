@@ -1314,3 +1314,46 @@ noticing the count was wrong.)
       - Verified live: `collect('politics')` now returns
         `{'indian-express': 4, 'scroll-in': 24}` — a real second,
         independent source where there was one before.
+
+- [x] Fact-checker got a narrow availability-only fallback, after
+      Cloudflare's free tier turned out to be a DAILY cap, not per-minute
+      — `PENDING`.
+      - Testing a real multi-genre build (politics/sports/bollywood
+        together) hit persistent 429s from Cloudflare that did not
+        recover even after waiting. The real error body said why:
+        "you have used up your daily free allocation of 10,000 neurons"
+        — a whole-day cap, exhausted by this session's own testing
+        volume (business runs, /evals/run.py runs, many diagnostics),
+        not a per-minute throttle that backs off and recovers.
+      - This blocks re-testing the same day it happens, with no
+        workaround except waiting for the next UTC day. Asked before
+        touching the pinning rule, since `ModelSpec` and its tests
+        explicitly enforce "pinned = exactly one route, ever" for
+        exactly the reason CLAUDE.md gives for Writer and Fact-checker
+        together. Chose the narrower of two designs offered: an
+        availability-only escape hatch, not unpinning Fact-checker
+        outright.
+      - Added `ModelSpec.availability_fallback_model` /
+        `availability_fallback_gateway` — deliberately separate from
+        the existing `fallback_model` (which is for non-pinned agents
+        and tried unconditionally). `routes_for()` is unchanged and
+        still returns exactly one route for a pinned agent — the
+        contract a healthy primary always sees stays intact.
+        `LlmClient.complete()` reaches for the escape hatch in a new
+        `_try_routes()` helper only when every attempt on the primary
+        route failed with a *retryable* error (429/5xx) — never for a
+        fatal one like a malformed request, which the fallback provider
+        would likely fail on too, and which isn't what "the primary is
+        unavailable" means.
+      - Fact-checker's escape hatch is Groq's `gpt-oss-20b` — its own
+        original model, before the move to Cloudflare, and already-
+        configured infrastructure (the existing `primary` gateway, no
+        new secrets). 5 new tests (`test_llm_client.py`,
+        `test_config.py`) cover: falls back after availability errors,
+        does NOT fall back after a fatal one, and `routes_for()` staying
+        at exactly one route regardless.
+      - Verified live, for real, not just mocked: with Cloudflare's
+        quota genuinely exhausted at the time, calling
+        `LlmClient.complete("fact_checker", ...)` returned
+        `provider='primary', model='openai/gpt-oss-20b'` — the escape
+        hatch engaged on a real, live outage, not a simulated one.

@@ -127,12 +127,24 @@ agents:
   # PROVISIONAL: not yet run through /evals/run.py's groundedness eval
   # (which drives Writer+Fact-checker together) — do that before trusting
   # this under real load, per CLAUDE.md's eval-gate rule for model changes.
+  # Added 2026-09-18: Cloudflare's free tier is a DAILY cap (10,000
+  # neurons/day, not per-minute), found live when a whole day's testing
+  # exhausted it outright — "you have used up your daily free allocation
+  # of 10,000 neurons" — no amount of backoff recovers that within the
+  # same day. gpt-oss-20b on Groq (this agent's own original model,
+  # before the move above) is the availability escape hatch: tried only
+  # when every attempt on Cloudflare fails with an availability error,
+  # never for a fatal one. Deliberately NOT a routine fallback_model —
+  # Fact-checker stays pinned to Cloudflare under normal conditions, so
+  # its verification calibration doesn't vary run-to-run on a healthy day.
   fact_checker:
     model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
     gateway: secondary
     temperature: 0.0
     max_output_tokens: 4096
     pinned: true
+    availability_fallback_model: openai/gpt-oss-20b
+    availability_fallback_gateway: primary
 
   # Judges image relevance from captions and metadata only; a small model is
   # sufficient and keeps the build inside its deadline.

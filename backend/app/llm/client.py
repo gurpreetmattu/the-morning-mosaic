@@ -205,6 +205,49 @@ class LlmClient:
         routes = self.routes_for(agent)
         payload = [{"role": message.role, "content": message.content} for message in messages]
 
+        result, last_error, attempts, exhausted_by_availability = self._try_routes(
+            agent, spec, routes, payload, json_object, prompt_version
+        )
+        if result is not None:
+            return result
+
+        # A pinned agent's own routes_for() returns exactly one route, by
+        # design — no model or provider failover. This is a deliberately
+        # separate, narrower mechanism: an outage escape hatch, tried only
+        # when the primary was unavailable (never for a fatal error like a
+        # malformed request, which the fallback provider would likely fail
+        # on too), and only when the agent explicitly configures one. It
+        # does not weaken "exactly one route" as the normal case — a
+        # healthy primary never reaches this at all.
+        if exhausted_by_availability and spec.availability_fallback_model:
+            gateway = spec.availability_fallback_gateway
+            assert gateway is not None  # enforced together in ModelSpec
+            creds = self._gateway_creds(gateway)
+            if creds is not None:
+                fallback_route = Route(
+                    creds[0], creds[1], spec.availability_fallback_model, gateway
+                )
+                result, last_error, more_attempts, _ = self._try_routes(
+                    agent, spec, [fallback_route], payload, json_object, prompt_version
+                )
+                attempts += more_attempts
+                if result is not None:
+                    return result
+
+        raise LlmUnavailableError(
+            f"agent {agent!r}: all route(s) failed after {attempts} attempt(s)"
+        ) from last_error
+
+    def _try_routes(
+        self,
+        agent: AgentKey,
+        spec: ModelSpec,
+        routes: list[Route],
+        payload: list[dict[str, str]],
+        json_object: bool,
+        prompt_version: str | None,
+    ) -> tuple[LlmResult | None, Exception | None, int, bool]:
+        """Returns (result, last_error, attempts, last_error_was_availability)."""
         attempts = 0
         last_error: Exception | None = None
 
@@ -239,19 +282,22 @@ class LlmClient:
                     "ok",
                     None,
                 )
-                return LlmResult(
-                    text=completion.text,
-                    model=route.model,
-                    provider=route.provider,
-                    prompt_tokens=completion.prompt_tokens,
-                    completion_tokens=completion.completion_tokens,
-                    latency_ms=elapsed,
-                    attempts=attempts,
+                return (
+                    LlmResult(
+                        text=completion.text,
+                        model=route.model,
+                        provider=route.provider,
+                        prompt_tokens=completion.prompt_tokens,
+                        completion_tokens=completion.completion_tokens,
+                        latency_ms=elapsed,
+                        attempts=attempts,
+                    ),
+                    None,
+                    attempts,
+                    False,
                 )
 
-        raise LlmUnavailableError(
-            f"agent {agent!r}: all {len(routes)} route(s) failed after {attempts} attempt(s)"
-        ) from last_error
+        return None, last_error, attempts, last_error is not None and _is_retryable(last_error)
 
     # --------------------------------------------------------------- internals
 

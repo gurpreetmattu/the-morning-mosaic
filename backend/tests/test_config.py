@@ -205,6 +205,64 @@ def test_a_pinned_agent_may_sit_on_the_fallback_gateway() -> None:
     assert spec.gateway == "fallback"
 
 
+def test_a_pinned_agent_may_declare_an_availability_fallback() -> None:
+    spec = ModelSpec.model_validate(
+        {
+            "model": "m",
+            "temperature": 0.0,
+            "max_output_tokens": 128,
+            "pinned": True,
+            "gateway": "secondary",
+            "availability_fallback_model": "m-fb",
+            "availability_fallback_gateway": "primary",
+        }
+    )
+    assert spec.availability_fallback_model == "m-fb"
+
+
+def test_an_availability_fallback_model_requires_its_gateway() -> None:
+    with pytest.raises(ValidationError, match="must be set together"):
+        ModelSpec.model_validate(
+            {
+                "model": "m",
+                "temperature": 0.0,
+                "max_output_tokens": 128,
+                "pinned": True,
+                "gateway": "secondary",
+                "availability_fallback_model": "m-fb",
+            }
+        )
+
+
+def test_an_availability_fallback_gateway_requires_its_model() -> None:
+    with pytest.raises(ValidationError, match="must be set together"):
+        ModelSpec.model_validate(
+            {
+                "model": "m",
+                "temperature": 0.0,
+                "max_output_tokens": 128,
+                "pinned": True,
+                "gateway": "secondary",
+                "availability_fallback_gateway": "primary",
+            }
+        )
+
+
+def test_an_availability_fallback_gateway_must_differ_from_the_agents_own() -> None:
+    with pytest.raises(ValidationError, match="must differ from gateway"):
+        ModelSpec.model_validate(
+            {
+                "model": "m",
+                "temperature": 0.0,
+                "max_output_tokens": 128,
+                "pinned": True,
+                "gateway": "secondary",
+                "availability_fallback_model": "m-fb",
+                "availability_fallback_gateway": "secondary",
+            }
+        )
+
+
 def test_pinned_model_may_not_declare_a_fallback_model() -> None:
     with pytest.raises(ValidationError, match="must not declare fallbacks"):
         ModelSpec.model_validate(

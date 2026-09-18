@@ -61,6 +61,8 @@ def models(**agent_overrides: Any) -> ModelsConfig:
         fallbacks: list[str] | None = None,
         fallback_model: str | None = None,
         gateway: str = "primary",
+        availability_fallback_model: str | None = None,
+        availability_fallback_gateway: str | None = None,
     ) -> dict[str, Any]:
         return {
             "model": model,
@@ -70,6 +72,8 @@ def models(**agent_overrides: Any) -> ModelsConfig:
             "fallbacks": fallbacks or [],
             "fallback_model": fallback_model,
             "gateway": gateway,
+            "availability_fallback_model": availability_fallback_model,
+            "availability_fallback_gateway": availability_fallback_gateway,
         }
 
     agents: dict[str, Any] = {
@@ -328,6 +332,63 @@ def test_a_pinned_agent_never_fails_over_to_another_model() -> None:
 
     assert set(requested_models()) == {"write-1"}
     assert all(call.request.url.host == "primary.llm" for call in respx.calls)
+
+
+def _pinned_with_availability_fallback() -> ModelsConfig:
+    return models(
+        fact_checker={
+            "model": "check-1",
+            "temperature": 0.0,
+            "max_output_tokens": 256,
+            "pinned": True,
+            "gateway": "secondary",
+            "availability_fallback_model": "check-fb",
+            "availability_fallback_gateway": "primary",
+        }
+    )
+
+
+@respx.mock
+def test_a_pinned_agent_falls_back_after_availability_errors_exhaust_the_primary() -> None:
+    respx.post(f"{SECONDARY}/chat/completions").mock(return_value=httpx.Response(429))
+    respx.post(f"{PRIMARY}/chat/completions").mock(
+        return_value=httpx.Response(200, json=completion("rescued"))
+    )
+    result = client(
+        setting=with_secondary_provider(), model_config=_pinned_with_availability_fallback()
+    ).complete("fact_checker", PROMPT)
+
+    assert result.text == "rescued"
+    assert result.model == "check-fb"
+    assert result.provider == "primary"
+
+
+@respx.mock
+def test_a_pinned_agent_does_not_fall_back_after_a_fatal_error() -> None:
+    """A malformed request would likely fail on the fallback provider too —
+    the escape hatch is for the primary being unavailable, not fatal."""
+    respx.post(f"{SECONDARY}/chat/completions").mock(
+        return_value=httpx.Response(400, json={"error": {"message": "bad request"}})
+    )
+    primary_route = respx.post(f"{PRIMARY}/chat/completions").mock(
+        return_value=httpx.Response(200, json=completion("should not be reached"))
+    )
+
+    with pytest.raises(LlmUnavailableError):
+        client(
+            setting=with_secondary_provider(), model_config=_pinned_with_availability_fallback()
+        ).complete("fact_checker", PROMPT)
+
+    assert primary_route.call_count == 0
+
+
+def test_routes_for_a_pinned_agent_with_availability_fallback_is_still_one_route() -> None:
+    """The escape hatch never shows up in routes_for() — a healthy primary
+    must behave exactly like a pinned agent with no fallback at all."""
+    routes = client(
+        setting=with_secondary_provider(), model_config=_pinned_with_availability_fallback()
+    ).routes_for("fact_checker")
+    assert [(r.model, r.provider) for r in routes] == [("check-1", "secondary")]
 
 
 @respx.mock
