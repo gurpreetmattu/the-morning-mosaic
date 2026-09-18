@@ -1198,3 +1198,44 @@ noticing the count was wrong.)
         ranker, 3 writer, 2 fact_checker, 0 errors) — the first time
         this pipeline has completed against live data without hitting a
         rate limit, a crash, or a false-positive rejection.
+
+- [x] The 2-story revision above was too thin for a real newsletter — found
+      and fixed the actual cause, a Collector source-starvation bug, not a
+      quiet news day — `PENDING`.
+      - The user's own reaction ("that's not what i expected... who would
+        like to read two stories?") was the right call. Diagnosed rather
+        than assumed: `Collector.collect()`'s `DEFAULT_MAX_ARTICLES = 40`
+        cap is shared across every enabled source, applied in the literal
+        order sources are listed in `config/sources.yaml` — `for item in
+        items: if len(articles) >= cap: break`. The Hindu's dedicated
+        business feed alone supplied 35 fresh, valid articles that day,
+        Hindustan Times added 5 more (35+5=40=cap), and the loop broke
+        before Livemint's or Economic Times' feeds — two of the five
+        enabled business sources — were ever even fetched. Confirmed live
+        with a source-by-source breakdown of one real `collect('business')`
+        call (`the-hindu: 35, hindustan-times: 5`, nothing else), not
+        guessed at.
+      - Separately, Livemint's *only* feed tagged `genre: business` was
+        `rss/news` — Mint's general news feed (verified live: its actual
+        items were a truck-driver stabbing, a school shooting, a pit-bull
+        attack — essentially no business content at all), not a business
+        feed. Real business feeds exist and were verified live the same
+        day: `rss/money`, `rss/companies`. Both now feed the business
+        genre; `rss/news` is no longer used anywhere.
+      - Fixed the starvation bug generally, not just for business: added
+        `Collector._round_robin()`, interleaving gathered feed items by
+        source before the cap is applied, so a low-volume source's first
+        item is never more than one slot behind a high-volume source's,
+        however many items either has. 5 new unit tests in
+        `test_collector.py`.
+      - Re-verified live end to end. Source spread for a fresh
+        `collect('business')` call went from `the-hindu: 35,
+        hindustan-times: 5` (livemint and economic-times: 0) to
+        `the-hindu: 11, livemint: 10, economic-times: 10, hindustan-times:
+        9` — all four enabled sources represented. The ranker's candidate
+        pool went from 2 stories to 9; a real end-to-end build for
+        edition_date 2026-10-02 published **6 verified stories** (Apple's
+        India launches, a pay-commission dispute, Apple Pay/Axis Bank,
+        Buffett's Berkshire succession, a markets close, a Supreme Court
+        inheritance case) — squarely inside CLAUDE.md's target of 4-6 per
+        genre, not just above the 2-story "quiet day" floor.

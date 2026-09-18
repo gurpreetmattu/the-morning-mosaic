@@ -14,14 +14,14 @@ import httpx
 import pytest
 import respx
 
-from app.agents.collector import Collector
+from app.agents.collector import Collector, _round_robin
 from app.clock import edition_date_for, require_aware
 from app.config.schemas import SourcesConfig
 from app.sources.extract import extract_article, split_passages
 from app.sources.fetch import Fetcher
 from app.sources.freshness import freshness_verdict
 from app.sources.robots import RobotsPolicy
-from app.sources.schemas import DropReason
+from app.sources.schemas import DropReason, FeedItem
 
 FIXTURES = Path(__file__).parent / "fixtures"
 HOST = "https://news.example"
@@ -277,3 +277,40 @@ def test_edition_date_follows_ist_not_utc() -> None:
 def test_require_aware_rejects_naive_datetimes() -> None:
     with pytest.raises(ValueError, match="naive datetime"):
         require_aware(datetime(2026, 9, 16, 4, 0))
+
+
+def _item(source: str, n: int) -> FeedItem:
+    return FeedItem(
+        source_key=source, genre="business", url=f"https://x/{source}/{n}", title=f"{source} {n}"
+    )
+
+
+def test_round_robin_gives_every_source_an_early_turn() -> None:
+    """A real defect: one high-volume source (35 items) plus a second
+    (5 items) reached the Collector's cap on their own, so two other
+    enabled sources were never even fetched. Interleaving means a low-
+    volume source's first item is never more than one slot behind a
+    high-volume source's, regardless of how many items either has."""
+    heavy = [_item("heavy", i) for i in range(35)]
+    light = [_item("light", i) for i in range(2)]
+    items = heavy + light
+    interleaved = _round_robin(items)
+    light_positions = [i for i, item in enumerate(interleaved) if item.source_key == "light"]
+    assert light_positions[0] == 1
+    assert light_positions[1] == 3
+
+
+def test_round_robin_keeps_each_sources_own_relative_order() -> None:
+    a = [_item("a", i) for i in range(3)]
+    b = [_item("b", i) for i in range(3)]
+    interleaved = _round_robin(a + b)
+    assert [item.title for item in interleaved if item.source_key == "a"] == ["a 0", "a 1", "a 2"]
+
+
+def test_round_robin_handles_a_single_source() -> None:
+    items = [_item("only", i) for i in range(3)]
+    assert [item.url for item in _round_robin(items)] == [item.url for item in items]
+
+
+def test_round_robin_handles_no_items() -> None:
+    assert _round_robin([]) == []

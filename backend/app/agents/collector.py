@@ -37,6 +37,25 @@ from app.sources.schemas import (
 DEFAULT_MAX_ARTICLES = 40
 
 
+def _round_robin(items: list[FeedItem]) -> list[FeedItem]:
+    """Interleave feed items by source, each source's own relative (most-
+    recent-first) order preserved within its own turn."""
+    buckets: dict[str, list[FeedItem]] = {}
+    order: list[str] = []
+    for item in items:
+        if item.source_key not in buckets:
+            buckets[item.source_key] = []
+            order.append(item.source_key)
+        buckets[item.source_key].append(item)
+
+    result: list[FeedItem] = []
+    while any(buckets[key] for key in order):
+        for key in order:
+            if buckets[key]:
+                result.append(buckets[key].pop(0))
+    return result
+
+
 class Collector:
     def __init__(
         self,
@@ -70,6 +89,14 @@ class Collector:
 
         items, feed_failures = self._gather(genre)
         dropped.extend(feed_failures)
+        # Interleaved by source, not left in feed-then-feed order: otherwise
+        # one high-volume source can reach `cap` on its own before any other
+        # enabled source is even looked at. Found live: The Hindu's business
+        # feed alone supplied the entire 40-article cap for "business" one
+        # day, so Livemint and Economic Times — two of the five enabled
+        # sources — were never fetched at all, not filtered, just never
+        # reached.
+        items = _round_robin(items)
 
         seen_urls: set[str] = set()
         seen_hashes: set[str] = set()

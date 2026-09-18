@@ -178,7 +178,15 @@ sources:
     robots_checked: true
     enabled: true
     feeds:
-      - url: https://www.livemint.com/rss/news
+      # Was rss/news (Mint's general feed — crime, world news,
+      # entertainment; verified live 2026-09-18 by reading its actual
+      # items) mistagged genre: business, so the business genre was
+      # pulling in almost entirely off-topic candidates from this source.
+      # rss/money and rss/companies are Mint's real business/markets
+      # sections, confirmed live the same day.
+      - url: https://www.livemint.com/rss/money
+        genres: [business]
+      - url: https://www.livemint.com/rss/companies
         genres: [business]
     notes: >-
       Owner's call, reviewed 2026-09-18, on the same practical-risk basis
