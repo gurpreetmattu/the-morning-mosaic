@@ -7,10 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `b6d9821`
-- **State:** 107 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `aacd486`
+- **State:** 109 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 648 Python tests (619 backend + 29 evals, three migrations now verified against a real
+  runbook · 650 Python tests (621 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
   other, thirty of which cover the weekend edition's selection logic and its build/delivery
@@ -1008,7 +1008,7 @@ noticing the count was wrong.)
       manual test runs, but that is not yet itself proven.
 
 - [x] Second LLM provider wired in for non-pinned agents, to survive Groq's
-      real per-minute exhaustion — `PENDING`.
+      real per-minute exhaustion — `aacd486`.
       - The user pasted a standalone `llm_router.py` at the repo root plus
         9 new provider keys (Cohere, Cloudflare, Mistral, Cerebras,
         SambaNova, NVIDIA, OpenRouter, Gemini, HuggingFace) and asked to
