@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     llm_gateway_api_key: SecretStr
     llm_fallback_url: AnyHttpUrl | None = None
     llm_fallback_api_key: SecretStr | None = None
+    # A second, distinct alternate gateway (currently Cloudflare Workers AI,
+    # for Fact-checker) — kept separate from llm_fallback_* so a pinned agent
+    # can sit on a genuinely different vendor from another pinned agent's
+    # gateway (see ModelSpec.gateway in config/schemas.py).
+    llm_secondary_url: AnyHttpUrl | None = None
+    llm_secondary_api_key: SecretStr | None = None
 
     # --- tokens and anti-abuse ---
     token_signing_key: SecretStr

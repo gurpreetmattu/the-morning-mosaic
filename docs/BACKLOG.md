@@ -1121,3 +1121,80 @@ noticing the count was wrong.)
         is the next step, in progress.
       - 2 test call sites updated (`test_build_job.py`'s
         `session_factory=` → `connect=`), no test coverage lost.
+
+- [x] Fact-checker moved off Groq too, two real deterministic-checker bugs
+      fixed, and the business genre published its first real revision —
+      `PENDING`.
+      - **Fact-checker's Groq bottleneck.** Live testing found
+        `gpt-oss-20b`, `gpt-oss-120b`, and `gpt-oss-safeguard-20b` all
+        share the *same* 8000-tokens-per-minute cap on this account (a
+        family limit, not per-model-id — confirmed by identical "Limit
+        8000" text in real `llm_calls.error` rows for two different
+        model ids), so no swap within that family could help; a real
+        build's Fact-checker phase had logged 63 errors against 5
+        successes. `qwen/qwen3.8-27b` (now idle since Writer moved off
+        it) did worse under the same fact-check-shaped burst test (4/15
+        OK — its 1000 OTPM cap binds harder in practice than gpt-oss's
+        8000 TPM).
+      - Added a **third named gateway**: `ModelSpec.gateway` extended
+        from `primary | fallback` to `primary | fallback | secondary`,
+        with new `Settings.llm_secondary_url`/`llm_secondary_api_key`
+        (`LlmClient._gateway_creds` generalised to match). Fact-checker
+        is now pinned to Cloudflare Workers AI's
+        `@cf/meta/llama-3.3-70b-instruct-fp8-fast` via `gateway:
+        secondary` — a third, genuinely different vendor from both Groq
+        (Ranker) and Gemini (Writer's fallback gateway), preserving the
+        vendor-diversity reasoning the config already documented for
+        Fact-checker vs. Writer. Verified live: 20/20 calls under
+        realistic fact-check-shaped burst load, zero errors. Free tier
+        is ~10,000 neurons/day account-wide (~500 calls/day at this
+        payload size) — ample for one real build, tight under repeated
+        manual testing across many genres in one day.
+      - Also fixed `ranker`/`image_finder`'s `fallback_model`, still
+        pointing at the reverted `gemini-3.6-flash` from the previous
+        entry — now `gemini-flash-lite-latest` like Writer.
+      - **Two real deterministic Fact-checker bugs**, found only once
+        Writer/Fact-checker were both actually succeeding often enough
+        to expose them (previously masked by rate-limit noise):
+        1. `names_in()`'s connector-joining regex treats a Title-Case
+           headline (every word capitalised, by newspaper convention) as
+           one giant "name" once the leading word is dropped — first
+           patched with a 5-word length cap (fixed the original
+           7-word case), but two more real headlines still false-
+           flagged at 4-5 words each, proving a length cap alone cannot
+           tell a genuine multi-word name from a headline. The actual
+           fix: `unsupported_facts()` gained `check_names: bool = True`,
+           and `FactChecker._deterministic` passes `check_names=False`
+           for the `headline` element specifically — every real failure
+           of this shape was in the headline; summary/why_this_matters
+           are normal-case prose and keep the check. The model check on
+           the same element remains the catch for a genuinely invented
+           headline name (already 1.00 on `fact_checker_catch_rate` for
+           exactly that planted-error category).
+        2. A hyphenated headline join ("Mumbai-Ahmedabad corridor") for
+           a source written as prose ("...between Mumbai and
+           Ahmedabad...") failed the exact-substring name check even
+           though both halves are individually grounded. Fixed:
+           `unsupported_facts` now also accepts a hyphenated name when
+           every hyphen-separated half appears in the passages.
+        6 new/updated tests in `test_fact_checker.py` and
+        `test_llm_client.py`.
+      - **groundedness went from FAILing (0.80, then blocked entirely by
+        `LlmUnavailableError`s from the old Groq contention) to PASSing
+        (0.90) after both fixes** — all 8 evals pass. One real, separate
+        finding along the way: Cloudflare's fact-checking judgment is
+        noticeably stricter about exact paraphrase wording than Groq's
+        was (flagged "construction" as unsupported when the passage said
+        "the project", in one eval run) — a content-calibration
+        difference between providers, not a bug; the real
+        `write_and_verify` retry loop (not exercised by this single-pass
+        eval script) would likely resolve most instances of this by
+        asking Writer to hew closer to the passage's own words.
+      - **First real end-to-end business-genre build succeeded**: real
+        RSS sources → real Ranker (Groq) → real Writer (Gemini) → real
+        Fact-checker (Cloudflare) → 2 verified, real stories (Tata Sons
+        board reappointment; a US tariff bill) → published revision 1.
+        Every one of the 7 real LLM calls in that run succeeded (2
+        ranker, 3 writer, 2 fact_checker, 0 errors) — the first time
+        this pipeline has completed against live data without hitting a
+        rate limit, a crash, or a false-positive rejection.

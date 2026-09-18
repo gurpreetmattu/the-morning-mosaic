@@ -74,7 +74,10 @@ class FactChecker:
         findings: list[CheckFinding] = []
         for element, sentence in elements:
             cited = [texts[pid] for pid in sentence.passage_ids if pid in texts]
-            for problem in unsupported_facts(sentence.text, cited):
+            # The headline is Title Case by convention, not a signal of
+            # real proper nouns — see unsupported_facts' own docstring.
+            check_names = element != "headline"
+            for problem in unsupported_facts(sentence.text, cited, check_names=check_names):
                 findings.append(
                     CheckFinding(
                         element=element,

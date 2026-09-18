@@ -333,7 +333,15 @@ def names_in(text: str) -> set[str]:
                     continue
                 phrase = parts[1]
             too_short = len(phrase) < 4 and phrase not in _KNOWN_SHORT_ACRONYMS
-            if too_short or phrase.lower() in _NOT_NAMES:
+            # A Title-Case headline capitalises every word by convention, so
+            # the connector-joining above can merge the *whole headline*
+            # into one "name" once the leading word is dropped ("Ministry
+            # of Railways Clears High Speed Rail Corridor" -> "of Railways
+            # Clears High Speed Rail Corridor") — a real entity name is
+            # essentially never this long. Found live: this exact headline
+            # shape false-flagged in a real groundedness eval run.
+            too_long = len(phrase.split()) > 5
+            if too_short or too_long or phrase.lower() in _NOT_NAMES:
                 continue
             candidates.add(phrase)
     return candidates
@@ -342,8 +350,21 @@ def names_in(text: str) -> set[str]:
 # ------------------------------------------------------------------- the check
 
 
-def unsupported_facts(sentence: str, cited_passages: Sequence[str]) -> list[str]:
-    """Everything asserted in the sentence that no cited passage supports."""
+def unsupported_facts(
+    sentence: str, cited_passages: Sequence[str], *, check_names: bool = True
+) -> list[str]:
+    """Everything asserted in the sentence that no cited passage supports.
+
+    `check_names=False` for the headline: it is written in Title Case by
+    convention, so nearly every word is capitalised regardless of whether
+    it is part of a real proper noun — a pattern no length cap on the
+    connector-joining regex reliably tells apart from a run of genuine
+    names (found live: multiple distinct real headlines false-flagged this
+    way even after capping candidate length). The model check on the same
+    element remains the safety net, per this module's own stated tradeoff:
+    "a missed name is checked by the model instead, while a false one
+    would reject sound copy."
+    """
     haystack = " ".join(cited_passages)
     problems: list[str] = []
 
@@ -355,10 +376,22 @@ def unsupported_facts(sentence: str, cited_passages: Sequence[str]) -> list[str]
     for token in sorted(dates_in(sentence) - passage_dates):
         problems.append(f"the date reference {token!r} does not appear in the cited passages")
 
+    if not check_names:
+        return problems
+
     lowered = haystack.lower()
     for name in sorted(names_in(sentence)):
-        if name.lower() not in lowered:
-            problems.append(f"the name {name!r} does not appear in the cited passages")
+        if name.lower() in lowered:
+            continue
+        # A hyphenated join ("Mumbai-Ahmedabad corridor") is a common
+        # headline convention for a passage that writes it as prose
+        # ("...between Mumbai and Ahmedabad...") — not an invented entity,
+        # as long as every half is itself grounded. Found live: this exact
+        # shape false-flagged in a real groundedness eval run.
+        halves = [half for half in name.split("-") if half]
+        if len(halves) > 1 and all(half.lower() in lowered for half in halves):
+            continue
+        problems.append(f"the name {name!r} does not appear in the cited passages")
 
     return problems
 

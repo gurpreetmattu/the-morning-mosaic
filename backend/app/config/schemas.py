@@ -216,17 +216,20 @@ class ModelSpec(ConfigBase):
     max_output_tokens: int = Field(gt=0)
     pinned: bool = False
     fallbacks: list[str] = Field(default_factory=list)
-    # Which credential set (LLM_GATEWAY_* or LLM_FALLBACK_*) this agent's own
-    # `model`/`fallbacks` route through. Lets one pinned agent sit on a
-    # different provider than another (e.g. Writer on the fallback gateway,
-    # Fact-checker on the primary one) without a global gateway swap.
-    gateway: Literal["primary", "fallback"] = "primary"
-    # The model id to use on the *other* gateway, tried only after `model`/
-    # `fallbacks` are exhausted — a fallback provider is a different vendor
-    # with its own model names, so reusing `model`/`fallbacks` there would
-    # just 404. None means no such route, even if the other gateway is
-    # configured. Only meaningful when gateway == "primary"; there is no
-    # further fallback beyond the fallback gateway itself.
+    # Which credential set this agent's own `model`/`fallbacks` route
+    # through: LLM_GATEWAY_* ("primary"), LLM_FALLBACK_* ("fallback"), or
+    # LLM_SECONDARY_* ("secondary"). Lets pinned agents sit on genuinely
+    # different vendors from each other (Writer on "fallback", Fact-checker
+    # on "secondary") without a global gateway swap, and without one
+    # pinned agent's provider choice forcing another's.
+    gateway: Literal["primary", "fallback", "secondary"] = "primary"
+    # The model id to use on the fallback gateway specifically, tried only
+    # after `model`/`fallbacks` are exhausted — a fallback provider is a
+    # different vendor with its own model names, so reusing `model`/
+    # `fallbacks` there would just 404. None means no such route, even if
+    # the fallback gateway is configured. Only meaningful when gateway ==
+    # "primary"; there is no further fallback beyond the fallback gateway
+    # itself, and this never routes to "secondary".
     fallback_model: str | None = None
 
     @property

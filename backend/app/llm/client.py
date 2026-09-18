@@ -134,21 +134,24 @@ class LlmClient:
 
     # ------------------------------------------------------------------ routes
 
-    def _gateway_creds(self, which: Literal["primary", "fallback"]) -> tuple[str, str] | None:
+    def _gateway_creds(
+        self, which: Literal["primary", "fallback", "secondary"]
+    ) -> tuple[str, str] | None:
+        url: Any
+        key: Any
         if which == "primary":
-            return (
-                str(self._settings.llm_gateway_url),
-                self._settings.llm_gateway_api_key.get_secret_value(),
-            )
-        fallback_url = self._settings.llm_fallback_url
-        fallback_key = self._settings.llm_fallback_api_key
+            url, key = self._settings.llm_gateway_url, self._settings.llm_gateway_api_key
+        elif which == "fallback":
+            url, key = self._settings.llm_fallback_url, self._settings.llm_fallback_api_key
+        else:
+            url, key = self._settings.llm_secondary_url, self._settings.llm_secondary_api_key
         # A blank (but present) env value resolves to SecretStr(""), not
         # None — check the actual value, not just whether the field is set,
         # same reasoning as verify_turnstile's identical check.
-        fallback_key_value = fallback_key.get_secret_value() if fallback_key else None
-        if fallback_url is None or not fallback_key_value:
+        key_value = key.get_secret_value() if key else None
+        if url is None or not key_value:
             return None
-        return str(fallback_url), fallback_key_value
+        return str(url), key_value
 
     def routes_for(self, agent: AgentKey) -> list[Route]:
         spec = self._models.agents[agent]
@@ -160,9 +163,10 @@ class LlmClient:
 
         own = self._gateway_creds(spec.gateway)
         if own is None:
+            env_prefix = {"fallback": "LLM_FALLBACK", "secondary": "LLM_SECONDARY"}[spec.gateway]
             raise LlmConfigurationError(
                 f"agent {agent!r} is configured to use the {spec.gateway} gateway, "
-                "but LLM_FALLBACK_URL/LLM_FALLBACK_API_KEY are not set"
+                f"but {env_prefix}_URL/{env_prefix}_API_KEY are not set"
             )
         own_url, own_key = own
 

@@ -24,6 +24,7 @@ from app.llm.errors import (
 
 PRIMARY = "https://primary.llm"
 FALLBACK = "https://fallback.llm"
+SECONDARY = "https://secondary.llm"
 
 PROMPT = [Message(role="user", content="Summarise the following passage.")]
 
@@ -47,6 +48,10 @@ def settings(**overrides: Any) -> Settings:
 
 def with_fallback_provider() -> Settings:
     return settings(llm_fallback_url=FALLBACK, llm_fallback_api_key="fallback-key")
+
+
+def with_secondary_provider() -> Settings:
+    return settings(llm_secondary_url=SECONDARY, llm_secondary_api_key="secondary-key")
 
 
 def models(**agent_overrides: Any) -> ModelsConfig:
@@ -209,6 +214,42 @@ def test_a_pinned_agent_on_the_fallback_gateway_fails_clearly_if_unconfigured() 
     unconfigured = settings(llm_fallback_url=None, llm_fallback_api_key=None)
     with pytest.raises(LlmConfigurationError, match="fallback gateway"):
         client(setting=unconfigured, model_config=config).routes_for("writer")
+
+
+def test_a_pinned_agent_can_be_routed_through_the_secondary_gateway() -> None:
+    """Fact-checker's real use case: a third, distinct vendor from both the
+    primary gateway and Writer's fallback gateway."""
+    config = models(
+        fact_checker={
+            "model": "check-on-secondary",
+            "temperature": 0.0,
+            "max_output_tokens": 256,
+            "pinned": True,
+            "fallbacks": [],
+            "gateway": "secondary",
+        }
+    )
+    routes = client(setting=with_secondary_provider(), model_config=config).routes_for(
+        "fact_checker"
+    )
+    assert [(r.model, r.provider) for r in routes] == [("check-on-secondary", "secondary")]
+    assert routes[0].base_url.rstrip("/") == SECONDARY
+
+
+def test_a_pinned_agent_on_the_secondary_gateway_fails_clearly_if_unconfigured() -> None:
+    config = models(
+        fact_checker={
+            "model": "check-on-secondary",
+            "temperature": 0.0,
+            "max_output_tokens": 256,
+            "pinned": True,
+            "fallbacks": [],
+            "gateway": "secondary",
+        }
+    )
+    unconfigured = settings(llm_secondary_url=None, llm_secondary_api_key=None)
+    with pytest.raises(LlmConfigurationError, match="LLM_SECONDARY"):
+        client(setting=unconfigured, model_config=config).routes_for("fact_checker")
 
 
 def test_an_unpinned_agent_with_no_fallback_model_gets_no_fallback_route() -> None:

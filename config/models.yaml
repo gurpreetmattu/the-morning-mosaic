@@ -65,11 +65,13 @@ agents:
     pinned: false
     fallbacks:
       - openai/gpt-oss-20b
-    # Google's Gemini free tier (tested live 2026-09-18: gemini-3.6-flash,
-    # 200 OK) is a separate account's quota entirely, so it survives a Groq
-    # per-minute exhaustion that no amount of retrying the same account
-    # would. Only used if LLM_FALLBACK_URL/LLM_FALLBACK_API_KEY are set.
-    fallback_model: gemini-3.6-flash
+    # Google's Gemini free tier is a separate account's quota entirely, so
+    # it survives a Groq per-minute exhaustion that no amount of retrying
+    # the same account would. gemini-flash-lite-latest, not gemini-3.6-flash
+    # (first tried, then reverted everywhere — see the writer entry below
+    # for why: a real 5-requests/minute/project/model cap). Only used if
+    # LLM_FALLBACK_URL/LLM_FALLBACK_API_KEY are set.
+    fallback_model: gemini-flash-lite-latest
 
   # Moved off Groq entirely on 2026-09-18: a real business-genre build sent
   # qwen3.8-27b's real per-minute budget (both ITPM and OTPM) so far past
@@ -86,8 +88,9 @@ agents:
   # with zero errors — verify against Google's real quota dashboard before
   # trusting this under sustained load, since AI Studio's per-model limits
   # move and "flash" vs "flash-lite" tiers are priced/limited differently.
-  # Deliberately not gpt-oss-20b (already Fact-checker's model): collapsing
-  # both onto one model would defeat the vendor-diversity reasoning below.
+  # Deliberately not the same model as Fact-checker (see that entry below):
+  # collapsing both onto one model would defeat the vendor-diversity
+  # reasoning it describes.
   #
   # PROVISIONAL: /evals/run.py's groundedness and tag_accuracy evals pass
   # against this model (see docs/BACKLOG.md), but that is one run against
@@ -99,12 +102,34 @@ agents:
     max_output_tokens: 900
     pinned: true
 
-  # Deliberately a different vendor lineage from the Writer (OpenAI-OSS,
-  # not Qwen/Alibaba): a checker that shares the Writer's blind spots is
-  # worth much less. Smaller than the 120b variant, so a lighter per-minute
-  # budget footprint than the model that got swapped out above.
+  # Moved off Groq's "gpt-oss" family on 2026-09-18: found live that
+  # gpt-oss-20b, gpt-oss-120b, and gpt-oss-safeguard-20b all share the
+  # SAME 8000-tokens-per-minute cap on this account (a family limit, not
+  # a per-model-id one — confirmed by the identical "Limit 8000" text in
+  # real llm_calls.error rows for two different model ids), so no model
+  # swap within that family could have helped; a real build's Fact-checker
+  # phase logged 63 errors against 5 successes. qwen/qwen3.8-27b (Groq,
+  # a different family) was tried next and did worse under the same
+  # fact-check-shaped burst test (4/15 OK, its 1000 OTPM cap binds harder
+  # than gpt-oss's 8000 TPM in practice).
+  #
+  # Cloudflare Workers AI's llama-3.3-70b-instruct-fp8-fast took a 20/20
+  # burst under realistic fact-check-shaped load with zero errors — a
+  # genuinely different vendor from both Groq (Ranker/Ranker-fallback-free)
+  # and Gemini (Writer's gateway), preserving the vendor-diversity
+  # reasoning this field used to describe when Fact-checker was still on
+  # Groq: a checker that shares the Writer's blind spots is worth much
+  # less. Free tier is ~10,000 neurons/day account-wide (one call here
+  # costs ~20 neurons), so roughly 500 real calls/day — ample for one
+  # build's Fact-checker phase, tight if hammered by repeated manual
+  # testing across many genres in one day.
+  #
+  # PROVISIONAL: not yet run through /evals/run.py's groundedness eval
+  # (which drives Writer+Fact-checker together) — do that before trusting
+  # this under real load, per CLAUDE.md's eval-gate rule for model changes.
   fact_checker:
-    model: openai/gpt-oss-20b
+    model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+    gateway: secondary
     temperature: 0.0
     max_output_tokens: 4096
     pinned: true
@@ -116,4 +141,4 @@ agents:
     temperature: 0.0
     max_output_tokens: 1024
     pinned: false
-    fallback_model: gemini-3.6-flash
+    fallback_model: gemini-flash-lite-latest

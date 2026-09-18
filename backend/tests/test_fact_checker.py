@@ -147,6 +147,48 @@ def test_an_unknown_short_capitalised_word_is_still_ignored() -> None:
     assert "Fed" not in names_in("The Fed raised rates on Friday.")
 
 
+def test_a_hyphenated_join_of_two_grounded_names_is_supported() -> None:
+    """A real defect: the source writes "Mumbai and Ahmedabad", the Writer
+    headlines it "Mumbai-Ahmedabad" — a stylistic join, not an invention."""
+    assert (
+        unsupported_facts(
+            "The Mumbai-Ahmedabad corridor was approved.",
+            ["A rail corridor between Mumbai and Ahmedabad was approved."],
+        )
+        == []
+    )
+
+
+def test_a_hyphenated_name_with_an_ungrounded_half_still_fails() -> None:
+    problems = unsupported_facts(
+        "The Mumbai-Chennai corridor was approved.",
+        ["A rail corridor between Mumbai and Ahmedabad was approved."],
+    )
+    assert any("Mumbai-Chennai" in problem for problem in problems)
+
+
+def test_check_names_false_skips_the_name_check_entirely() -> None:
+    """Real headlines exist where a length cap alone still misses shorter
+    Title-Case fragments a length heuristic cannot reliably tell apart
+    from a genuine multi-word name. The Fact-checker passes
+    check_names=False for the headline element specifically (see
+    fact_checker.py's _deterministic) rather than trying to make that
+    heuristic perfect — an invented name is still caught by the model
+    check on the same element."""
+    invented = "Reserve Bank Governor Urjit Patel spoke."
+    assert unsupported_facts(invented, [P2], check_names=True) != []
+    assert unsupported_facts(invented, [P2], check_names=False) == []
+
+
+def test_a_title_case_headline_is_not_swallowed_whole_as_one_name() -> None:
+    """A real defect: every word in a headline is capitalised by
+    convention, so the connector-joining regex could merge the whole
+    headline into one over-long "name" once the leading word is dropped."""
+    headline = "Ministry of Railways Clears High Speed Rail Corridor"
+    assert "of Railways Clears High Speed Rail Corridor" not in names_in(headline)
+    assert unsupported_facts(headline, [headline]) == []
+
+
 def test_optional_elements_are_identified() -> None:
     assert is_optional("one_liner")
     assert is_optional("why_this_matters[0]")
