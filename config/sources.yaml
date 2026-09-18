@@ -96,6 +96,9 @@ sources:
     homepage: https://indianexpress.com/
     tier: 2
     terms_url: https://indianexpress.com/terms-and-conditions/
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://indianexpress.com/section/india/feed/
         genres: [india]
@@ -105,6 +108,21 @@ sources:
         genres: [technology]
       - url: https://indianexpress.com/section/entertainment/bollywood/feed/
         genres: [bollywood]
+    notes: >-
+      Enabled 2026-09-18 specifically to give `politics` (previously
+      scroll-in only) a genuine second, independent source —
+      `political-pulse` is fresh, real, balanced political coverage
+      (verified live), robots.txt allows the article paths, and
+      extraction works cleanly. Owner's call, NOT the same practical-risk
+      basis as the other outlets reviewed this project: this outlet's
+      terms (dated 27 Dec 2021, explicitly covering RSS) go beyond a
+      vague personal-use clause and name AI use directly — section 9.3
+      prohibits creating "summaries, compilations, derivative works" from
+      the content and using it "for AI training, summarization" without
+      a "binding licensing agreement, including fair monetary
+      compensation." Enabled anyway at the owner's explicit direction
+      after being shown this language, not because it was read as
+      permissive.
 
   - key: hindustan-times
     name: Hindustan Times

@@ -1276,3 +1276,41 @@ noticing the count was wrong.)
         than guessing further at URLs — needs either more feed-URL
         hunting on already-enabled outlets, or a genuinely new source
         through the same terms-review process, next.
+
+- [x] `politics` given a real second source — `indian-express` enabled,
+      also giving `india`/`technology`/`bollywood` its already-drafted
+      feeds — `PENDING`.
+      - `indian-express` was already drafted in `config/sources.yaml`
+        with four feeds (india, **political-pulse → politics**,
+        technology, bollywood) but had never been reviewed —
+        `terms_confirmed`/`robots_checked`/`enabled` were all unset, no
+        `notes`. Checked PIB (Government of India's own press releases)
+        first as a primary-source alternative: technically unusable as
+        configured — its feed has no `pubDate` at all (every item would
+        be dropped for lacking a reliable timestamp, per the Collector's
+        own "never guessed at" rule) and its content is Hindi, not
+        English.
+      - `political-pulse` verified live: fresh, real, balanced coverage
+        across parties (BJP, Trinamool, Election Commission), robots.txt
+        allows the article paths, and extraction gets ~8,400 clean
+        characters from a real article. The other three already-drafted
+        feeds checked too (fresh items, 200 OK) before enabling the
+        source, since `enabled` is source-wide, not per-feed.
+      - **Read the actual terms before enabling, not just assumed
+        permissive like the earlier batch.** indianexpress.com's terms
+        (dated 27 Dec 2021, explicitly covering RSS access) go well past
+        the vague "personal, non-commercial use" language the rest of
+        `config/sources.yaml` was read under — section 9.3 names AI use
+        directly: prohibits creating "summaries, compilations, derivative
+        works" from the content, and using it "for AI training,
+        summarization" without "a binding licensing agreement, including
+        fair monetary compensation." That is exactly what the Writer
+        agent does to every article. Flagged this explicitly as a
+        different category from the earlier practical-risk reading (the
+        same bright-line treatment Al Jazeera's explicit prohibition got)
+        and asked before enabling; the owner's call was to enable anyway,
+        recorded verbatim in the source's own `notes` so this isn't
+        mistaken for an oversight later.
+      - Verified live: `collect('politics')` now returns
+        `{'indian-express': 4, 'scroll-in': 24}` — a real second,
+        independent source where there was one before.
