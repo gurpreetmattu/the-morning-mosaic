@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `405cc89`
-- **State:** 115 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `78ac9f2`
+- **State:** 117 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 664 Python tests (635 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
@@ -1241,7 +1241,7 @@ noticing the count was wrong.)
         genre, not just above the 2-story "quiet day" floor.
 
 - [x] Checked every genre for the same starvation pattern; found and fixed
-      a real single-source gap in sports and bollywood — `PENDING`.
+      a real single-source gap in sports and bollywood — `78ac9f2`.
       - Ran a live `collect()` for all 10 genres. The round-robin fix
         above holds everywhere: no genre shows a source stuck at zero
         articles because of cap ordering. `business`'s `rbi: 0` is the
