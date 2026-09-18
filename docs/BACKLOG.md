@@ -1239,3 +1239,40 @@ noticing the count was wrong.)
         Buffett's Berkshire succession, a markets close, a Supreme Court
         inheritance case) — squarely inside CLAUDE.md's target of 4-6 per
         genre, not just above the 2-story "quiet day" floor.
+
+- [x] Checked every genre for the same starvation pattern; found and fixed
+      a real single-source gap in sports and bollywood — `PENDING`.
+      - Ran a live `collect()` for all 10 genres. The round-robin fix
+        above holds everywhere: no genre shows a source stuck at zero
+        articles because of cap ordering. `business`'s `rbi: 0` is the
+        already-documented, unrelated table-HTML extraction limitation,
+        not this bug.
+      - Found a different, real gap while checking: `politics`
+        (scroll-in only), `sports` (the-hindu only), and `bollywood`
+        (bollywood-hungama only) each had exactly one enabled source —
+        round-robin cannot help when there is nothing to interleave
+        against, and CLAUDE.md's corroboration rule needs "≥2 independent
+        sources, or one primary official source" for the same reasons
+        this file already gives the-hindu's own `terms_url` a stale-404
+        caveat: a single source is a ceiling on how many stories can ever
+        clear that bar.
+      - Cheapest fix first: checked whether already-enabled, already
+        terms-confirmed outlets had dedicated feeds for these genres
+        sitting unused (the same shape of gap Livemint's business feed
+        had). Found two, both verified live (fresh items, robots.txt
+        allows): Hindustan Times' `feeds/rss/sports/rssfeed.xml` (general
+        sports, broader than the-hindu's cricket-only one) and
+        `feeds/rss/entertainment/bollywood/rssfeed.xml`. Added both to the
+        existing hindustan-times entry — no new terms review needed, since
+        that source is already reviewed. `sports` and `bollywood` each now
+        have 2 independent sources; verified live
+        (`sports: {the-hindu: 20, hindustan-times: 20}`, `bollywood:
+        {hindustan-times: 27, bollywood-hungama: 12}`).
+      - `politics` is still one source. Checked Hindustan Times' and The
+        Hindu's real feed directories for a dedicated politics feed: HT's
+        `elections/rssfeed.xml` looked promising by name but is stale
+        (channel title only, no items); no autodiscoverable RSS link was
+        found on either outlet's politics section page. Left open rather
+        than guessing further at URLs — needs either more feed-URL
+        hunting on already-enabled outlets, or a genuinely new source
+        through the same terms-review process, next.

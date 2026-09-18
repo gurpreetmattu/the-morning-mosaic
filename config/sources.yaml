@@ -119,6 +119,15 @@ sources:
         genres: [india]
       - url: https://www.hindustantimes.com/feeds/rss/business/rssfeed.xml
         genres: [business]
+      # Added 2026-09-18: sports and bollywood each had only one enabled
+      # source (the-hindu; bollywood-hungama), so neither genre could ever
+      # clear the ">=2 independent sources" corroboration bar except via
+      # the single-source exception. Both verified live before adding:
+      # real, fresh, on-topic items, allowed by robots.txt.
+      - url: https://www.hindustantimes.com/feeds/rss/sports/rssfeed.xml
+        genres: [sports]
+      - url: https://www.hindustantimes.com/feeds/rss/entertainment/bollywood/rssfeed.xml
+        genres: [bollywood]
     notes: >-
       Owner's call, reviewed 2026-09-18, on the same practical-risk basis
       recorded for the-hindu above — a small, non-commercial learning
