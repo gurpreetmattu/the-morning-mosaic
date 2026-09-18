@@ -7,10 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `da2e20a`
-- **State:** 119 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `7d41e9f`
+- **State:** 121 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 664 Python tests (635 backend + 29 evals, three migrations now verified against a real
+  runbook · 671 Python tests (642 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
   other, thirty of which cover the weekend edition's selection logic and its build/delivery
@@ -1317,7 +1317,7 @@ noticing the count was wrong.)
 
 - [x] Fact-checker got a narrow availability-only fallback, after
       Cloudflare's free tier turned out to be a DAILY cap, not per-minute
-      — `PENDING`.
+      — `7d41e9f`.
       - Testing a real multi-genre build (politics/sports/bollywood
         together) hit persistent 429s from Cloudflare that did not
         recover even after waiting. The real error body said why:
