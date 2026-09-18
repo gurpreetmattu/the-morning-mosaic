@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `7d41e9f`
-- **State:** 121 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `583ea3b`
+- **State:** 123 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 671 Python tests (642 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
@@ -1359,7 +1359,7 @@ noticing the count was wrong.)
         hatch engaged on a real, live outage, not a simulated one.
 
 - [x] Ran a real end-to-end build for every genre reachable today; 6 of 9
-      published real, verified stories — `PENDING`.
+      published real, verified stories — `583ea3b`.
       - `business`: 6 stories (the first proven end-to-end run, recorded
         above). `india`: 2. `technology`: 3. `sports`: 3. `bollywood`: 3.
         All real content, real sources, real citations, published
