@@ -178,6 +178,19 @@ def test_pinned_model_may_not_declare_fallbacks() -> None:
         )
 
 
+def test_pinned_model_may_not_declare_a_fallback_model() -> None:
+    with pytest.raises(ValidationError, match="must not declare fallbacks"):
+        ModelSpec.model_validate(
+            {
+                "model": "m",
+                "temperature": 0.0,
+                "max_output_tokens": 128,
+                "pinned": True,
+                "fallback_model": "other",
+            }
+        )
+
+
 def test_city_outside_india_is_rejected() -> None:
     with pytest.raises(ValidationError):
         City.model_validate(

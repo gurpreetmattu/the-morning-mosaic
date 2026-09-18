@@ -1006,3 +1006,48 @@ noticing the count was wrong.)
       constraint under the real scheduled job's own pacing (an hour-plus
       window, real network latency between calls) than under back-to-back
       manual test runs, but that is not yet itself proven.
+
+- [x] Second LLM provider wired in for non-pinned agents, to survive Groq's
+      real per-minute exhaustion — `PENDING`.
+      - The user pasted a standalone `llm_router.py` at the repo root plus
+        9 new provider keys (Cohere, Cloudflare, Mistral, Cerebras,
+        SambaNova, NVIDIA, OpenRouter, Gemini, HuggingFace) and asked to
+        "configure this... so we don't keep hitting the limit." That
+        script was **not** wired in: it calls the `openai` SDK directly,
+        which `app/llm/client.py`'s own docstring explains this project
+        avoids specifically because the SDK's transport can't be
+        intercepted by the test suite's respx mocking; it also has no
+        audit trail, no personal-data guard, and a string-based API
+        instead of this project's `Message`/`ModelSpec` types. Its own
+        hardcoded model ids were live-tested and are already wrong for
+        Groq, Gemini, and NVIDIA.
+      - Tested all 9 new keys live (same method as the earlier Groq
+        catalog check — the real endpoint, not docs). Only two work at
+        all right now: Gemini (`gemini-3.6-flash`; the script's
+        `gemini-2.5-flash` is retired) and Cloudflare Workers AI (tiny
+        10k-neurons/day budget). Dead on this account: Cerebras and
+        HuggingFace (402, no billing/credits), NVIDIA (410, model
+        end-of-lifed), Mistral (429, already at 0 req/min), OpenRouter
+        (free tier is 50 requests/**day**, account-wide, not per-model —
+        too small to matter), SambaNova (429, transient overload).
+      - Found a real design gap in the existing single-fallback-provider
+        slot (`LLM_FALLBACK_URL`/`LLM_FALLBACK_API_KEY`): `routes_for()`
+        reused the primary gateway's `model`/`fallbacks` list on the
+        fallback gateway too, which only works if the fallback happens to
+        share the primary's model names — false for Gemini. Added
+        `ModelSpec.fallback_model` (a distinct model id for the fallback
+        gateway only; rejected on a pinned agent, same as `fallbacks`) and
+        changed `routes_for()` to route to the fallback gateway using
+        that field instead of reusing `models`. Writer and Fact-checker
+        stay pinned and untouched — no fallback route for either, by
+        design. Wired Gemini in as `LLM_FALLBACK_URL`/`LLM_FALLBACK_API_KEY`
+        in `.env`, and set `fallback_model: gemini-3.6-flash` on `ranker`
+        and `image_finder` in `config/models.yaml`, the two non-pinned
+        agents with a real caller. Verified the resolved routes live
+        (`routes_for("ranker")` → Groq primary ×2, then Gemini fallback
+        with its own model id) and confirmed a live Gemini call succeeds.
+        4 new/updated tests in `test_llm_client.py` and `test_config.py`.
+      - `llm_router.py` itself is still sitting untracked at the repo
+        root, unused by the application — its disposition (delete, keep
+        as a personal scratch tool, or gitignore) is still the user's
+        call, not yet made.

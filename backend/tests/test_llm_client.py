@@ -50,18 +50,24 @@ def with_fallback_provider() -> Settings:
 
 
 def models(**agent_overrides: Any) -> ModelsConfig:
-    def spec(model: str, pinned: bool, fallbacks: list[str] | None = None) -> dict[str, Any]:
+    def spec(
+        model: str,
+        pinned: bool,
+        fallbacks: list[str] | None = None,
+        fallback_model: str | None = None,
+    ) -> dict[str, Any]:
         return {
             "model": model,
             "temperature": 0.0,
             "max_output_tokens": 256,
             "pinned": pinned,
             "fallbacks": fallbacks or [],
+            "fallback_model": fallback_model,
         }
 
     agents: dict[str, Any] = {
         "orchestrator": spec("orch-1", False),
-        "ranker": spec("rank-1", False, ["rank-2"]),
+        "ranker": spec("rank-1", False, ["rank-2"], fallback_model="rank-fb"),
         "writer": spec("write-1", True),
         "fact_checker": spec("check-1", True),
         "image_finder": spec("image-1", False),
@@ -153,14 +159,33 @@ def test_a_pinned_agent_gets_exactly_one_route() -> None:
     assert [(r.model, r.provider) for r in routes] == [("write-1", "primary")]
 
 
-def test_an_unpinned_agent_routes_through_models_then_providers() -> None:
+def test_an_unpinned_agent_routes_through_models_then_its_fallback_gateway_model() -> None:
+    """The fallback gateway is a different vendor with its own model names,
+    so it gets one route at its own configured `fallback_model` — never the
+    primary gateway's `model`/`fallbacks` list, which would 404 there."""
     routes = client(setting=with_fallback_provider()).routes_for("ranker")
     assert [(r.model, r.provider) for r in routes] == [
         ("rank-1", "primary"),
         ("rank-2", "primary"),
-        ("rank-1", "fallback"),
-        ("rank-2", "fallback"),
+        ("rank-fb", "fallback"),
     ]
+
+
+def test_an_unpinned_agent_with_no_fallback_model_gets_no_fallback_route() -> None:
+    config = models(
+        image_finder={
+            "model": "image-1",
+            "temperature": 0.0,
+            "max_output_tokens": 256,
+            "pinned": False,
+            "fallbacks": [],
+            "fallback_model": None,
+        }
+    )
+    routes = client(setting=with_fallback_provider(), model_config=config).routes_for(
+        "image_finder"
+    )
+    assert [r.provider for r in routes] == ["primary"]
 
 
 def test_a_placeholder_model_is_refused_before_any_call() -> None:

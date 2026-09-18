@@ -158,10 +158,14 @@ class LlmClient:
         # None — check the actual value, not just whether the field is set,
         # same reasoning as verify_turnstile's identical check.
         fallback_key_value = fallback_key.get_secret_value() if fallback_key else None
-        if fallback_url is not None and fallback_key_value:
-            routes += [
-                Route(str(fallback_url), fallback_key_value, model, "fallback") for model in models
-            ]
+        # The fallback gateway is a different vendor with its own model
+        # names, so it does not reuse `models` (that list is specific to the
+        # primary gateway's catalog). Only route to it when the agent names a
+        # model that actually exists there.
+        if fallback_url is not None and fallback_key_value and spec.fallback_model:
+            routes.append(
+                Route(str(fallback_url), fallback_key_value, spec.fallback_model, "fallback")
+            )
         return routes
 
     # ------------------------------------------------------------------- calls

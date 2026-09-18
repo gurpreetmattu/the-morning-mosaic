@@ -65,6 +65,11 @@ agents:
     pinned: false
     fallbacks:
       - openai/gpt-oss-20b
+    # Google's Gemini free tier (tested live 2026-09-18: gemini-3.6-flash,
+    # 200 OK) is a separate account's quota entirely, so it survives a Groq
+    # per-minute exhaustion that no amount of retrying the same account
+    # would. Only used if LLM_FALLBACK_URL/LLM_FALLBACK_API_KEY are set.
+    fallback_model: gemini-3.6-flash
 
   # See the ranker comment above for why max_output_tokens is 900, not the
   # 4096 first tried — this model's real output-tokens-per-minute cap on
@@ -92,3 +97,4 @@ agents:
     temperature: 0.0
     max_output_tokens: 1024
     pinned: false
+    fallback_model: gemini-3.6-flash
