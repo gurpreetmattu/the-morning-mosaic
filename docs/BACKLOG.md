@@ -7,10 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `63b9f4d`
-- **State:** 113 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `405cc89`
+- **State:** 115 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 660 Python tests (631 backend + 29 evals, three migrations now verified against a real
+  runbook · 664 Python tests (635 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
   other, thirty of which cover the weekend edition's selection logic and its build/delivery
@@ -1201,7 +1201,7 @@ noticing the count was wrong.)
 
 - [x] The 2-story revision above was too thin for a real newsletter — found
       and fixed the actual cause, a Collector source-starvation bug, not a
-      quiet news day — `PENDING`.
+      quiet news day — `405cc89`.
       - The user's own reaction ("that's not what i expected... who would
         like to read two stories?") was the right call. Diagnosed rather
         than assumed: `Collector.collect()`'s `DEFAULT_MAX_ARTICLES = 40`
