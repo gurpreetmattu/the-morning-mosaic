@@ -134,6 +134,22 @@ class LlmClient:
 
     # ------------------------------------------------------------------ routes
 
+    def _gateway_creds(self, which: Literal["primary", "fallback"]) -> tuple[str, str] | None:
+        if which == "primary":
+            return (
+                str(self._settings.llm_gateway_url),
+                self._settings.llm_gateway_api_key.get_secret_value(),
+            )
+        fallback_url = self._settings.llm_fallback_url
+        fallback_key = self._settings.llm_fallback_api_key
+        # A blank (but present) env value resolves to SecretStr(""), not
+        # None — check the actual value, not just whether the field is set,
+        # same reasoning as verify_turnstile's identical check.
+        fallback_key_value = fallback_key.get_secret_value() if fallback_key else None
+        if fallback_url is None or not fallback_key_value:
+            return None
+        return str(fallback_url), fallback_key_value
+
     def routes_for(self, agent: AgentKey) -> list[Route]:
         spec = self._models.agents[agent]
         if not spec.is_configured:
@@ -142,30 +158,30 @@ class LlmClient:
                 "set a real model id in config/models.yaml"
             )
 
-        primary_url = str(self._settings.llm_gateway_url)
-        primary_key = self._settings.llm_gateway_api_key.get_secret_value()
+        own = self._gateway_creds(spec.gateway)
+        if own is None:
+            raise LlmConfigurationError(
+                f"agent {agent!r} is configured to use the {spec.gateway} gateway, "
+                "but LLM_FALLBACK_URL/LLM_FALLBACK_API_KEY are not set"
+            )
+        own_url, own_key = own
 
         if spec.pinned:
             # Exactly one route, by design. No model and no provider failover.
-            return [Route(primary_url, primary_key, spec.model, "primary")]
+            return [Route(own_url, own_key, spec.model, spec.gateway)]
 
         models = [spec.model, *spec.fallbacks]
-        routes = [Route(primary_url, primary_key, model, "primary") for model in models]
+        routes = [Route(own_url, own_key, model, spec.gateway) for model in models]
 
-        fallback_url = self._settings.llm_fallback_url
-        fallback_key = self._settings.llm_fallback_api_key
-        # A blank (but present) env value resolves to SecretStr(""), not
-        # None — check the actual value, not just whether the field is set,
-        # same reasoning as verify_turnstile's identical check.
-        fallback_key_value = fallback_key.get_secret_value() if fallback_key else None
-        # The fallback gateway is a different vendor with its own model
-        # names, so it does not reuse `models` (that list is specific to the
-        # primary gateway's catalog). Only route to it when the agent names a
-        # model that actually exists there.
-        if fallback_url is not None and fallback_key_value and spec.fallback_model:
-            routes.append(
-                Route(str(fallback_url), fallback_key_value, spec.fallback_model, "fallback")
-            )
+        # The other gateway is a different vendor with its own model names,
+        # so it does not reuse `models` (that list is specific to this
+        # agent's own gateway's catalog). Only route to it when the agent
+        # names a model that actually exists there, and it is configured.
+        if spec.fallback_model:
+            other = self._gateway_creds("fallback")
+            if other is not None:
+                other_url, other_key = other
+                routes.append(Route(other_url, other_key, spec.fallback_model, "fallback"))
         return routes
 
     # ------------------------------------------------------------------- calls

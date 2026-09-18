@@ -6,7 +6,7 @@ from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 from sqlalchemy import Engine, func, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from app.agents.orchestrator import CollectorLike, Orchestrator, VerifyFn
 from app.agents.schemas import (
@@ -383,16 +383,14 @@ def test_the_lock_key_is_stable_and_fits_a_signed_64_bit_int() -> None:
 
 def test_a_second_holder_cannot_take_the_same_job_lock(engine: Engine) -> None:
     """A manual rerun during the scheduled run must not publish twice."""
-    factory = sessionmaker(bind=engine)
-    with job_lock("test-build-guard", session_factory=factory) as first:
+    with job_lock("test-build-guard", connect=engine.connect) as first:
         assert first is True
-        with job_lock("test-build-guard", session_factory=factory) as second:
+        with job_lock("test-build-guard", connect=engine.connect) as second:
             assert second is False
 
 
 def test_the_lock_is_released_when_the_block_exits(engine: Engine) -> None:
-    factory = sessionmaker(bind=engine)
-    with job_lock("test-build-release", session_factory=factory) as first:
+    with job_lock("test-build-release", connect=engine.connect) as first:
         assert first is True
-    with job_lock("test-build-release", session_factory=factory) as again:
+    with job_lock("test-build-release", connect=engine.connect) as again:
         assert again is True

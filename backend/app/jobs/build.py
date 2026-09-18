@@ -108,6 +108,14 @@ def run_build(
         )
         session.add(run)
         session.flush()
+    # Ends the transaction that fetching/creating `run` opened, before the
+    # real minutes-long LLM phase below (collect, rank, write, verify) touches
+    # no database at all. Without this, the session sits idle-in-transaction
+    # for that whole phase and Neon kills the connection — found live via a
+    # real business-genre build. `run` stays usable after commit
+    # (get_sessionmaker's expire_on_commit=False), so `_finish` below needs
+    # no re-fetch.
+    session.commit()
 
     try:
         orchestrator.edition_number(edition_date)

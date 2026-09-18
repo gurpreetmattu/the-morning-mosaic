@@ -50,6 +50,23 @@ def get_engine() -> Engine:
 
 
 @lru_cache(maxsize=1)
+def get_direct_engine() -> Engine:
+    """A connection outside Neon's pooler, for anything needing real session
+    state (currently: the job lock's advisory lock — see app/jobs/locking.py
+    and Settings.database_direct_url). Small and short-lived: this is never
+    used for the ordinary request/job workload the pooled engine handles."""
+    settings = get_settings()
+    url = settings.database_direct_url or settings.database_url
+    return create_engine(
+        normalise_url(url.get_secret_value()),
+        pool_pre_ping=True,
+        pool_size=2,
+        max_overflow=0,
+        connect_args={"prepare_threshold": None},
+    )
+
+
+@lru_cache(maxsize=1)
 def get_sessionmaker() -> sessionmaker[Session]:
     return sessionmaker(bind=get_engine(), expire_on_commit=False)
 
@@ -74,3 +91,6 @@ def dispose_engine() -> None:
         get_engine().dispose()
     get_engine.cache_clear()
     get_sessionmaker.cache_clear()
+    if get_direct_engine.cache_info().currsize:
+        get_direct_engine().dispose()
+    get_direct_engine.cache_clear()

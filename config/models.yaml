@@ -71,11 +71,30 @@ agents:
     # would. Only used if LLM_FALLBACK_URL/LLM_FALLBACK_API_KEY are set.
     fallback_model: gemini-3.6-flash
 
-  # See the ranker comment above for why max_output_tokens is 900, not the
-  # 4096 first tried — this model's real output-tokens-per-minute cap on
-  # this account is 1000, found by a single request being rejected outright.
+  # Moved off Groq entirely on 2026-09-18: a real business-genre build sent
+  # qwen3.8-27b's real per-minute budget (both ITPM and OTPM) so far past
+  # its limit that only 1 of ~10 attempted stories made it through Writer
+  # in one run (35 OTPM 429s, 3 ITPM 413s, 1 ok — see docs/BACKLOG.md).
+  #
+  # First tried gemini-3.6-flash on the LLM_FALLBACK_* gateway (a separate
+  # account's quota from Groq) — reverted the same day: its real free-tier
+  # cap is 5 requests/minute/project/model ("RESOURCE_EXHAUSTED", quotaId
+  # GenerateRequestsPerMinutePerProjectPerModel-FreeTier, quotaValue 5),
+  # discovered by /evals/run.py's full suite genuinely exhausting it, not
+  # a single smoke call. gemini-flash-lite-latest on the same account
+  # took a 15-call rapid burst (json_object mode, realistic payload size)
+  # with zero errors — verify against Google's real quota dashboard before
+  # trusting this under sustained load, since AI Studio's per-model limits
+  # move and "flash" vs "flash-lite" tiers are priced/limited differently.
+  # Deliberately not gpt-oss-20b (already Fact-checker's model): collapsing
+  # both onto one model would defeat the vendor-diversity reasoning below.
+  #
+  # PROVISIONAL: /evals/run.py's groundedness and tag_accuracy evals pass
+  # against this model (see docs/BACKLOG.md), but that is one run against
+  # two synthetic fixtures, not a judgment on real output quality at scale.
   writer:
-    model: qwen/qwen3.8-27b
+    model: gemini-flash-lite-latest
+    gateway: fallback
     temperature: 0.2
     max_output_tokens: 900
     pinned: true

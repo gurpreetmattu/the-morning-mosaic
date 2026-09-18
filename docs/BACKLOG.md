@@ -1047,7 +1047,77 @@ noticing the count was wrong.)
         (`routes_for("ranker")` → Groq primary ×2, then Gemini fallback
         with its own model id) and confirmed a live Gemini call succeeds.
         4 new/updated tests in `test_llm_client.py` and `test_config.py`.
-      - `llm_router.py` itself is still sitting untracked at the repo
-        root, unused by the application — its disposition (delete, keep
-        as a personal scratch tool, or gitignore) is still the user's
-        call, not yet made.
+      - `llm_router.py` itself: deleted at the user's request once the
+        real fallback wiring above covered its purpose.
+
+- [x] First real business-genre build attempt found and fixed two live
+      infrastructure bugs, and moved Writer off Groq — `PENDING`.
+      - **Idle-in-transaction crashes.** The first real end-to-end
+        `python -m app.jobs.build --genre business` run (against real
+        Neon, real RSS sources, real Groq/Gemini) died with
+        `psycopg.errors.IdleInTransactionSessionTimeout` twice, in two
+        different places: `app/jobs/locking.py`'s `job_lock()` opens an
+        advisory lock and then holds its session for the whole job with
+        no further statement; `app/jobs/build.py`'s `run_build()`
+        fetches/creates the `PipelineRun` row and then does the same —
+        both leave an open transaction sitting idle for the real minutes
+        the collect/rank/write/verify phase takes, and Neon kills it
+        before the write phase (persist/publish) ever runs. Fixed both by
+        committing immediately after the one early statement, ending the
+        transaction without releasing anything the lock actually needs.
+      - Fixing `job_lock()` this way broke a different, subtler thing: an
+        ORM `Session` returns its connection to the pool on `commit()`
+        (proven with a `pg_backend_pid()` probe, not assumed), so a
+        second `job_lock()` call could get the *same* physical connection
+        back and trivially "acquire" a lock its own connection already
+        held — caught by `test_a_second_holder_cannot_take_the_same_job_lock`
+        actually failing once the commit was added. Fixed by switching
+        `job_lock` to hold a raw `Connection` checked out directly from
+        the engine (never returned to the pool until `.close()`), not an
+        ORM `Session`, so the same physical backend is genuinely pinned
+        for the lock's whole life.
+      - **PgBouncer risk, found while investigating the above.** Neon's
+        `DATABASE_URL` in `.env` is the pooled endpoint ("-pooler" in the
+        hostname) — PgBouncer in transaction mode, which can hand the
+        *next* transaction on the same client connection to a different
+        physical backend, silently breaking a session-scoped advisory
+        lock regardless of any SQLAlchemy-level connection pinning. Added
+        `Settings.database_direct_url` (optional, falls back to
+        `database_url`) and `app/db/engine.py`'s `get_direct_engine()` —
+        Neon's direct endpoint (same string, "-pooler" removed), verified
+        live via a `pg_backend_pid()` probe that stays stable across a
+        commit, unlike the pooled one. `job_lock()` now uses this by
+        default. Not yet covered by an automated test (would need two
+        real Neon endpoints in CI); verified manually against the real
+        account instead.
+      - **Writer moved off Groq.** The same live build run showed
+        `qwen/qwen3.8-27b`'s real per-minute budget (both ITPM and OTPM)
+        rejecting almost every Writer call outright — only 1 of ~10
+        attempted stories made it through in one run. Added a per-agent
+        `gateway: primary | fallback` field to `ModelSpec` (which
+        credential set — `LLM_GATEWAY_*` or `LLM_FALLBACK_*` — an agent's
+        own `model`/`fallbacks` route through) so one pinned agent can sit
+        on a different provider than another without a global gateway
+        swap; `LlmClient.routes_for()` updated to match. Writer is now
+        pinned to `gemini-flash-lite-latest` via `gateway: fallback`;
+        Fact-checker stays pinned to Groq's `gpt-oss-20b` — deliberately
+        not the same model, preserving the existing vendor-diversity
+        reasoning. Tried `gemini-3.6-flash` first and reverted the same
+        day: its real free-tier cap is 5 requests/minute/project/model,
+        found by `/evals/run.py`'s full suite genuinely exhausting it, not
+        a guess. `gemini-flash-lite-latest` took a 15-call rapid burst
+        (json_object mode, realistic payload) with zero errors.
+        `/evals/run.py`'s `groundedness` and `tag_accuracy` pass against
+        it in isolation; both intermittently fail when run back-to-back
+        with the other evals, because that exhausts Fact-checker's own
+        Groq TPM budget — a real, separate, still-open bottleneck (see
+        below), not a Gemini content-quality regression.
+      - Re-ran the real build after both fixes: the Neon crash is gone,
+        and Writer succeeded on **30/30** real calls (zero errors). The
+        business genre still published nothing (`quiet_day`, 0 stories):
+        Fact-checker (pinned to Groq's `gpt-oss-20b`, no fallback by
+        design) now hit its own real TPM limit — 63 errors vs 5
+        successes in that run. Moving Fact-checker off Groq the same way
+        is the next step, in progress.
+      - 2 test call sites updated (`test_build_job.py`'s
+        `session_factory=` → `connect=`), no test coverage lost.

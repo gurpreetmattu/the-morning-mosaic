@@ -178,6 +178,33 @@ def test_pinned_model_may_not_declare_fallbacks() -> None:
         )
 
 
+def test_a_fallback_model_requires_the_primary_gateway() -> None:
+    with pytest.raises(ValidationError, match="fallback_model requires gateway: primary"):
+        ModelSpec.model_validate(
+            {
+                "model": "m",
+                "temperature": 0.0,
+                "max_output_tokens": 128,
+                "pinned": False,
+                "gateway": "fallback",
+                "fallback_model": "other",
+            }
+        )
+
+
+def test_a_pinned_agent_may_sit_on_the_fallback_gateway() -> None:
+    spec = ModelSpec.model_validate(
+        {
+            "model": "m",
+            "temperature": 0.0,
+            "max_output_tokens": 128,
+            "pinned": True,
+            "gateway": "fallback",
+        }
+    )
+    assert spec.gateway == "fallback"
+
+
 def test_pinned_model_may_not_declare_a_fallback_model() -> None:
     with pytest.raises(ValidationError, match="must not declare fallbacks"):
         ModelSpec.model_validate(

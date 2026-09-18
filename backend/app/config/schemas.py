@@ -216,10 +216,17 @@ class ModelSpec(ConfigBase):
     max_output_tokens: int = Field(gt=0)
     pinned: bool = False
     fallbacks: list[str] = Field(default_factory=list)
-    # The model id to use on the configured fallback gateway (LLM_FALLBACK_URL),
-    # since a fallback provider is a different vendor with its own model
-    # names — reusing `model`/`fallbacks` there would just 404. None means
-    # "no fallback gateway route for this agent" even if one is configured.
+    # Which credential set (LLM_GATEWAY_* or LLM_FALLBACK_*) this agent's own
+    # `model`/`fallbacks` route through. Lets one pinned agent sit on a
+    # different provider than another (e.g. Writer on the fallback gateway,
+    # Fact-checker on the primary one) without a global gateway swap.
+    gateway: Literal["primary", "fallback"] = "primary"
+    # The model id to use on the *other* gateway, tried only after `model`/
+    # `fallbacks` are exhausted — a fallback provider is a different vendor
+    # with its own model names, so reusing `model`/`fallbacks` there would
+    # just 404. None means no such route, even if the other gateway is
+    # configured. Only meaningful when gateway == "primary"; there is no
+    # further fallback beyond the fallback gateway itself.
     fallback_model: str | None = None
 
     @property
@@ -234,6 +241,8 @@ class ModelSpec(ConfigBase):
     def _check(self) -> ModelSpec:
         if self.pinned and (self.fallbacks or self.fallback_model):
             raise ValueError("a pinned model must not declare fallbacks")
+        if self.fallback_model and self.gateway != "primary":
+            raise ValueError("fallback_model requires gateway: primary")
         return self
 
 

@@ -55,6 +55,7 @@ def models(**agent_overrides: Any) -> ModelsConfig:
         pinned: bool,
         fallbacks: list[str] | None = None,
         fallback_model: str | None = None,
+        gateway: str = "primary",
     ) -> dict[str, Any]:
         return {
             "model": model,
@@ -63,6 +64,7 @@ def models(**agent_overrides: Any) -> ModelsConfig:
             "pinned": pinned,
             "fallbacks": fallbacks or [],
             "fallback_model": fallback_model,
+            "gateway": gateway,
         }
 
     agents: dict[str, Any] = {
@@ -169,6 +171,44 @@ def test_an_unpinned_agent_routes_through_models_then_its_fallback_gateway_model
         ("rank-2", "primary"),
         ("rank-fb", "fallback"),
     ]
+
+
+def test_a_pinned_agent_can_be_routed_through_the_fallback_gateway_instead() -> None:
+    """Writer's real use case: pinned to one route, but that route is the
+    fallback gateway's credentials with its own model id, not the primary."""
+    config = models(
+        writer={
+            "model": "write-on-fallback",
+            "temperature": 0.0,
+            "max_output_tokens": 256,
+            "pinned": True,
+            "fallbacks": [],
+            "gateway": "fallback",
+        }
+    )
+    routes = client(setting=with_fallback_provider(), model_config=config).routes_for("writer")
+    assert [(r.model, r.provider) for r in routes] == [("write-on-fallback", "fallback")]
+    assert routes[0].base_url.rstrip("/") == FALLBACK
+
+
+def test_a_pinned_agent_on_the_fallback_gateway_fails_clearly_if_unconfigured() -> None:
+    config = models(
+        writer={
+            "model": "write-on-fallback",
+            "temperature": 0.0,
+            "max_output_tokens": 256,
+            "pinned": True,
+            "fallbacks": [],
+            "gateway": "fallback",
+        }
+    )
+    # Explicit None, not the default settings() — the real .env on disk may
+    # itself have LLM_FALLBACK_URL/KEY set (pydantic-settings merges dotenv
+    # even through model_validate), which would make this test's premise
+    # false by accident of the local environment.
+    unconfigured = settings(llm_fallback_url=None, llm_fallback_api_key=None)
+    with pytest.raises(LlmConfigurationError, match="fallback gateway"):
+        client(setting=unconfigured, model_config=config).routes_for("writer")
 
 
 def test_an_unpinned_agent_with_no_fallback_model_gets_no_fallback_route() -> None:

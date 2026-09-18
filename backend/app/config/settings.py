@@ -29,6 +29,16 @@ class Settings(BaseSettings):
 
     # --- database ---
     database_url: SecretStr
+    # Optional. Neon's pooled endpoint ("-pooler" in the hostname) is
+    # PgBouncer in transaction mode, which can silently hand the next
+    # transaction on the same client connection to a *different* physical
+    # backend — fatal for a session-scoped pg_advisory_lock, which the job
+    # guard depends on (see app/jobs/locking.py). Set this to Neon's direct
+    # endpoint (same string, "-pooler" removed from the hostname) in any
+    # environment that uses the pooled URL for DATABASE_URL. Falls back to
+    # database_url when unset, which is correct for a single non-pooled
+    # Postgres in local dev.
+    database_direct_url: SecretStr | None = None
 
     # --- outbound mail ---
     smtp_host: str
