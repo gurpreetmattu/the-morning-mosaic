@@ -7,10 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `993f19b`
-- **State:** 111 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `63b9f4d`
+- **State:** 113 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 654 Python tests (625 backend + 29 evals, three migrations now verified against a real
+  runbook · 660 Python tests (631 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
   other, thirty of which cover the weekend edition's selection logic and its build/delivery
@@ -1124,7 +1124,7 @@ noticing the count was wrong.)
 
 - [x] Fact-checker moved off Groq too, two real deterministic-checker bugs
       fixed, and the business genre published its first real revision —
-      `PENDING`.
+      `63b9f4d`.
       - **Fact-checker's Groq bottleneck.** Live testing found
         `gpt-oss-20b`, `gpt-oss-120b`, and `gpt-oss-safeguard-20b` all
         share the *same* 8000-tokens-per-minute cap on this account (a
