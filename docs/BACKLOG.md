@@ -7,10 +7,10 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `aacd486`
-- **State:** 109 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `993f19b`
+- **State:** 111 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 650 Python tests (621 backend + 29 evals, three migrations now verified against a real
+  runbook · 654 Python tests (625 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
   other, thirty of which cover the weekend edition's selection logic and its build/delivery
@@ -1051,7 +1051,7 @@ noticing the count was wrong.)
         real fallback wiring above covered its purpose.
 
 - [x] First real business-genre build attempt found and fixed two live
-      infrastructure bugs, and moved Writer off Groq — `PENDING`.
+      infrastructure bugs, and moved Writer off Groq — `993f19b`.
       - **Idle-in-transaction crashes.** The first real end-to-end
         `python -m app.jobs.build --genre business` run (against real
         Neon, real RSS sources, real Groq/Gemini) died with
