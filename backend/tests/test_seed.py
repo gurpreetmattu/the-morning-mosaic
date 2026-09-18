@@ -31,13 +31,21 @@ def test_every_configured_source_is_seeded(session: Session) -> None:
     assert configured <= stored
 
 
-def test_sources_arrive_disabled(session: Session) -> None:
-    """Nothing may be fetched until a human confirms the outlet's terms."""
+def test_an_enabled_source_always_has_its_terms_confirmed_seeded(session: Session) -> None:
+    """Nothing may be fetched until a human confirms the outlet's terms.
+
+    Not "every source arrives disabled" — real ones are enabled once
+    reviewed (config/sources.yaml's own `_check` validator already refuses
+    `enabled: true` without both `terms_confirmed` and `robots_checked` at
+    load time; `robots_checked` is config-only and not itself persisted,
+    so this checks the one review flag seeding actually carries through to
+    the database, not just the config object)."""
     seed_sources(session)
     session.flush()
 
-    enabled = [row.key for row in session.scalars(select(Source)) if row.enabled]
-    assert enabled == []
+    for row in session.scalars(select(Source)):
+        if row.enabled:
+            assert row.terms_confirmed, row.key
 
 
 def test_seeding_twice_changes_nothing_the_second_time(session: Session) -> None:

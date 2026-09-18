@@ -7,18 +7,20 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `f0cdd02`
-- **State:** 105 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `PENDING`
+- **State:** 107 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 637 Python tests (608 backend + 29 evals, three migrations now verified against a real
+  runbook · 648 Python tests (619 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
   the critical fix in Done, three of which race real concurrent database connections against each
   other, thirty of which cover the weekend edition's selection logic and its build/delivery
   wiring — see the weekend-content entry in Done, seven of which cover "AI tool of the day" —
   see its own Done entry, six of which cover the two real LangGraph graphs the build and
-  late-update jobs now run on — see the langgraph-pipeline entry in Done, and six of which catch
+  late-update jobs now run on — see the langgraph-pipeline entry in Done, six of which catch
   a real Turnstile bug a blank-but-present `TURNSTILE_SECRET_KEY=` caused — see the
-  llm-gateway-groq entry in Done), 31 frontend tests
+  llm-gateway-groq entry in Done, and eleven of which cover a source's malformed feed dates and
+  an unbounded cluster size, both found by actually running the pipeline against real, live
+  sources — see the source-terms-review entry in Done), 31 frontend tests
   (8 pure-logic + 23 new component/interaction tests under jsdom and React Testing Library — see
   the component-tests entry in Done) ·
   ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
@@ -31,10 +33,13 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 1. Blockers — need a decision or an account from the owner
 
-- [ ] **Source terms review.** All 27 sources in `config/sources.yaml` ship
-      disabled, so the Collector returns nothing on real config. Each outlet
-      needs its terms-of-use and robots.txt checked before `enabled: true`.
-      This is a legal judgement, not a code change. *Biggest blocker.*
+- [x] ~~Source terms review.~~ 18 of 27 sources reviewed and enabled by the
+      owner; the real Collector now returns real articles across all 10
+      genres. See the source-terms-review Done entry for what was
+      actually decided, and for two real defects the live run underneath
+      it surfaced (a source's malformed feed dates, and an unbounded
+      cluster size) — neither is "the terms review," but both were found
+      only because it was done for real rather than left disabled.
 - [x] ~~LLM gateway is unreachable from production.~~ Resolved by switching
       providers rather than deploying `freellmpool` itself — see the
       llm-gateway-groq Done entry.
@@ -928,6 +933,76 @@ noticing the count was wrong.)
       anywhere — Terraform has never been applied) and no Cloudflare
       Turnstile account (`TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` still
       blank, so the signup bot-check runs in its "skip outside prod" mode
-      only). Every source in `sources` ships with `enabled = false`,
-      unchanged by this — that still needs the terms-of-use/robots.txt
-      review, a legal judgement, not a seeding step.
+      only). Every source in `sources` shipped `enabled = false` as of
+      this entry — since resolved, see the source-terms-review Done entry.
+- [x] Source terms review: 18 of 27 sources enabled, and two real defects
+      the live run underneath it surfaced, both fixed — `PENDING`.
+      Technical review (robots.txt, feed reachability, valid dates, real
+      extraction against a live article) was done for every remaining
+      candidate first, cheaply and without any legal judgement, so legal
+      review effort only went to ones that could actually work. Owner's
+      call on every terms decision, not the model's:
+      - **RBI** (tier 1): disclaimer page says nothing about redistribution,
+        only linking/framing — treated as acceptable for press-release
+        content on that basis.
+      - **Indian Express**: explicit prohibition on redistribution found by
+        reading the real terms text — left disabled.
+      - **Al Jazeera**: same explicit-prohibition pattern as Indian
+        Express, found the same way — left disabled for consistency,
+        despite passing every technical check.
+      - The remaining 17 (The Hindu, Hindustan Times, Times of India,
+        Scroll.in, Mint, Economic Times, BBC News, The Verge, TechCrunch,
+        Engadget, Polygon, Eurogamer, Variety, Hollywood Reporter,
+        Pitchfork, Rolling Stone, Bollywood Hungama) carry only the
+        standard "personal, non-commercial use" boilerplate every outlet
+        checked this batch had — read narrowly it covers the reader's own
+        access, not redistribution to subscribers, so this is a deliberate
+        practical-risk acceptance for a small, non-commercial learning
+        project, recorded as such in each source's own `notes`, not a
+        confirmed-permissive reading of the terms.
+      Re-seeded the real Neon database (`python -m app.jobs.seed`,
+      dry-run first) after each config change; the real Collector then
+      returned real articles across all 10 genres against the live sources.
+
+      Two real defects only surfaced by actually running the pipeline
+      against real data, not by the terms review itself:
+      - **RBI's pubDate has no timezone offset** ("Thu, 17 Sep 2026
+        19:00:00", no `+HHMM`), which `feedparser` cannot parse at all —
+        every item was being silently dropped for no reliable
+        `published_at`. Added `Source.fallback_timezone` (a real IANA
+        zone, validated against `zoneinfo.available_timezones()`) and a
+        narrow fallback in `app/sources/feeds.py`: only used when
+        feedparser's own parse fails and a source has explicitly declared
+        its own known timezone — never a guess about content, and never
+        applied to a source that hasn't opted in. 6 new tests in the new
+        `test_feeds.py` (this module had zero tests before), 3 more in
+        `test_config.py` for the new field's validation.
+      - **An unbounded cluster size**: a real 9-article "business" cluster
+        (multiple outlets covering the same Tata Sons story) sent ~45,000
+        characters to the Writer in one call and exceeded every pinned
+        model's per-request token budget outright — not a rate limit, a
+        single request rejected on its own. `app/agents/ranker.py` now
+        caps `PooledStory.articles` at 4, tier-1 sources and freshest
+        first (`MAX_ARTICLES_PER_STORY`), applied *after*
+        `corroboration_for`/`score_cluster` see every real member — a
+        capped story's recorded corroboration still reflects how many
+        independent sources actually covered it, not the smaller list the
+        Writer reads and cites. 2 new tests.
+
+      Also swapped `config/models.yaml`'s Writer/Ranker model
+      (`openai/gpt-oss-120b` → `qwen/qwen3.8-27b`) after live calls to the
+      first showed a hard 8000-tokens-per-minute account limit that
+      couldn't sustain even one genre's worth of calls, and separately cut
+      `max_output_tokens` from 4096 to 900 after discovering qwen3.8-27b's
+      own real cap on this account is exactly 1000 output tokens/minute —
+      a single request asking for more was rejected outright, every time,
+      regardless of retries. Both were found by reading the real error
+      body in `llm_calls`, not guessed at. A live end-to-end
+      `write_and_verify` call (real Writer + real Fact-checker, both
+      `ok` in `llm_calls`) has now succeeded against the real pipeline;
+      getting a full section's `min_stories` met reliably is still
+      contended by this account's tight real per-minute budgets under
+      repeated manual testing — expected to be materially less of a
+      constraint under the real scheduled job's own pacing (an hour-plus
+      window, real network latency between calls) than under back-to-back
+      manual test runs, but that is not yet itself proven.

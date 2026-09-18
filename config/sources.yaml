@@ -39,12 +39,31 @@ sources:
     homepage: https://www.rbi.org.in/
     tier: 1
     terms_url: https://www.rbi.org.in/Scripts/Disclaimer.aspx
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
+    # Its pubDate has no timezone offset ("Thu, 17 Sep 2026 19:00:00"),
+    # which feedparser cannot parse at all — every item was being dropped
+    # for no reliable published_at, not a terms/robots problem. RBI is a
+    # domestic Indian institution publishing its own press timestamps, so
+    # IST is the source's own known timezone, not a guess about content.
+    fallback_timezone: Asia/Kolkata
     feeds:
       - url: https://www.rbi.org.in/pressreleases_rss.xml
         genres: [business]
       - url: https://www.rbi.org.in/notifications_rss.xml
         genres: [business]
-    notes: Primary source for monetary policy and banking regulation.
+    notes: >-
+      Owner's call, reviewed 2026-09-18. Disclaimer page (checked live) says
+      nothing about republishing or redistributing content — only about
+      linking and framing ("caching and links to, and the framing of this
+      Web Site... are prohibited" without written permission). Treated as
+      acceptable for press-release content, which RBI issues for press
+      pickup. robots.txt itself returns HTTP 418 to an identified crawler
+      (a WAF block page, not real robots.txt content), but the actual feed
+      URLs return 200 and parse cleanly — inconsistent, but the feeds
+      themselves are not blocking us. Primary source for monetary policy
+      and banking regulation.
 
   # ---------------------------------------------------------------- tier 2
   - key: the-hindu
@@ -52,6 +71,9 @@ sources:
     homepage: https://www.thehindu.com/
     tier: 2
     terms_url: https://www.thehindu.com/terms-of-use/
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.thehindu.com/news/national/feeder/default.rss
         genres: [india]
@@ -59,6 +81,15 @@ sources:
         genres: [business]
       - url: https://www.thehindu.com/sport/feeder/default.rss
         genres: [sports]
+    notes: >-
+      Owner's call, reviewed 2026-09-18. `terms_url` itself 404s (stale
+      config); a corrected URL search led only to a lookalike
+      thehindu.com.in domain, not verified as genuine. Standard "personal,
+      non-commercial use" terms are assumed, same as every other outlet
+      reviewed this batch — read narrowly they cover the reader's own
+      access, not redistribution to subscribers, but accepted anyway for a
+      small, non-commercial learning project on practical-risk grounds,
+      not because the terms were read as a clear yes.
 
   - key: indian-express
     name: The Indian Express
@@ -80,11 +111,18 @@ sources:
     homepage: https://www.hindustantimes.com/
     tier: 2
     terms_url: https://www.hindustantimes.com/terms-of-use
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml
         genres: [india]
       - url: https://www.hindustantimes.com/feeds/rss/business/rssfeed.xml
         genres: [business]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above — a small, non-commercial learning
+      project, not a confirmed-permissive reading of standard terms.
 
   - key: ndtv
     name: NDTV
@@ -102,19 +140,31 @@ sources:
     homepage: https://timesofindia.indiatimes.com/
     tier: 2
     terms_url: https://timesofindia.indiatimes.com/termsofuse.cms
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://timesofindia.indiatimes.com/rssfeedstopstories.cms
         genres: [india]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: scroll-in
     name: Scroll.in
     homepage: https://scroll.in/
     tier: 2
     terms_url: https://scroll.in/terms
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://feeds.feedburner.com/ScrollinArticles
         genres: [india, politics]
-    notes: Site path /feed serves HTML; the FeedBurner mirror is the working feed.
+    notes: >-
+      Site path /feed serves HTML; the FeedBurner mirror is the working
+      feed. Terms reviewed 2026-09-18, same practical-risk basis recorded
+      for the-hindu above.
 
   # The Wire was drafted here but removed: /rss, /feed and /rss/ all return the
   # site's HTML shell, not a feed. Re-add only with a URL confirmed to parse.
@@ -124,9 +174,15 @@ sources:
     homepage: https://www.livemint.com/
     tier: 2
     terms_url: https://www.livemint.com/Info/TermsofUse
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.livemint.com/rss/news
         genres: [business]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: business-standard
     name: Business Standard
@@ -142,9 +198,15 @@ sources:
     homepage: https://economictimes.indiatimes.com/
     tier: 2
     terms_url: https://economictimes.indiatimes.com/termsofuse.cms
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://economictimes.indiatimes.com/rssfeedstopstories.cms
         genres: [business]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: moneycontrol
     name: Moneycontrol
@@ -160,12 +222,20 @@ sources:
     homepage: https://www.bbc.com/news
     tier: 2
     terms_url: https://www.bbc.co.uk/usingthebbc/terms/
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://feeds.bbci.co.uk/news/world/asia/india/rss.xml
         genres: [india]
       - url: https://feeds.bbci.co.uk/news/technology/rss.xml
         genres: [technology]
-    notes: BBC RSS is for personal, non-commercial use — check before enabling.
+    notes: >-
+      BBC RSS is explicitly "for personal, non-commercial use." Owner's
+      call, reviewed 2026-09-18, on the same practical-risk basis recorded
+      for the-hindu above — accepted for a small, non-commercial learning
+      project even though redistribution to subscribers goes beyond a
+      strict reading of "personal use."
 
   - key: al-jazeera
     name: Al Jazeera
@@ -175,15 +245,30 @@ sources:
     feeds:
       - url: https://www.aljazeera.com/xml/rss/all.xml
         genres: [politics]
+    notes: >-
+      Checked 2026-09-18 and deliberately left disabled, unlike the rest of
+      this batch: terms explicitly prohibit "any third party" from copying,
+      reproducing, distributing, or retransmitting content "without express
+      prior written permission" — the same strength of prohibition as
+      indian-express (also disabled), not the ambiguous-but-silent pattern
+      the rest of this batch was accepted under. Their Creative Commons
+      program is a separate, narrow thing (specific footage marked for
+      reuse), not a blanket license covering ordinary articles or this feed.
 
   - key: the-verge
     name: The Verge
     homepage: https://www.theverge.com/
     tier: 2
     terms_url: https://www.voxmedia.com/legal/terms-of-use
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.theverge.com/rss/index.xml
         genres: [technology, ai]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: ars-technica
     name: Ars Technica
@@ -199,20 +284,32 @@ sources:
     homepage: https://techcrunch.com/
     tier: 2
     terms_url: https://techcrunch.com/terms-of-service/
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://techcrunch.com/feed/
         genres: [technology]
       - url: https://techcrunch.com/category/artificial-intelligence/feed/
         genres: [ai]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: engadget
     name: Engadget
     homepage: https://www.engadget.com/
     tier: 2
     terms_url: https://guce.engadget.com/terms
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.engadget.com/rss.xml
         genres: [technology, gaming]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: venturebeat
     name: VentureBeat
@@ -241,54 +338,90 @@ sources:
     homepage: https://www.polygon.com/
     tier: 2
     terms_url: https://www.voxmedia.com/legal/terms-of-use
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.polygon.com/rss/index.xml
         genres: [gaming]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: eurogamer
     name: Eurogamer
     homepage: https://www.eurogamer.net/
     tier: 2
     terms_url: https://www.eurogamer.net/terms-and-conditions
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.eurogamer.net/feed
         genres: [gaming]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: variety
     name: Variety
     homepage: https://variety.com/
     tier: 2
     terms_url: https://pmc.com/terms-of-use/
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://variety.com/feed/
         genres: [hollywood]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: hollywood-reporter
     name: The Hollywood Reporter
     homepage: https://www.hollywoodreporter.com/
     tier: 2
     terms_url: https://pmc.com/terms-of-use/
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.hollywoodreporter.com/feed/
         genres: [hollywood]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: pitchfork
     name: Pitchfork
     homepage: https://pitchfork.com/
     tier: 2
     terms_url: https://www.condenast.com/user-agreement
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://pitchfork.com/feed/feed-news/rss
         genres: [music]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   - key: rolling-stone
     name: Rolling Stone
     homepage: https://www.rollingstone.com/
     tier: 2
     terms_url: https://pmc.com/terms-of-use/
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.rollingstone.com/music/feed/
         genres: [music]
+    notes: >-
+      Owner's call, reviewed 2026-09-18, on the same practical-risk basis
+      recorded for the-hindu above.
 
   # ---------------------------------------------------------------- tier 3
   - key: bollywood-hungama
@@ -296,7 +429,13 @@ sources:
     homepage: https://www.bollywoodhungama.com/
     tier: 3
     terms_url: https://www.bollywoodhungama.com/terms-of-use/
+    terms_confirmed: true
+    robots_checked: true
+    enabled: true
     feeds:
       - url: https://www.bollywoodhungama.com/rss/news.xml
         genres: [bollywood]
-    notes: Tier 3 — stories sourced only here must use hedged language.
+    notes: >-
+      Tier 3 — stories sourced only here must use hedged language. Owner's
+      call, reviewed 2026-09-18, on the same practical-risk basis recorded
+      for the-hindu above.

@@ -10,6 +10,7 @@ order of the pool.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Protocol
 
@@ -46,6 +47,24 @@ EXCERPT_CHARS = 300
 # freshness window — CLAUDE.md's 24-hour rule is never loosened to rescue a
 # story; only how much of that same window's feed backlog gets fetched.
 COVERAGE_RETRY_MAX_ARTICLES = 80
+
+# A single well-corroborated event can have far more source articles than
+# any one Writer prompt should carry. corroboration_for/score_cluster still
+# see every member below — this only caps how many of them make it into
+# the PooledStory the Writer actually reads and cites, so corroboration
+# stays a fact about the real cluster, not about the capped subset. Found
+# the hard way: a real 9-article cluster sent ~45,000 characters to the
+# Writer in one call and exceeded every pinned model's per-request token
+# budget on the free tier this project runs on.
+MAX_ARTICLES_PER_STORY = 4
+
+
+def _prioritised(
+    members: list[CollectedArticle], tiers: Mapping[str, int]
+) -> list[CollectedArticle]:
+    """Tier-1 sources first, then most recent — so capping a cluster keeps
+    its most credible, freshest coverage rather than an arbitrary slice."""
+    return sorted(members, key=lambda a: (tiers.get(a.source_key, 3), -a.published_at.timestamp()))
 
 
 class CollectorLike(Protocol):
@@ -175,7 +194,7 @@ class Ranker:
             stories.append(
                 PooledStory(
                     event_label=label,
-                    articles=members,
+                    articles=_prioritised(members, self._tiers)[:MAX_ARTICLES_PER_STORY],
                     corroboration=corroboration,
                     hedged=corroboration == Corroboration.TIER3_ONLY,
                     score=score,

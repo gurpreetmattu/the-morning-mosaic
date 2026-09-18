@@ -12,10 +12,20 @@
 # everywhere (dev and prod both) — see docs/BACKLOG.md — because freellmpool
 # only ever served 127.0.0.1, which Cloud Run cannot reach.
 #
-# PROVISIONAL. These are chosen on live availability and vendor diversity,
-# not on measured output quality. CLAUDE.md requires an eval run for any
-# model change, so treat the Writer and Fact-checker choices as hypotheses
-# until /evals has run.
+# openai/gpt-oss-120b was the first Writer/Ranker pick, on 2026-09-18, and
+# was swapped out the same day: a real build run against this account hit
+# a hard 8000-tokens-per-minute limit on that model specifically (one
+# single request was rejected outright for requesting 10091 tokens against
+# an 8000 limit), while qwen/qwen3.8-27b succeeded on every call in the
+# same run with no rate-limit errors at all. Free-tier per-model limits are
+# an account fact, not something config can see in advance — verify against
+# a real run's app/models/operations.py llm_calls rows before trusting a
+# model choice under real load, not just a single successful smoke call.
+#
+# PROVISIONAL. These are chosen on live availability, vendor diversity, and
+# now real-load reliability — not on measured output quality. CLAUDE.md
+# requires an eval run for any model change, so treat the Writer and
+# Fact-checker choices as hypotheses until /evals has run.
 #
 # Pinned agents must name a CONCRETE model, never a routing alias — published
 # wording cannot change without an eval, which an alias that picks a
@@ -39,30 +49,38 @@ agents:
     max_output_tokens: 2048
     pinned: false
 
-  # Clustering and scoring need judgement, so this uses the same capable
-  # model as the Writer, but may fail over because the Fact-checker
-  # re-checks after.
+  # Clustering and scoring need judgement. Same model as the Writer, on the
+  # same reasoning as before (may fail over, since the Fact-checker
+  # re-checks after) — now qwen3.8-27b rather than gpt-oss-120b, since that
+  # one's real per-minute token budget on this account cannot sustain even
+  # a single genre's worth of calls.
   ranker:
-    model: openai/gpt-oss-120b
+    model: qwen/qwen3.8-27b
     temperature: 0.0
-    max_output_tokens: 4096
+    # This account's real cap for this model is 1000 output tokens/minute
+    # (found the hard way: a single request asking for more is rejected
+    # outright, every time, regardless of retries — not a transient rate
+    # limit). 900 leaves headroom rather than sitting right at the edge.
+    max_output_tokens: 900
     pinned: false
     fallbacks:
       - openai/gpt-oss-20b
 
-  # The largest model on this account's live catalog. Verified: valid JSON,
-  # correct passage citations, against a Writer-shaped prompt.
+  # See the ranker comment above for why max_output_tokens is 900, not the
+  # 4096 first tried — this model's real output-tokens-per-minute cap on
+  # this account is 1000, found by a single request being rejected outright.
   writer:
-    model: openai/gpt-oss-120b
+    model: qwen/qwen3.8-27b
     temperature: 0.2
-    max_output_tokens: 4096
+    max_output_tokens: 900
     pinned: true
 
-  # Deliberately a different vendor lineage from the Writer (Qwen/Alibaba,
-  # not OpenAI-OSS): a checker that shares the Writer's blind spots is worth
-  # much less. Verified: valid JSON, correct passage citations.
+  # Deliberately a different vendor lineage from the Writer (OpenAI-OSS,
+  # not Qwen/Alibaba): a checker that shares the Writer's blind spots is
+  # worth much less. Smaller than the 120b variant, so a lighter per-minute
+  # budget footprint than the model that got swapped out above.
   fact_checker:
-    model: qwen/qwen3.8-27b
+    model: openai/gpt-oss-20b
     temperature: 0.0
     max_output_tokens: 4096
     pinned: true

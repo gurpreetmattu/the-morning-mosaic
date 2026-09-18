@@ -150,7 +150,14 @@ class Collector:
                     )
                 )
                 continue
-            items.extend(parse_feed(response.content, source_key=source.key, genre=genre))
+            items.extend(
+                parse_feed(
+                    response.content,
+                    source_key=source.key,
+                    genre=genre,
+                    fallback_timezone=source.fallback_timezone,
+                )
+            )
 
         return items, failures
 

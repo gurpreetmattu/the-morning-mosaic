@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Annotated, Literal, get_args
+from zoneinfo import available_timezones
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 GenreKey = Literal[
     "india",
@@ -147,10 +148,24 @@ class Source(ConfigBase):
     robots_checked: bool = False
     enabled: bool = False
     notes: str | None = None
+    # An explicit, per-source exception to "a naive timestamp is never
+    # guessed at" (app/sources/freshness.py): some feeds (RBI's, so far)
+    # publish a pubDate with no timezone offset, which feedparser then
+    # cannot parse at all. Set only when this source's own timezone is
+    # actually known — a government institution's own press timestamps,
+    # not a guess about the content — never as a blanket default.
+    fallback_timezone: str | None = None
 
     @property
     def genres(self) -> frozenset[GenreKey]:
         return frozenset(genre for feed in self.feeds for genre in feed.genres)
+
+    @field_validator("fallback_timezone")
+    @classmethod
+    def _valid_timezone(cls, value: str | None) -> str | None:
+        if value is not None and value not in available_timezones():
+            raise ValueError(f"{value!r} is not a known IANA timezone")
+        return value
 
     @model_validator(mode="after")
     def _check(self) -> Source:

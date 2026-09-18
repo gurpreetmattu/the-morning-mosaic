@@ -597,6 +597,44 @@ def test_an_empty_collection_yields_an_empty_pool() -> None:
     assert ranker().rank(CollectionResult(genre="india"), now=NOW).stories == []
 
 
+@respx.mock
+def test_a_large_cluster_is_capped_without_losing_its_corroboration() -> None:
+    """A real 9-article cluster once sent ~45,000 characters to the Writer
+    in one call and blew every pinned model's per-request token budget.
+    Capping which articles the Writer sees must not understate how well
+    corroborated the story actually is."""
+    members = [
+        article("wire", "Corridor cleared"),
+        article("daily", "Corridor cleared report"),
+        article("herald", "Corridor cleared coverage"),
+        article("chronicle", "Corridor cleared roundup"),
+        article("wire", "Corridor cleared briefing", hours_old=1.0),
+        article("daily", "Corridor cleared recap", hours_old=0.5),
+    ]
+    llm_clusters([{"event": "corridor", "article_ids": [f"a{i + 1}" for i in range(6)]}])
+
+    pool = ranker("standard").rank(collected(*members), now=NOW)
+
+    assert len(pool.stories) == 1
+    story = pool.stories[0]
+    # Corroboration reflects all six real sources, not the capped subset.
+    assert story.corroboration == Corroboration.PRIMARY_OFFICIAL
+    assert len(story.articles) == 4
+    # Tier-1 ("wire") sources are kept ahead of tier-2 ones.
+    assert [a.source_key for a in story.articles].count("wire") == 2
+
+
+@respx.mock
+def test_a_small_cluster_is_never_padded_up_to_the_cap() -> None:
+    llm_clusters([{"event": "corridor", "article_ids": ["a1", "a2"]}])
+    pool = ranker("standard").rank(
+        collected(article("daily", "Corridor cleared"), article("herald", "Corridor approved")),
+        now=NOW,
+    )
+
+    assert len(pool.stories[0].articles) == 2
+
+
 # ------------------------------------------------- fallback clustering units
 
 

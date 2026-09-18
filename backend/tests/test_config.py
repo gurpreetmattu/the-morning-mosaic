@@ -151,6 +151,20 @@ def test_source_may_be_enabled_once_both_checks_pass() -> None:
     assert source.enabled
 
 
+def test_a_source_needs_no_fallback_timezone_by_default() -> None:
+    assert Source.model_validate(_source()).fallback_timezone is None
+
+
+def test_a_real_iana_timezone_is_accepted() -> None:
+    source = Source.model_validate(_source(fallback_timezone="Asia/Kolkata"))
+    assert source.fallback_timezone == "Asia/Kolkata"
+
+
+def test_an_unknown_timezone_name_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="not a known IANA timezone"):
+        Source.model_validate(_source(fallback_timezone="Not/A_Zone"))
+
+
 def test_pinned_model_may_not_declare_fallbacks() -> None:
     with pytest.raises(ValidationError, match="must not declare fallbacks"):
         ModelSpec.model_validate(
