@@ -7,8 +7,8 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `78ac9f2`
-- **State:** 117 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
+- **Last updated:** 2026-09-18, at commit `da2e20a`
+- **State:** 119 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 664 Python tests (635 backend + 29 evals, three migrations now verified against a real
   throwaway database, seven of which actually launch every scheduled job as a subprocess — see
@@ -1279,7 +1279,7 @@ noticing the count was wrong.)
 
 - [x] `politics` given a real second source — `indian-express` enabled,
       also giving `india`/`technology`/`bollywood` its already-drafted
-      feeds — `PENDING`.
+      feeds — `da2e20a`.
       - `indian-express` was already drafted in `config/sources.yaml`
         with four feeds (india, **political-pulse → politics**,
         technology, bollywood) but had never been reviewed —
