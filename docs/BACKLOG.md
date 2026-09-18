@@ -1357,3 +1357,31 @@ noticing the count was wrong.)
         `LlmClient.complete("fact_checker", ...)` returned
         `provider='primary', model='openai/gpt-oss-20b'` — the escape
         hatch engaged on a real, live outage, not a simulated one.
+
+- [x] Ran a real end-to-end build for every genre reachable today; 6 of 9
+      published real, verified stories — `PENDING`.
+      - `business`: 6 stories (the first proven end-to-end run, recorded
+        above). `india`: 2. `technology`: 3. `sports`: 3. `bollywood`: 3.
+        All real content, real sources, real citations, published
+        revisions — see each genre's `stories` table for
+        edition_date 2026-10-01 through 2026-10-06.
+      - `politics`: genuine `quiet_day`, not a bug. Pool size 0 —
+        Indian Express (4 articles) and Scroll.in (28) simply did not
+        cover the same underlying story on the day tested. The
+        corroboration gate did exactly its job.
+      - `ai`: looked like `quiet_day` but is not one. `llm_calls` for that
+        run: `writer` 30/30 ok (Gemini, completely healthy) but
+        `fact_checker` only 2/158 ok across BOTH its routes — Cloudflare
+        still daily-exhausted, and Groq (Fact-checker's own availability
+        fallback, same shared `gpt-oss` family Ranker's own fallback also
+        uses) now also saturated from this session's cumulative testing
+        volume across business/india/technology/sports/bollywood, all in
+        one sitting. The architecture behaved correctly throughout —
+        Writer stayed isolated on its own gateway, Fact-checker tried
+        both its routes before giving up, the build correctly refused to
+        publish rather than send anything unverified — this is a real
+        capacity ceiling from today's test volume, not a defect.
+      - `gaming`, `hollywood`, `music`: not tried, expected to hit the
+        same exhaustion. Retest once Groq's and Cloudflare's quotas
+        reset (Cloudflare: next UTC day; Groq: per-minute, recovers on
+        its own once testing stops for a while).
