@@ -7,7 +7,7 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `PENDING`
+- **Last updated:** 2026-09-18, at commit `b6d9821`
 - **State:** 107 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
   files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
   runbook · 648 Python tests (619 backend + 29 evals, three migrations now verified against a real
@@ -936,7 +936,7 @@ noticing the count was wrong.)
       only). Every source in `sources` shipped `enabled = false` as of
       this entry — since resolved, see the source-terms-review Done entry.
 - [x] Source terms review: 18 of 27 sources enabled, and two real defects
-      the live run underneath it surfaced, both fixed — `PENDING`.
+      the live run underneath it surfaced, both fixed — `b6d9821`.
       Technical review (robots.txt, feed reachability, valid dates, real
       extraction against a live article) was done for every remaining
       candidate first, cheaply and without any legal judgement, so legal
