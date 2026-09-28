@@ -4,28 +4,7 @@
 {{ '=' * section_title | length }}
 {{ blurb }}
 {% if status == 'ok' %}
-{% if image %}
-[Image: {{ image.credit }}]
-{% endif %}
-{% if ai_tool %}
-AI tool of the day: {{ ai_tool.headline }} - {{ ai_tool.blurb }} ({{ ai_tool.source.name }} <{{ ai_tool.source.url }}>)
-{% endif %}
-{% if movie_releases %}
-Coming soon: {% for release in movie_releases %}{{ release.title }} ({{ release.release_date }}){% if not loop.last %}, {% endif %}{% endfor %}
-(This newsletter uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.)
-{% endif %}
-{% if music_releases %}
-New releases: {% for release in music_releases %}{{ release.headline }} ({{ release.source.name }} <{{ release.source.url }}>){% if not loop.last %}, {% endif %}{% endfor %}
-{% endif %}
-{% if scores %}
-Scores: {% for score in scores %}{{ score.team1 }} v {{ score.team2 }}: {{ score.status }}{% if not loop.last %}; {% endif %}{% endfor %}
-{% endif %}
-{% if fixtures %}
-Fixtures: {% for fixture in fixtures %}{{ fixture.team1 }} v {{ fixture.team2 }} ({{ fixture.when }}){% if not loop.last %}, {% endif %}{% endfor %}
-{% endif %}
-{% if game_deals %}
-Deals: {% for deal in game_deals %}{{ deal.title }} - {{ deal.savings_percent }}% off ({{ deal.store }}) <{{ deal.url }}>{% if not loop.last %}, {% endif %}{% endfor %}
-{% endif %}
+{% include "_section_extras.txt.j2" %}
 {% for story in stories %}
 * {{ story.headline }}
 {% if story.hedged %}

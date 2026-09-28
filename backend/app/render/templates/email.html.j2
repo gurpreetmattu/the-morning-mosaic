@@ -90,6 +90,14 @@
         {{ section.blurb }}
       </p>
       {% set theme = section.theme %}
+      {% set image = section.image %}
+      {% set ai_tool = section.ai_tool %}
+      {% set movie_releases = section.movie_releases %}
+      {% set music_releases = section.music_releases %}
+      {% set scores = section.scores %}
+      {% set fixtures = section.fixtures %}
+      {% set game_deals = section.game_deals %}
+      {% include "_section_extras.html.j2" %}
       {% for story in section.stories %}
         {% include "_story.html.j2" %}
       {% endfor %}

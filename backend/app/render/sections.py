@@ -23,15 +23,13 @@ from app.config.loader import load_genres, load_sources
 from app.config.schemas import GenreKey, GenresConfig, SourcesConfig
 from app.models.enums import SectionStatus
 from app.render import TEMPLATE_DIR
-from app.render.selection import Candidate
-
-# CLAUDE.md: "Music releases: official label/platform announcements covered
-# by whitelisted sources" — not a separate API like movie releases (TMDB),
-# but drawn straight from the day's own verified music stories, the same way
-# "AI tool of the day" is. `album-releases`/`single-releases` are in
-# config/genres.yaml's own closed topic-tag taxonomy for the music genre.
-MUSIC_RELEASE_TAGS = frozenset({"album-releases", "single-releases"})
-MUSIC_RELEASES_LIMIT = 3
+from app.render.selection import (
+    MUSIC_RELEASE_TAGS,
+    MUSIC_RELEASES_LIMIT,
+    Candidate,
+    ai_tool_from_candidates,
+    music_releases_from_candidates,
+)
 
 
 class RenderedSection(BaseModel):
@@ -134,8 +132,8 @@ class SectionRenderer:
                 for candidate in candidates
             ],
             note="" if candidates else QUIET_DAY_NOTE,
-            ai_tool=self._ai_tool_from_candidates(genre, candidates),
-            music_releases=self._music_releases_from_candidates(genre, candidates),
+            ai_tool=ai_tool_from_candidates(genre, candidates),
+            music_releases=music_releases_from_candidates(genre, candidates),
         )
 
     def _ai_tool_from_verified(
@@ -158,21 +156,6 @@ class SectionRenderer:
         blurb = written.one_liner.text if written.one_liner else written.summary[0].text
         return {"headline": written.headline.text, "blurb": blurb, "source": sources[0]}
 
-    def _ai_tool_from_candidates(
-        self, genre: str, candidates: Sequence[Candidate]
-    ) -> dict[str, object] | None:
-        if genre != "ai" or not candidates:
-            return None
-        top = min(candidates, key=lambda c: c.pool_rank)
-        if not top.sources:
-            return None
-        blurb = top.one_liner or top.summary
-        return {
-            "headline": top.headline,
-            "blurb": blurb,
-            "source": {"name": top.sources[0].name, "url": top.sources[0].url},
-        }
-
     def _music_releases_from_verified(
         self, genre: str, stories: Sequence[VerifiedStory]
     ) -> list[dict[str, object]]:
@@ -185,25 +168,6 @@ class SectionRenderer:
             if not sources:
                 continue
             releases.append({"headline": verified.story.headline.text, "source": sources[0]})
-        return releases
-
-    def _music_releases_from_candidates(
-        self, genre: str, candidates: Sequence[Candidate]
-    ) -> list[dict[str, object]]:
-        if genre != "music":
-            return []
-        picked = [c for c in candidates if MUSIC_RELEASE_TAGS & c.topic_tags]
-        releases: list[dict[str, object]] = []
-        for candidate in picked[:MUSIC_RELEASES_LIMIT]:
-            if not candidate.sources:
-                continue
-            source = candidate.sources[0]
-            releases.append(
-                {
-                    "headline": candidate.headline,
-                    "source": {"name": source.name, "url": source.url},
-                }
-            )
         return releases
 
     def _render(

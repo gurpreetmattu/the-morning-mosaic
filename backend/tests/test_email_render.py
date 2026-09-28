@@ -40,6 +40,7 @@ def candidate(
     one_liner: Any = AUTO,
     why: str | None = None,
     hedged: bool = False,
+    topic_tags: frozenset[str] = frozenset(),
 ) -> Candidate:
     return Candidate(
         story_id=uuid.uuid5(uuid.NAMESPACE_URL, f"{genre}-{rank}"),
@@ -51,7 +52,7 @@ def candidate(
         hedged=hedged,
         india_relevance=False,
         pool_rank=rank,
-        topic_tags=frozenset(),
+        topic_tags=topic_tags,
         entity_tags=frozenset(),
         sources=(SourceLink(name="The Hindu", url="https://example.test/a"),),
     )
@@ -150,6 +151,96 @@ def test_each_selected_story_appears_with_its_sources() -> None:
     assert "Headline 2" in email.html
     assert 'href="https://example.test/a"' in email.html
     assert "The Hindu" in email.text
+
+
+def test_the_ai_tool_of_the_day_appears_for_the_top_ai_story() -> None:
+    """A real gap this covers: AI tool of the day, images, releases,
+    scores/fixtures, and game deals were all computed only for the
+    build-time archive render and never reached the actual delivered
+    email — see app/render/email.py's SectionExtras docstring."""
+    email = render(
+        {"ai": [candidate(1, genre="ai", headline="Model launches", one_liner="A fast model.")]}
+    )
+
+    assert "AI tool of the day" in email.html
+    assert "Model launches" in email.html
+    assert "A fast model." in email.html
+
+
+def test_no_ai_tool_of_the_day_for_a_non_ai_genre() -> None:
+    email = render({"india": [candidate(1, genre="india")]})
+    assert "AI tool of the day" not in email.html
+
+
+def test_music_releases_appear_for_tagged_music_stories() -> None:
+    email = render(
+        {
+            "music": [
+                candidate(
+                    1,
+                    genre="music",
+                    headline="Artist drops album",
+                    topic_tags=frozenset({"album-releases"}),
+                )
+            ]
+        }
+    )
+
+    assert "New releases:" in email.html
+    assert "Artist drops album" in email.html
+
+
+def test_section_extras_render_image_movie_releases_scores_fixtures_and_deals() -> None:
+    from app.agents.image_finder import ImageResult
+    from app.models.enums import ImageProvider
+    from app.render.email import SectionExtras
+
+    image = ImageResult(
+        provider=ImageProvider.WIKIMEDIA,
+        display_url="https://upload.wikimedia.org/x.jpg",
+        page_url=None,
+        author="Jane Doe",
+        license_name="CC0",
+        license_url=None,
+        width=800,
+        height=600,
+        credit="Jane Doe / Wikimedia Commons (CC0)",
+    )
+    extras = SectionExtras(
+        image=image,
+        movie_releases=[{"title": "New Film", "release_date": "2026-11-01", "overview": ""}],
+        scores=[{"team1": "India", "team2": "Pakistan", "status": "India won"}],
+        fixtures=[{"team1": "Sri Lanka", "team2": "Nepal", "when": "29 Sep, 05:30 IST"}],
+        game_deals=[
+            {"title": "Great Game", "savings_percent": "50", "store": "Steam", "url": "https://x/y"}
+        ],
+    )
+
+    email = render(
+        {"gaming": [candidate(1, genre="gaming")]},
+        section_extras={"gaming": extras},
+    )
+
+    assert 'src="https://upload.wikimedia.org/x.jpg"' in email.html
+    assert "Jane Doe / Wikimedia Commons (CC0)" in email.html
+    assert "Coming soon:" in email.html
+    assert "New Film" in email.html
+    assert "Scores:" in email.html
+    assert "India won" in email.html
+    assert "Fixtures:" in email.html
+    assert "Sri Lanka" in email.html
+    assert "Deals:" in email.html
+    assert "Great Game" in email.html
+    assert "Jane Doe / Wikimedia Commons (CC0)" in email.text
+    assert "Great Game" in email.text
+
+
+def test_no_section_extras_renders_nothing_extra() -> None:
+    email = render({"gaming": [candidate(1, genre="gaming")]})
+
+    assert "<img" not in email.html
+    assert "Deals:" not in email.html
+    assert "Coming soon:" not in email.html
 
 
 def test_sections_follow_config_order_not_dictionary_order() -> None:

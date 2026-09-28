@@ -1952,3 +1952,69 @@ finder (6) is the last one closed — see its own Done entry.)
         day, scores/fixtures, game deals, movie releases ×2, music
         releases) now has real code behind it, built and verified live
         against real data, not just against mocks.**
+
+- [x] **Critical: six "Done" genre extras — including "AI tool of the day"
+      from a previous session — never actually reached a real subscriber's
+      inbox.** Found while trying to show the owner an actual generated
+      newsletter, the same way the six-jobs-never-ran bug was found by
+      actually running each job as a subprocess rather than trusting that
+      `main()` existed.
+      - `SectionRenderer` (`app/render/sections.py`) computes image/ai_tool/
+        movie_releases/music_releases/scores/fixtures/game_deals, but it
+        only ever runs at **build time**, producing the once-per-revision
+        `EditionSection` the public archive reads. The actual delivered
+        email is assembled separately, by `EmailRenderer` from per-reader
+        `Candidate` objects — and `Candidate` never carried any of this
+        data, nor did `email.html.j2`'s per-section loop render it. Proved
+        this live before touching any code: ran the real delivery job
+        against the real gaming/2026-10-15 edition (a genuine persisted
+        image and game-deal extra), and the resulting email had neither.
+        `app/render/sections.py`'s own module docstring had already said
+        "Per-user assembly (masthead, extras, ordering) happens later, at
+        delivery" — true for weather/quote/on-this-day/market (which really
+        are computed in `delivery.py` and passed into `EmailRenderer`
+        directly), false for these six. A real bug, not a design choice,
+        confirmed against the docstring's own stated intent.
+      - Fixed by giving every reader who selects a genre the same
+        non-personalised extras that genre's build-time render already
+        computed, the same way weather/quote/market already work:
+        - `ai_tool_from_candidates`/`music_releases_from_candidates`
+          (pure functions of `(genre, candidates)`, no other dependency)
+          moved out of `SectionRenderer` into `app/render/selection.py`,
+          next to `Candidate` itself, so both the build-time path
+          (`SectionRenderer`) and the per-reader path (`EmailRenderer`)
+          call the exact same logic instead of two copies that could drift.
+          `SectionRenderer` itself is otherwise unchanged.
+        - New `SectionExtras` dataclass (`app/render/email.py`): image,
+          movie_releases, scores, fixtures, game_deals — the pieces that
+          genuinely come from outside the reader's own Candidates (a DB
+          image lookup, persisted `extras` rows). `EmailRenderer.render()`
+          gained a `section_extras` parameter.
+        - New `load_section_extras()` in `app/jobs/delivery.py`: looks up
+          a genre's top story's `Image` row and its persisted movie-release/
+          score/fixture/game-deal `extras`, for one genre at one
+          edition_date. Computed **once per genre per delivery run**, not
+          once per reader — cached in a plain dict across the reader loop,
+          since none of this is personalised, only the story selection is.
+        - The five HTML/text blocks (image, AI tool, movie releases, music
+          releases, scores, fixtures, game deals) were duplicated between
+          `section.html.j2`/`.txt.j2` and would have needed a second copy
+          in `email.html.j2`/`.txt.j2`. Extracted into shared
+          `_section_extras.html.j2`/`.txt.j2` partials instead, included by
+          both — confirmed behaviour-preserving first (all existing
+          `SectionRenderer` tests passed unchanged before any new feature
+          code was added), so the one duplication this bug grew out of
+          cannot recur the same way.
+      - 6 new tests in `test_email_render.py` (AI tool of the day and music
+        releases now derive correctly from a reader's own Candidates; a
+        full `SectionExtras` renders image/movie-releases/scores/fixtures/
+        deals in both formats; none of it appears when absent) plus 1 in
+        `test_delivery_job.py` exercising the real delivery job end to end
+        with a persisted image and game-deal extra reaching the actual
+        assembled email; full suite now **724 tests**, `mypy` (148 files)
+        and `ruff` clean.
+      - Verified live, for real, both before and after: re-ran the exact
+        same real delivery (gaming, `2026-10-15`) that first exposed the
+        bug — the image and "Deals:" block were both absent before the fix
+        and both present, with the correct photo credit and correctly-
+        encoded CheapShark links, after it.

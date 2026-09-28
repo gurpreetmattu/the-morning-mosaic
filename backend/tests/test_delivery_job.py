@@ -27,7 +27,7 @@ from app.db.seed import seed_cities, seed_sources
 from app.email import tokens
 from app.email.sender import Message, Sender, SendError, SendOutcome, SendResult
 from app.jobs.delivery import claim, due_readers, is_due, run_delivery
-from app.models.content import Correction, Extra, Story
+from app.models.content import Correction, Extra, Image, Story
 from app.models.editions import Delivery, EditionRevision
 from app.models.enums import (
     DeliveryStatus,
@@ -35,6 +35,7 @@ from app.models.enums import (
     EditionPreference,
     ExtraKind,
     Frequency,
+    ImageProvider,
     RunStatus,
     SectionStatus,
     SubscriptionStatus,
@@ -375,11 +376,13 @@ def add_extra(
     payload: dict[str, object],
     source_url: str,
     source_name: str = "Wikipedia",
+    genre: str | None = None,
 ) -> None:
     session.add(
         Extra(
             edition_date=EDITION,
             kind=kind,
+            genre=genre,
             payload=payload,
             source_name=source_name,
             source_url=source_url,
@@ -449,6 +452,72 @@ def test_without_persisted_extras_the_boxes_are_simply_absent(session: Session) 
     assert report.sent == 1  # type: ignore[attr-defined]
     assert "On this day" not in sender.messages[0].html
     assert "USD/INR" not in sender.messages[0].html
+
+
+def test_a_persisted_image_and_game_deal_reach_the_actual_delivered_email(
+    session: Session,
+) -> None:
+    """The real gap this covers: images, movie/music releases, sports
+    scores/fixtures, and game deals were computed only for the build-time
+    archive render (SectionRenderer) and never reached the per-reader
+    delivered email (EmailRenderer) at all — confirmed live, then fixed,
+    not assumed. This exercises the fix through the real delivery job."""
+    make_user(session, genres=("gaming",))
+    published_edition(session, stories=2)  # gaming's min_stories is 2
+    india_stories = list(
+        session.scalars(
+            select(Story)
+            .where(Story.edition_date == EDITION, Story.genre == "india")
+            .order_by(Story.pool_rank)
+        )
+    )
+    # published_edition always writes "india"; retarget it to gaming so the
+    # subscriber above actually receives it.
+    for story in india_stories:
+        story.genre = "gaming"
+    session.flush()
+    top_story = india_stories[0]
+    session.add(
+        Image(
+            story_id=top_story.id,
+            provider=ImageProvider.WIKIMEDIA,
+            display_url="https://upload.wikimedia.org/x.jpg",
+            page_url=None,
+            author="Jane Doe",
+            license_name="CC0",
+            license_url=None,
+            credit="Jane Doe / Wikimedia Commons (CC0)",
+            width=800,
+            height=600,
+        )
+    )
+    add_extra(
+        session,
+        kind=ExtraKind.GAME_DEAL,
+        genre="gaming",
+        payload={
+            "items": [
+                {
+                    "title": "Great Game",
+                    "savings_percent": "50",
+                    "store": "Steam",
+                    "url": "https://www.cheapshark.com/redirect?dealID=abc",
+                }
+            ]
+        },
+        source_url="https://www.cheapshark.com/",
+        source_name="CheapShark",
+    )
+    sender = FakeSender()
+
+    report = deliver(session, sender)
+
+    assert report.sent == 1  # type: ignore[attr-defined]
+    html = sender.messages[0].html
+    assert 'src="https://upload.wikimedia.org/x.jpg"' in html
+    assert "Jane Doe / Wikimedia Commons (CC0)" in html
+    assert "Deals:" in html
+    assert "Great Game" in html
 
 
 def test_a_special_edition_is_shown_by_name_not_by_its_raw_config_key(

@@ -18,10 +18,11 @@ from datetime import date
 from jinja2 import Environment
 from pydantic import BaseModel, ConfigDict
 
+from app.agents.image_finder import ImageResult
 from app.config.loader import load_genres
 from app.config.schemas import GenreKey, GenresConfig
 from app.render.sections import build_environment, text_environment, tidy
-from app.render.selection import Candidate
+from app.render.selection import Candidate, ai_tool_from_candidates, music_releases_from_candidates
 from app.render.weekend import WeekendContent
 
 BRAND = "The Morning Mosaic"
@@ -61,6 +62,25 @@ class MarketStrip:
     rate: float
     as_of: date
     source_url: str
+
+
+@dataclass(frozen=True)
+class SectionExtras:
+    """Everything about one genre's extras that isn't derivable from the
+    reader's own selected Candidates (those, like "AI tool of the day" and
+    music releases, are computed directly in `render()` below instead).
+
+    Never personalised — every reader who gets a given genre on a given
+    edition_date sees the same image/releases/scores/deals, only their
+    story selection differs — so the caller (delivery.py) loads this once
+    per genre per run, not once per reader.
+    """
+
+    image: ImageResult | None = None
+    movie_releases: list[dict[str, str]] | None = None
+    scores: list[dict[str, str]] | None = None
+    fixtures: list[dict[str, str]] | None = None
+    game_deals: list[dict[str, str]] | None = None
 
 
 @dataclass(frozen=True)
@@ -126,10 +146,12 @@ class EmailRenderer:
         special_edition_accent: str | None = None,
         corrections: str | None = None,
         weekend: WeekendContent | None = None,
+        section_extras: Mapping[GenreKey, SectionExtras] | None = None,
     ) -> RenderedEmail:
         by_key = self._genres.by_key()
         # Config order, so a reader's sections do not shuffle between days.
         ordered = [genre.key for genre in self._genres.genres if genre.key in selected]
+        extras_by_genre = section_extras or {}
 
         sections = [
             {
@@ -138,6 +160,16 @@ class EmailRenderer:
                 "blurb": by_key[key].blurb,
                 "theme": by_key[key].theme.model_dump(),
                 "stories": selected[key],
+                "image": (extras_by_genre.get(key) or SectionExtras()).image,
+                "movie_releases": (extras_by_genre.get(key) or SectionExtras()).movie_releases,
+                "scores": (extras_by_genre.get(key) or SectionExtras()).scores,
+                "fixtures": (extras_by_genre.get(key) or SectionExtras()).fixtures,
+                "game_deals": (extras_by_genre.get(key) or SectionExtras()).game_deals,
+                # Never externally sourced, and never personalised either —
+                # deterministic from this genre's own selected stories, the
+                # same as the build-time render (see ai_tool_from_candidates).
+                "ai_tool": ai_tool_from_candidates(key, selected[key]),
+                "music_releases": music_releases_from_candidates(key, selected[key]),
             }
             for key in ordered
         ]

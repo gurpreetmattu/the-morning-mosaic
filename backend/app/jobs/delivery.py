@@ -34,6 +34,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.agents.image_finder import ImageResult
 from app.clock import edition_date_for, now_utc, to_ist
 from app.config.loader import load_editions
 from app.config.schemas import EditionsConfig
@@ -44,7 +45,7 @@ from app.email.sender import Message, Sender, SendError, SendOutcome
 from app.email.tokens import PDF, ensure_unsubscribe_token, sign
 from app.jobs.locking import job_lock
 from app.logging_config import configure_logging
-from app.models.content import Correction, Story
+from app.models.content import Correction, Image, Story
 from app.models.editions import Delivery, Edition, EditionRevision
 from app.models.enums import (
     DeliveryStatus,
@@ -56,11 +57,14 @@ from app.models.enums import (
 )
 from app.models.operations import PipelineRun
 from app.models.users import FollowedKeyword, OutageState, User, UserGenre, UserPreference
-from app.render.email import EmailRenderer, Links, Weather
+from app.render.email import EmailRenderer, Links, SectionExtras, Weather
 from app.render.selection import Reader, load_candidates, select_for_reader
 from app.render.weekend import WeekendContent, load_weekend_features
+from app.services.deals import load_game_deals
 from app.services.markets import load_market_strip
 from app.services.quotes import load_on_this_day, load_quote
+from app.services.releases import load_movie_releases
+from app.services.sports import load_fixtures, load_scores
 from app.services.weather import get_weather
 from app.sources.fetch import Fetcher, user_agent_for
 
@@ -298,6 +302,52 @@ def weather_for(
     )
 
 
+def load_section_extras(session: Session, *, edition_date: date, genre: str) -> SectionExtras:
+    """Everything about one genre's extras that isn't part of story
+    selection — never personalised, so the caller computes this once per
+    genre per run (see the cache in `run_delivery`), not once per reader.
+
+    These were previously computed only at build time (`SectionRenderer`,
+    for the public archive) and never reached the actual delivered email —
+    a real gap, not a design choice; this closes it.
+    """
+    top_story = session.scalar(
+        select(Story)
+        .where(Story.edition_date == edition_date, Story.genre == genre)
+        .order_by(Story.pool_rank)
+        .limit(1)
+    )
+    image = None
+    if top_story is not None:
+        row = session.scalar(select(Image).where(Image.story_id == top_story.id))
+        if row is not None:
+            image = ImageResult(
+                provider=row.provider,
+                display_url=row.display_url,
+                page_url=row.page_url,
+                author=row.author,
+                license_name=row.license_name,
+                license_url=row.license_url,
+                width=row.width,
+                height=row.height,
+                credit=row.credit,
+            )
+
+    return SectionExtras(
+        image=image,
+        movie_releases=load_movie_releases(session, edition_date=edition_date, genre=genre) or None,
+        scores=(load_scores(session, edition_date=edition_date) or None)
+        if genre == "sports"
+        else None,
+        fixtures=(load_fixtures(session, edition_date=edition_date) or None)
+        if genre == "sports"
+        else None,
+        game_deals=(load_game_deals(session, edition_date=edition_date) or None)
+        if genre == "gaming"
+        else None,
+    )
+
+
 def build_links(
     session: Session, *, user: User, revision: EditionRevision, settings: Settings
 ) -> Links:
@@ -380,6 +430,11 @@ def run_delivery(
     }
     recipients = correction_recipients(session, corrections, corrected_stories)
 
+    # Never personalised — the same image/releases/scores/deals for every
+    # reader who gets a given genre this edition_date — so computed once per
+    # genre across the whole run, not once per reader.
+    extras_cache: dict[str, SectionExtras] = {}
+
     for user in due_readers(session, slot=slot, on=edition_date):
         delivery = claim(session, user_id=user.id, edition_date=edition_date)
         if delivery is None:
@@ -394,6 +449,13 @@ def run_delivery(
             report.no_content += 1
             session.rollback()
             continue
+
+        for genre in selected:
+            if genre not in extras_cache:
+                extras_cache[genre] = load_section_extras(
+                    session, edition_date=edition_date, genre=genre
+                )
+        section_extras = {genre: extras_cache[genre] for genre in selected}
 
         links = build_links(session, user=user, revision=revision, settings=config)
         weather = weather_for(
@@ -419,6 +481,7 @@ def run_delivery(
             quote=quote,
             on_this_day=on_this_day,
             market=market,
+            section_extras=section_extras,
             # Fall back to the raw key if it no longer matches any configured
             # special edition, rather than silently showing nothing.
             special_edition=special.name if special else edition.special_edition_key,

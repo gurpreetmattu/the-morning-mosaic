@@ -18,52 +18,7 @@
   </p>
 
   {% if status == 'ok' %}
-    {% if image %}
-    <p style="margin:0 0 14px 0;">
-      <img src="{{ image.display_url }}" alt="" width="600" style="max-width:100%;height:auto;display:block;border:0;" />
-      <span style="display:block;margin-top:4px;font-family:{{ theme.body_font }};font-size:10px;color:#9a9a9a;">{{ image.credit }}</span>
-    </p>
-    {% endif %}
-    {% if ai_tool %}
-    <p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-      <strong style="color:{{ theme.accent }};">AI tool of the day:</strong>
-      {{ ai_tool.headline }} — {{ ai_tool.blurb }}
-      (<a href="{{ ai_tool.source.url }}" style="color:{{ theme.accent }};text-decoration:underline;">{{ ai_tool.source.name }}</a>)
-    </p>
-    {% endif %}
-    {% if movie_releases %}
-    <div style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-      <strong style="color:{{ theme.accent }};">Coming soon:</strong>
-      {% for release in movie_releases %}{{ release.title }} ({{ release.release_date }}){% if not loop.last %}, {% endif %}{% endfor %}
-      <div style="margin-top:4px;font-size:10px;color:#9a9a9a;">
-        This newsletter uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
-      </div>
-    </div>
-    {% endif %}
-    {% if music_releases %}
-    <p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-      <strong style="color:{{ theme.accent }};">New releases:</strong>
-      {% for release in music_releases %}{{ release.headline }} (<a href="{{ release.source.url }}" style="color:{{ theme.accent }};text-decoration:underline;">{{ release.source.name }}</a>){% if not loop.last %}, {% endif %}{% endfor %}
-    </p>
-    {% endif %}
-    {% if scores %}
-    <p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-      <strong style="color:{{ theme.accent }};">Scores:</strong>
-      {% for score in scores %}{{ score.team1 }} v {{ score.team2 }}: {{ score.status }}{% if not loop.last %}; {% endif %}{% endfor %}
-    </p>
-    {% endif %}
-    {% if fixtures %}
-    <p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-      <strong style="color:{{ theme.accent }};">Fixtures:</strong>
-      {% for fixture in fixtures %}{{ fixture.team1 }} v {{ fixture.team2 }} ({{ fixture.when }}){% if not loop.last %}, {% endif %}{% endfor %}
-    </p>
-    {% endif %}
-    {% if game_deals %}
-    <p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-      <strong style="color:{{ theme.accent }};">Deals:</strong>
-      {% for deal in game_deals %}<a href="{{ deal.url }}" style="color:{{ theme.accent }};text-decoration:underline;">{{ deal.title }}</a> &ndash; {{ deal.savings_percent }}% off ({{ deal.store }}){% if not loop.last %}, {% endif %}{% endfor %}
-    </p>
-    {% endif %}
+    {% include "_section_extras.html.j2" %}
     {% for story in stories %}
       {% include "_story.html.j2" %}
     {% endfor %}

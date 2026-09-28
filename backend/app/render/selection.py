@@ -81,8 +81,63 @@ class Candidate:
     sources: tuple[SourceLink, ...] = ()
 
 
+# CLAUDE.md: "Music releases: official label/platform announcements covered
+# by whitelisted sources" — not a separate API like movie releases (TMDB),
+# but drawn straight from the day's own verified music stories.
+# album-releases/single-releases are in config/genres.yaml's own closed
+# topic-tag taxonomy for the music genre.
+MUSIC_RELEASE_TAGS = frozenset({"album-releases", "single-releases"})
+MUSIC_RELEASES_LIMIT = 3
+
+
 def _tokens(text: str) -> frozenset[str]:
     return frozenset(_WORD.findall(text.lower()))
+
+
+def ai_tool_from_candidates(
+    genre: str, candidates: Sequence[Candidate]
+) -> dict[str, object] | None:
+    """CLAUDE.md: "AI tool of the day" is picked from tools covered in that
+    day's verified AI stories. Rather than guessing which entity tag names an
+    actual tool, this features the day's top-ranked verified AI story itself
+    — deterministic, and grounded in exactly the same already-checked
+    headline/one-liner/source every reader already sees in the section below.
+
+    Shared between the once-per-revision build render (`SectionRenderer`,
+    used for the public archive) and the per-reader delivered email
+    (`EmailRenderer`) — this is never personalised, only the story selection
+    is, so both must show the same pick from the same logic.
+    """
+    if genre != "ai" or not candidates:
+        return None
+    top = min(candidates, key=lambda c: c.pool_rank)
+    if not top.sources:
+        return None
+    blurb = top.one_liner or top.summary
+    return {
+        "headline": top.headline,
+        "blurb": blurb,
+        "source": {"name": top.sources[0].name, "url": top.sources[0].url},
+    }
+
+
+def music_releases_from_candidates(
+    genre: str, candidates: Sequence[Candidate]
+) -> list[dict[str, object]]:
+    """Shared between the build-time and per-reader delivered-email render
+    paths — see `ai_tool_from_candidates`."""
+    if genre != "music":
+        return []
+    picked = [c for c in candidates if MUSIC_RELEASE_TAGS & c.topic_tags]
+    releases: list[dict[str, object]] = []
+    for candidate in picked[:MUSIC_RELEASES_LIMIT]:
+        if not candidate.sources:
+            continue
+        source = candidate.sources[0]
+        releases.append(
+            {"headline": candidate.headline, "source": {"name": source.name, "url": source.url}}
+        )
+    return releases
 
 
 def matches_keywords(candidate: Candidate, keywords: frozenset[str]) -> bool:

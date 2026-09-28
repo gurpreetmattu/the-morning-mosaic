@@ -34,6 +34,14 @@ About {{ reading_minutes }} minute{{ '' if reading_minutes == 1 else 's' }} to r
 {{ section.title | upper }}
 {{ '=' * section.title | length }}
 {{ section.blurb }}
+{% set image = section.image %}
+{% set ai_tool = section.ai_tool %}
+{% set movie_releases = section.movie_releases %}
+{% set music_releases = section.music_releases %}
+{% set scores = section.scores %}
+{% set fixtures = section.fixtures %}
+{% set game_deals = section.game_deals %}
+{% include "_section_extras.txt.j2" %}
 {% for story in section.stories %}
 
 * {{ story.headline }}
