@@ -10,7 +10,7 @@ review resolves the question.
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from urllib.parse import urlsplit
 
 import httpx
@@ -100,8 +100,13 @@ class Fetcher:
                 self._sleep(wait)
         self._last_request_at[host] = self._monotonic()
 
-    def get(self, url: str) -> httpx.Response:
-        """Fetch a URL, retrying transient failures. Raises FetchError."""
+    def get(self, url: str, *, headers: Mapping[str, str] | None = None) -> httpx.Response:
+        """Fetch a URL, retrying transient failures. Raises FetchError.
+
+        `headers` adds to (never replaces) the default User-Agent — for
+        callers that need per-provider auth, such as Unsplash/Pexels's API
+        keys, which have to be sent as a header rather than a query param.
+        """
         self._throttle(urlsplit(url).netloc)
         try:
             for attempt in Retrying(
@@ -112,14 +117,15 @@ class Fetcher:
                 reraise=True,
             ):
                 with attempt:
-                    return self._once(url)
+                    return self._once(url, headers=headers)
         except _TransientError as exc:
             raise FetchError(f"{url}: {exc}") from exc
         raise FetchError(f"{url}: exhausted retries")  # pragma: no cover
 
-    def _once(self, url: str) -> httpx.Response:
+    def _once(self, url: str, *, headers: Mapping[str, str] | None = None) -> httpx.Response:
+        merged = {"User-Agent": self._user_agent, **(headers or {})}
         try:
-            response = self._client.get(url, headers={"User-Agent": self._user_agent})
+            response = self._client.get(url, headers=merged)
         except httpx.TransportError as exc:
             raise _TransientError(f"{type(exc).__name__}: {exc}") from exc
 

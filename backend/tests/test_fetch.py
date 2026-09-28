@@ -76,6 +76,17 @@ def test_a_non_retryable_status_fails_on_the_first_attempt() -> None:
 
 
 @respx.mock
+def test_extra_headers_are_sent_alongside_the_default_user_agent() -> None:
+    route = respx.get(URL).mock(return_value=httpx.Response(200, text="ok"))
+
+    fetcher().get(URL, headers={"Authorization": "Client-ID secret"})
+
+    sent = route.calls.last.request.headers
+    assert sent["Authorization"] == "Client-ID secret"
+    assert sent["User-Agent"] == "TheMorningMosaic/0.1 (+test)"
+
+
+@respx.mock
 def test_a_transport_error_is_retried() -> None:
     route = respx.get(URL)
     route.side_effect = [httpx.ConnectError("refused"), httpx.Response(200, text="ok")]

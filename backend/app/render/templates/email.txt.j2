@@ -10,6 +10,17 @@ Curated for {{ first_name }}
 {% if weather %}
 {{ weather.city }}: {{ weather.summary }}, {{ weather.low }}-{{ weather.high }}C
 {% endif %}
+{% if market %}
+{{ market.label }}: Rs {{ "%.2f"|format(market.rate) }} (as of {{ market.as_of }}, ECB -- not investment advice)
+{% endif %}
+{% if quote %}
+"{{ quote.text }}" -- {{ quote.author }}
+(Quote of the day via Wikiquote, CC BY-SA: {{ quote.source_url }})
+{% endif %}
+{% if on_this_day %}
+On this day, {{ on_this_day.year }}: {{ on_this_day.text }}
+(Via Wikipedia, CC BY-SA: {{ on_this_day.source_url }})
+{% endif %}
 {% if sixty_seconds %}
 
 TODAY IN 60 SECONDS

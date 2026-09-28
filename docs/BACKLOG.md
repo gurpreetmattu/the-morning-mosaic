@@ -132,8 +132,11 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 3. Provisional values that will cause harm if forgotten
 
-- [ ] **`launch_date: 2026-10-01`** in `config/editions.yaml` is a placeholder,
-      and edition numbering derives from it. *Two weeks away.*
+- [ ] **`launch_date: 2026-10-01`** in `config/editions.yaml` is still a
+      placeholder, and edition numbering derives from it — only set the real
+      value when actually going live. *3 days away as of 2026-09-28.* Local
+      testing no longer needs to touch this file to get past it: see the
+      `EDITION_LAUNCH_DATE_OVERRIDE` entry in Done.
 - [ ] **21 lunar festival dates missing** (Diwali, Holi, Eid, …), deliberately
       left blank in `awaiting_dates` rather than guessed.
 - [ ] **Model choices are unvalidated hypotheses.** Chosen on verified
@@ -148,17 +151,30 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 4. Not built yet
 
-**Agents** (7 of 10 done — Orchestrator, Collector, Ranker, Writer,
-Fact-checker, Delivery, Feedback. This line previously said "5 of 10" and
-listed Delivery and Feedback as not done — stale since those two jobs were
-built; caught by an audit of this file against the code, not by anyone
-noticing the count was wrong.)
-- [ ] Image finder (6) · [ ] Weather (7)
-- [~] Layout (8) — sections, per-user selection, full email assembly, and
+**Agents — all 10 of 10 now built.** (Orchestrator, Collector, Ranker,
+Writer, Fact-checker, Image finder, Weather, Layout, Delivery, Feedback.
+This line previously said "5 of 10" and listed Delivery and Feedback as not
+done — stale since those two jobs were built; caught by an audit of this
+file against the code, not by anyone noticing the count was wrong. Image
+finder (6) is the last one closed — see its own Done entry.)
+- [x] ~~Layout (8).~~ Sections, per-user selection, full email assembly, and
       PDF pages (genre pages once per revision, merged per reader on first
-      download) are done. Still to do: the extras the masthead leaves room
-      for (weather box is wired but has no Weather agent feeding it; market
-      strip, quiz, quote and "On this day" are not built).
+      download), the weather box (see the weather-agent Done entry), the
+      quote-of-the-day/"On this day" box (see the quotes-extras Done
+      entry), a market strip scoped to USD/INR only (see the market-strip
+      Done entry), movie releases for bollywood/hollywood (see the
+      movie-releases Done entry), music releases for the music genre (see
+      the music-releases Done entry), scores/fixtures for the sports genre
+      (see the sports-scores-fixtures Done entry), and game deals for the
+      gaming genre (see the game-deals Done entry) are all done. **Every
+      genre extra CLAUDE.md names is now built — this line was the last
+      open item in Layout (8).** The only recorded gaps are data-rights
+      ones, not missing code: Nifty/Sensex/gold (see the market-strip Done
+      entry) and Cricbuzz's own unresolved redistribution terms (see the
+      sports-scores-fixtures Done entry). **A "daily quiz" was never part
+      of this line — that was a mistake in this file's own previous
+      wording, corrected here.** CLAUDE.md's quiz is weekend-only (already
+      built, see the weekend-content Done entry).
 
 **Pipeline**
 - [x] ~~LangGraph build graph · late-update graph.~~ Asked the owner:
@@ -173,8 +189,12 @@ noticing the count was wrong.)
       Gmail app password exists.
 - [ ] Late update: re-collection of breaking stories and publishing a new
       revision
-- [ ] Prompt for the Image finder (`ranker_v1`, `writer_v1` and
-      `fact_checker_v1` are written; the Orchestrator needs none)
+- [ ] **The Image finder never runs during a late update.** It only attempts
+      an image at the initial build, attached once to the section's top
+      story at that time. A late update that changes a section's stories
+      (`render_candidates`) re-renders it with no image, rather than a fresh
+      lookup — noted as a scope limit rather than silently left unhandled.
+      See the image-finder Done entry.
 
 **Delivery path**
 - [x] Link-scanner-safe GET endpoints — opt-in, unsubscribe, feedback and now
@@ -193,8 +213,21 @@ noticing the count was wrong.)
 - [ ] Bounce handling over IMAP
 
 **Services**
-- [ ] weather · [ ] markets · [ ] sports · [ ] releases · [ ] deals
-- [ ] images · [ ] quotes / "On this day"
+- [x] ~~weather~~ — see the weather-agent Done entry.
+- [x] ~~markets~~ — USD/INR only; see the market-strip Done entry.
+      Nifty/Sensex/gold remain blocked on a provider with redistribution
+      terms that actually permit newsletter use.
+- [x] ~~sports (scores/fixtures)~~ — Cricbuzz via RapidAPI; see the
+      sports-scores-fixtures Done entry. **Redistribution terms unresolved
+      — a real, open gap, not a false one**, see that entry.
+- [x] ~~deals (game deals)~~ — CheapShark, keyless; see the game-deals Done
+      entry. All ten genres now have every extra CLAUDE.md names.
+- [x] ~~releases~~ — movie releases (TMDB, bollywood/hollywood) and music
+      releases (derived from verified stories, no API); see the
+      movie-releases and music-releases Done entries.
+- [x] ~~images~~ — one per genre section (top story only), from Wikimedia
+      Commons/Unsplash/Pexels; see the image-finder Done entry.
+- [x] ~~quotes / "On this day"~~ — see the quotes-extras Done entry.
 - [x] ~~"AI tool of the day" has no code.~~ See the ai-tool-of-the-day Done
       entry.
 
@@ -1385,3 +1418,534 @@ noticing the count was wrong.)
         same exhaustion. Retest once Groq's and Cloudflare's quotas
         reset (Cloudflare: next UTC day; Groq: per-minute, recovers on
         its own once testing stops for a while).
+
+- [x] **`EDITION_LAUNCH_DATE_OVERRIDE`: local testing no longer has to touch
+      the real, still-provisional `launch_date`.** Owner's direction: the
+      project stays untested-locally-then-decide-a-real-date until it runs
+      "exactly how I want," not the other way round — `launch_date` and
+      similar provisional values need to be freely changeable during
+      testing, separate from the one real value that actually gates going
+      live. `load_editions()` (`app/config/loader.py`) now reads this env
+      var and, outside prod, overrides the loaded `launch_date` in place —
+      `config/editions.yaml` itself is untouched, so the committed
+      PROVISIONAL value is never edited back and forth just to test. Raises
+      loudly if the var is left set with `APP_ENV=prod` (same posture as the
+      Turnstile "skip outside prod, fail loudly in prod" check in
+      `verify_turnstile`), rather than silently doing nothing — an override
+      that quietly no-ops in prod is worse than one that doesn't exist,
+      since it would look like it worked in every dev test. Documented in
+      `.env.example`. 3 new tests in `test_config.py`: applies outside prod,
+      refused in prod, and a no-op when unset (still resolves to the real
+      shipped `2026-10-01`).
+
+- [x] **Weather agent (7) built and wired end to end.** `app/services/weather.py`:
+      no LLM, one HTTP call per city per `edition_date` (`weather_cache`
+      already existed in the schema; nothing fed it until now), so N readers
+      in the same city share one fetch and a later same-day delivery run
+      reuses the morning's reading rather than calling again. Uses the
+      existing `Fetcher` (retries/backoff/timeouts already built for the
+      Collector) rather than a second HTTP client. Deliberate deviation
+      recorded in the module's own docstring: CLAUDE.md calls this a
+      "forecast," but OpenWeatherMap's actual daily-forecast product (One
+      Call) needs a separate subscription tier beyond the plain free key
+      CLAUDE.md provisions — this uses the always-free Current Weather
+      endpoint instead (a real reading at build time, not a predicted
+      high/low), rather than silently claiming more than it delivers or
+      blocking on an account step nobody asked for.
+      Wired into `app/jobs/delivery.py`: a new `weather_for()` resolves to
+      `None` whenever weather can't or shouldn't be fetched (no city on the
+      account, no `OPENWEATHERMAP_API_KEY` configured, or — since `main()`
+      only opens a `Fetcher` at all when a key exists — no fetcher running
+      for this job), so a missing reading is cosmetic, never a reason to
+      skip or fail a reader's edition, the same posture as every other
+      extra. `EmailRenderer`/the templates already accepted a `Weather`
+      object and rendered the masthead box; only the feed was missing.
+      7 new tests: `test_weather.py` (fresh fetch caches, a second call for
+      the same city/date doesn't refetch, a failed fetch and a malformed
+      response both return `None` instead of raising) plus two in
+      `test_delivery_job.py` (the box appears with real content when a key
+      and fetcher are configured, and is simply absent without one) — all
+      against a real Postgres, all existing delivery tests (32) still pass
+      unmodified. Verified live, for real: called the real OpenWeatherMap
+      API with the project's own key for Mumbai's coordinates and got back
+      genuine current conditions (32°C, scattered clouds), not a mocked
+      response.
+
+- [x] **Quote of the day and "On this day" built and wired end to end** —
+      the first real use of the `extras` table, which existed in the schema
+      since the initial migration but had nothing writing to it (the AI
+      tool of the day extra deliberately bypassed it — see that Done entry
+      — since it belongs to a single genre's section; these two are
+      edition-wide, so `extras` fits as originally designed). No LLM,
+      no API key needed — both come from Wikipedia's and Wikiquote's own
+      free public feeds — CC BY-SA, attributed in the rendered email with a
+      link back to the source page, per CLAUDE.md's Data sources section.
+      `app/services/quotes.py`:
+      - `fetch_on_this_day` calls Wikipedia's own public REST feed
+        (`/api/rest_v1/feed/onthisday/selected/{mm}/{dd}`, no key), and
+        takes the first (most significant, by Wikipedia's own curation)
+        entry.
+      - `fetch_quote_of_the_day` computes the day's Wikiquote page title
+        (`Wikiquote:Quote of the day/{Month} {day}, {year}`, matching the
+        `{{CURRENTMONTHNAME}} {{CURRENTDAY}}, {{CURRENTYEAR}}` transclusion
+        the Main Page itself uses — confirmed by reading that transclusion
+        live rather than guessing the page-naming scheme), fetches its raw
+        wikitext via the MediaWiki action API, and parses the `quote`/
+        `author` template parameters, stripping wikilinks (`[[a|b]]` ->
+        `b`), `<br />`, HTML comments, and bold/italic markup — a value
+        that doesn't parse (missing field, unexpected shape) is treated as
+        "no reliable source today," never guessed at.
+      - `persist_daily_extras(session, edition_date, fetcher)`: fetches
+        and stores each kind at most once per `edition_date` — a rerun
+        leaves an already-persisted kind alone rather than re-fetching
+        (the content doesn't change intraday, and a rerun should never
+        risk trading a morning's good reading for an afternoon's transient
+        failure), and a kind whose fetch fails is simply omitted, same
+        posture as every other extra ("a missing item is acceptable; a
+        wrong one is not").
+      Wired into `app/jobs/build.py` (`run_build` gained `extras_fetcher`,
+      reusing the same `Fetcher` instance the Collector already uses —
+      Wikipedia/Wikiquote aren't in `sources.yaml`'s whitelist since they
+      aren't news sources, and `Fetcher` itself has no such restriction,
+      only `Collector` does) and `app/jobs/delivery.py` (loads the two
+      persisted rows once per run, not per reader, and passes them straight
+      through — same shape as `weekend_content`). `EmailRenderer` and both
+      templates gained `quote`/`on_this_day` blocks next to the weather box.
+      11 new tests: `test_quotes.py` (both extras persist on a fresh
+      build, a rerun doesn't refetch either, a failed quote fetch doesn't
+      block "on this day" from persisting, a malformed response from
+      either is omitted rather than raised) plus two each in
+      `test_build_job.py` and `test_delivery_job.py` — all against a real
+      Postgres; the full suite (659 tests) and `mypy`/`ruff` stay clean.
+      Verified live, for real: fetched today's actual Wikiquote quote
+      (Francis Turner Palgrave, correctly preserving its real em dash —
+      the `�` seen in one terminal printout was that console's own
+      encoding, not a bug, confirmed by writing the string to a UTF-8 file
+      and checking its actual code points) and Wikipedia's real "on this
+      day" entry for today (the Sycamore Gap tree felling, 2023).
+
+- [x] **All 10 genres now proven end to end for real, for the first time.**
+      The previous real-build session got 6 of 9 (`gaming`/`hollywood`/
+      `music` untried, `ai` blocked) because that day's Cloudflare/Groq
+      quota was exhausted by the session's own testing volume. Retried
+      today (a fresh UTC day resets Cloudflare's cap): `ai` (7 stories,
+      `2026-10-07`), `gaming` (5, `2026-10-08`), `hollywood` (5,
+      `2026-10-09`), `music` (4, `2026-10-12`) — all published cleanly, no
+      quota errors. Every genre CLAUDE.md lists has now published real,
+      verified, cited stories at least once.
+      - One real infrastructure lesson from this batch, not a code bug:
+        the `gaming` build's first attempt was killed by an over-eager
+        280-second shell-level `timeout` wrapper around the command before
+        the Fact-checker's retry loop (real API calls, real backoff) could
+        finish — the job itself was still healthy, just cut off mid-run,
+        leaving an orphaned `RUNNING` `pipeline_runs` row (harmless; a
+        fresh retry gets its own `run_id`). Genre builds with heavier
+        Fact-checker retry traffic can genuinely run past 5 minutes end to
+        end; don't wrap them in a tight external timeout.
+      - Also rendered one full real email end to end (a throwaway local
+        subscriber, deleted immediately after, via a recording `Sender`
+        subclass so nothing was actually emailed) for the `ai` edition:
+        masthead, live weather ("Mumbai: Light rain, 31–31°C" — the real
+        Weather agent), the "On this day" box with its real Wikipedia
+        content and source link, "Today in 60 seconds," the full section
+        with all 6 verified AI stories and their real source links, the
+        PDF link, and unsubscribe — the first time this project's actual
+        email output has been read rather than only asserted on in tests.
+      - **Found a real, previously-unknown limitation while doing this:**
+        Wikiquote's "Quote of the day" only has pages authored up to
+        roughly the present date — every one of these test dates (chosen
+        to land after the six already-published test editions) is a few
+        days to two weeks in the future relative to *this* session, so the
+        day's QOTD subpage doesn't exist yet and `fetch_quote_of_the_day`
+        correctly logged a warning and omitted the box each time, while
+        "On this day" (which needs no page to exist in advance — Wikipedia
+        answers any month/day) succeeded every time. Not a bug: this is
+        exactly the designed "omit rather than guess" behaviour, now
+        confirmed against real production dates rather than only against
+        mocked responses. Real calendar dates (today onward, once the
+        project actually launches) will have their QOTD page like any
+        other day; only these synthetic future test dates don't.
+
+- [x] **Market strip built — scoped down from CLAUDE.md's implied
+      Nifty/Sensex to USD/INR only, after actually reading three providers'
+      terms rather than assuming any of them permit newsletter use.**
+      - The owner's already-provisioned `MARKET_API_KEY` was identified
+        (by testing it against candidate endpoints, since nothing recorded
+        which provider it belonged to) as a genuine Twelve Data key, on
+        their free "Basic" plan. Confirmed live: `NSEI` (Nifty 50),
+        `BSESN` (Sensex), and every NSE/BSE equity or ETF tried (including
+        Nifty-tracking ETFs) return *"This symbol is available starting
+        with the Grow or Venture plan"* — Indian market data specifically
+        needs a paid tier. `MARKET_API_KEY_2` doesn't authenticate as a
+        Twelve Data key at all and is unused by `Settings`; its purpose is
+        unknown.
+      - Before building anything against the free-tier data that *is*
+        reachable (forex/commodities), actually read Twelve Data's Terms
+        of Service, per CLAUDE.md's "confirm its terms allow display in an
+        email newsletter" rule — and found the real blocker isn't
+        data-tier coverage at all: their "Redistribution" is defined as
+        *"any publication, distribution, or provision of Data to third
+        parties,"* permitted only "as expressly permitted by your
+        Subscription Tier, **Redistribution Rights Add-On**, or separate
+        agreement" — a distinct, paid-separately right that gates putting
+        *any* of their data (not just equities) into a newsletter. Checked
+        the obvious alternative, Alpha Vantage, the same way: its free
+        license is "personal, non-commercial use," and its own definition
+        of "commercial use" explicitly includes "provid[ing] information
+        accessed through the [Platform] as part of any type of commercial
+        activity that allows individuals or entities other than User to
+        access information" — a newsletter, again, squarely.
+      - Asked the owner before building on a provider whose terms don't
+        clearly allow it (twice — first when the Indian-data limitation
+        surfaced, again when the redistribution-rights issue surfaced) and
+        was asked to keep looking rather than build around it. Found one
+        source with an actual, explicit, checkable permission: the
+        **European Central Bank**'s own daily reference exchange rates,
+        via **Frankfurter** (MIT-licensed, no API key). ECB's copyright
+        notice: *"users of this website may make free use of the
+        information obtained directly from it"*, conditioned only on
+        accurate reproduction and citing the ECB as the source — read
+        directly from `ecb.europa.eu`, the same diligence
+        `source-terms-review` gave every news source in `sources.yaml`.
+        This covers currency rates only, so the strip is **USD/INR alone**
+        — no indices, no gold — until a provider with equivalent terms for
+        those is found or a paid redistribution right is purchased.
+      - `app/services/markets.py`: `fetch_market_strip` calls
+        Frankfurter's `/v1/latest?base=USD&symbols=INR`; `persist_market_strip`
+        stores it once per `edition_date` in `extras` (the same
+        check-exists-skip idempotency as the quotes/on-this-day extras —
+        a rerun never re-fetches an already-persisted day). ECB publishes
+        once per business day and not on weekends/TARGET holidays;
+        Frankfurter's own `/latest` already returns the last published
+        day's rate with its own date on those days, so CLAUDE.md's "on
+        market holidays and weekends it shows the last close with its
+        date" needed no custom handling — same pattern as the weather and
+        quotes extras before it.
+      - Wired into `app/jobs/build.py` (reuses the same `extras_fetcher`
+        as the other two daily extras) and `app/jobs/delivery.py` (loaded
+        once per run, not per reader). `EmailRenderer` and both templates
+        gained a `market` block next to weather/quote/on-this-day, showing
+        the rate, its date, "ECB," and a "not investment advice" note —
+        the exact three things CLAUDE.md's market-strip line requires.
+      - 9 new tests: `test_markets.py` (fresh fetch caches, a rerun
+        doesn't refetch, a failed fetch and a malformed response both
+        omit rather than raise) plus one each in `test_build_job.py` and
+        `test_delivery_job.py` (present when persisted, absent when not)
+        — all against a real Postgres; full suite now 664 tests, all
+        passing, `mypy`/`ruff` clean.
+      - Verified live, for real: fetched the actual current USD/INR rate
+        from Frankfurter (₹95.82, dated 2026-09-25 — a Friday, since ECB
+        doesn't publish on the Saturday/Sunday this was run on, exactly
+        the weekend-fallback behaviour CLAUDE.md describes, observed for
+        real rather than simulated) and confirmed it renders correctly in
+        a real assembled email alongside the weather and "On this day"
+        boxes.
+
+- [x] **Image finder (agent 6) built — the last of the 10 agents, and (with
+      it) the last item in CLAUDE.md's Newsletter-extras/genre-extras lines
+      that had no code at all.** Two scope questions were asked and
+      answered before writing anything, the same way "AI tool of the day"
+      was scoped: (1) one image per genre section, attached to that
+      section's top-ranked story only — not one per verified story, which
+      would have multiplied API and LLM-relevance calls by up to 6x per
+      genre for a rarely-decorative payoff; (2) CLAUDE.md's "use the
+      genre's default artwork" fallback is **not** built, since no such
+      artwork — not even a config field naming one — exists yet; a missing
+      image is simply omitted, same posture as every other extra, until
+      real illustrations exist as a separate piece of work.
+      - `app/agents/image_finder.py`: text-only LLM relevance check (the
+        model never sees the image itself, only each candidate's own
+        caption/description — matching the agent table's "Yes (text only)
+        + code" exactly), over search results from Wikimedia Commons,
+        Unsplash, and Pexels. Commons candidates are filtered against an
+        explicit allowlist of clearly-reusable license short names (CC0,
+        public domain, plain CC BY/CC BY-SA variants) — anything else,
+        including unclear or non-commercial licenses that do turn up on
+        Commons despite its free-license policy, is rejected rather than
+        trusted. `app/llm/prompts/image_finder_v1.py` is the new prompt;
+        its own instruction is explicit that a generic or merely-plausible
+        photo is not a match — confirmed against the real model, not just
+        asserted: given "India wins the cricket World Cup final" against 8
+        real candidates including several generic India-cricket photos,
+        it correctly returned no match rather than guessing, and given a
+        more literal headline ("A cricket match takes place in India") it
+        correctly picked and credited a genuinely matching Pexels photo.
+      - `app/sources/fetch.py`'s `Fetcher.get()` gained an optional
+        `headers` parameter (additive to, never replacing, the default
+        User-Agent) — Unsplash and Pexels both require an `Authorization`
+        header, which nothing before this needed. Caught and fixed a
+        review's-worth of own damage along the way: an early edit to
+        `test_fetch.py` left one line of an *existing* test dangling
+        inside the *new* test that followed it (a stray
+        `assert route.call_count == 1`, silently still passing because it
+        happened to reference the new test's own same-named local
+        variable) — fixed before it could ship, new coverage added for
+        the header behaviour itself.
+      - Every image is hotlinked from the provider's own URL, never
+        rehosted, with a credit persisted via a new `persist_image()` in
+        `app/db/persist.py` (the `images` table existed in the schema
+        since the initial migration with exactly this shape — `story_id`,
+        provider, license, credit — and had never been written to until
+        now). Unsplash's API guidelines require pinging a download-
+        tracking endpoint when a photo is actually used (not merely
+        returned by search); `_track_unsplash_download` does that only
+        for the candidate actually chosen, and its own failure is logged,
+        never allowed to cost a reader their story's image.
+      - **Ordering was the real design constraint, not the API calls
+        themselves**: `app/jobs/build.py`'s own docstring already recorded
+        "every LLM call happens before the database is touched... the
+        write phase is short and can be one transaction" — a rule that
+        exists because an idle-in-transaction session once got a real Neon
+        connection killed (see the `llm_calls`-logging Done entry). The
+        Image finder's relevance check is an LLM call, so it runs in the
+        same pre-persist phase as Writer/Fact-checker (right after
+        `orchestrator.build()` returns, before any `persist_*` call), not
+        interleaved with the open write transaction the persist loop
+        holds. `persist_genre` gained a sibling, `persist_genre_stories`,
+        returning the stored `Story` rows (index 0 = top-ranked) instead
+        of just a count — `persist_genre` itself, and every one of its
+        many existing callers/tests, is completely unchanged.
+      - `app/render/sections.py`'s `SectionRenderer.render()` gained an
+        optional `image` parameter, rendered in `section.html.j2`/`.txt.j2`
+        next to the existing AI-tool-of-the-day callout; `render_candidates`
+        (the late-update re-render path) deliberately does not accept one
+        — see the new "Not built yet" entry recording that as a scope
+        limit, not an oversight.
+      - 25 new tests (`test_fetch.py`: the new header parameter;
+        `test_image_finder.py`: a relevant Wikimedia candidate is chosen
+        and credited, an unlicensed one is rejected, Unsplash triggers its
+        download ping only when chosen, Pexels is chosen and credited, no
+        candidates from any provider skips the LLM call entirely, the
+        model saying no match returns `None`, one failed provider doesn't
+        block the others, entity tags are preferred over the headline for
+        the search query and a story with none falls back to it, no API
+        keys still tries Wikimedia alone; `test_sections.py`: the image
+        and its credit render in both formats, no block when none was
+        found, `render_candidates` never carries one; `test_build_job.py`:
+        a full build attaches the image to the section's actual top story
+        row and its HTML, and a build with no `image_finder_llm` attaches
+        none) — all against a real Postgres where relevant; full suite now
+        **680 tests**, all passing, `mypy` (142 files) and `ruff` clean.
+        One real, previously-latent bug surfaced and fixed while writing
+        these: three tests reused a `mock_empty_providers()` helper that,
+        called *after* a test had already registered a more specific mock
+        for the same URL pattern, silently overwrote it (respx treats
+        identical route patterns as the same underlying object) — caught
+        because the first such test's assertion genuinely failed, not
+        because anything alerted on it; the other two were passing for
+        the wrong reason (asserting `None` either way) until traced back
+        and fixed the same way.
+
+- [x] **Movie releases built for bollywood and hollywood — TMDB, exactly
+      the provider CLAUDE.md already names, so no provider-choice research
+      was needed this time. Terms still read before building, the same way
+      as the market strip.** TMDB's free key is for non-commercial use;
+      read their actual API Terms of Use rather than assuming, and their
+      definition of "commercial" (charging users, running ads, or
+      recommendation-driven revenue) does not describe this free,
+      unmonetised newsletter, so the free key is the right fit — a real,
+      substantive difference from Twelve Data/Alpha Vantage, not a
+      coincidence of wording.
+      - `app/services/releases.py`: one call to TMDB's `/movie/upcoming`
+        per genre per `edition_date`, region-mapped (`bollywood` -> `IN`,
+        matching its blurb's "Indian cinema" scope rather than Hindi-only;
+        `hollywood` -> `US`), persisted in `extras` — the first extra
+        scoped to a single genre rather than the whole edition (`Extra.genre`
+        existed in the schema for exactly this, unused until now). Sorted
+        by release date and capped at 3; entries missing a title or date
+        are dropped rather than guessed at.
+      - **Attribution is incomplete, on purpose, not by oversight.** TMDB's
+        terms require both a specific text notice (included verbatim,
+        confirmed against a real assembled section) *and* their logo,
+        sized per their own prominence rules. Asked the owner rather than
+        guess or skip silently: no reliable official logo asset URL was
+        sourced, so only the text notice is shown for now — the logo
+        requirement is an open compliance item, not a resolved one.
+      - Wired into `app/jobs/build.py`'s per-genre persist loop (a plain
+        HTTP call, not an LLM one, so unlike the Image finder it does not
+        need the pre-persist-phase discipline) and `app/render/sections.py`
+        (`SectionRenderer.render()` gained a `movie_releases` parameter,
+        rendered in both formats next to the AI-tool-of-the-day callout).
+      - 13 new tests: `test_releases.py` (a fresh fetch is sorted/capped/
+        persisted, a rerun doesn't refetch, bollywood and hollywood persist
+        independently, a non-movie genre and a missing API key are both
+        skipped without a network call, a failed fetch and a malformed
+        response and an empty result are all omitted rather than raised)
+        plus two in `test_sections.py` and two in `test_build_job.py`
+        (a real build attaches releases to a bollywood section's actual
+        HTML with the attribution notice present, and a build with no TMDB
+        key attaches none) — all against a real Postgres where relevant.
+      - Verified live, for real, against the actual TMDB API: fetched
+        genuinely upcoming India-region releases (a real mix of Hindi,
+        Tamil, Telugu, Malayalam, Kannada, and Bengali titles — confirming
+        the "Indian cinema," not "Hindi-only," region choice was the right
+        read of the genre's own blurb) and US-region releases.
+
+- [x] **Music releases built for the music genre — no new provider needed
+      at all.** CLAUDE.md's own wording ("official label/platform
+      announcements covered by whitelisted sources") already says this
+      isn't a separate API the way movie releases are — it comes from the
+      day's own verified music stories, the same mechanism as "AI tool of
+      the day": `config/genres.yaml`'s music genre already has
+      `album-releases`/`single-releases` in its closed topic-tag taxonomy,
+      so `SectionRenderer` (`app/render/sections.py`) picks up to 3
+      stories carrying either tag and renders them as a "New releases:"
+      callout, in both the fresh-build path (`_music_releases_from_verified`)
+      and the late-update/persisted-candidate path
+      (`_music_releases_from_candidates`) — unlike movie releases and the
+      Image finder, this costs nothing extra to support on both paths,
+      since it needs no network call and no LLM call of its own, only the
+      tags the Writer and Fact-checker already produced and verified.
+      9 new tests in `test_sections.py`: a tagged story becomes a release,
+      an untagged one doesn't, no callout for a non-music genre, a cap at
+      3 with a 4th tagged story excluded, and the late-update path surfaces
+      a tagged candidate too.
+      Verified live, for real, against a genuine build (`2026-10-13`,
+      `music`, 4 real verified stories): a real story — "U2 Announces 50th
+      Anniversary Album Carnaval De Luz," sourced from Rolling Stone — was
+      independently tagged `album-releases` by the real Writer/Fact-checker
+      pipeline (no test fixture, no mock) and correctly surfaced in the
+      persisted section's actual "New releases:" callout.
+
+- [x] **Sports scores and fixtures built for the sports genre — three
+      provider dead ends hit first, each a real finding, none guessed
+      around.** CLAUDE.md asks for "a sports data API with cricket
+      coverage" without naming one, unlike movie releases (TMDB); finding
+      one took real back-and-forth with the owner rather than picking the
+      first thing that returned data:
+      1. The already-provisioned `SPORTS_API_KEY` turned out to be a
+         CricAPI (cricapi.com) key (identified by its UUID-shaped format,
+         which their own API echoed back) — every endpoint returned
+         `"Subscription invalid"`. Resetting the key on their dashboard
+         didn't change the `.env` value, and re-testing after didn't help.
+      2. The owner then tried api-sports.io directly. Checked before
+         building anything: **api-sports.io does not offer a cricket
+         product at all** — `v1.cricket.api-sports.io` doesn't resolve,
+         confirmed by checking real sport subdomains side by side
+         (football/basketball/rugby/hockey all resolve; cricket doesn't).
+         A separate, unrelated site at api-cricket.com does exist but uses
+         its own distinct account system (`APIkey` query param, not
+         api-sports.io's key) — the provisioned key didn't match it either.
+      3. Recommended RapidAPI instead, specifically for a reason: its own
+         platform terms centralise a single subscribe action and a single
+         auth pattern (`x-rapidapi-key`), rather than each vendor's own
+         separate "register, then separately subscribe to this specific
+         product" dashboard flow that had just failed twice. The owner
+         subscribed to Cricbuzz Cricket API there; the new key worked
+         immediately, live, against both `/matches/v1/recent` (scores) and
+         `/matches/v1/upcoming` (fixtures).
+      - **Terms: checked, and the answer is genuinely unresolved — recorded
+        as such, not assumed either way.** RapidAPI's own platform terms
+        explicitly defer all data-usage rights to each API's own provider
+        ("API Provider, not Rapid, is responsible for... the API
+        Content/Terms applicable to each API"). Cricbuzz's own site is a
+        JS-rendered SPA that did not yield explicit, checkable terms the
+        way ECB's or Wikipedia's plain-HTML pages did. Presented this
+        honestly to the owner — not "probably fine," not silently
+        skipped — and built it on their explicit instruction, with the gap
+        itself recorded here rather than closed by assumption. Revisit if
+        Cricbuzz's actual provider-specific terms surface (e.g. the
+        RapidAPI dashboard shows a terms tab only when logged into the
+        subscribing account, which an anonymous fetch can't see).
+      - **A real, narrow interoperability bug, found and fixed, not
+        theorised:** this host's WAF (Akamai, fronting Cricbuzz's real
+        backend) returns 403 for the project's standard `Fetcher` User-
+        Agent — specifically its `"(+https://...)"` contact-URL
+        parenthetical — confirmed by testing the exact same request with
+        and without it. Fixed with a per-call header override (`Fetcher.get`
+        already supported this, added for the Image finder's Unsplash/
+        Pexels calls) rather than changing the shared default: this is a
+        narrow bot-detection quirk on one authenticated, keyed API call,
+        not the "a source that blocks an honest crawler is telling us not
+        to fetch it" case the shared User-Agent exists to honour.
+      - `app/services/sports.py`: one call each to Cricbuzz's `recent`
+        (completed matches) and `upcoming` (fixtures) endpoints per
+        edition_date, persisted as two separate `extras` rows
+        (`ExtraKind.SCORE` / `ExtraKind.FIXTURE`, both `genre="sports"` —
+        the schema already had two separate kinds for exactly this).
+        Cricbuzz's own `status` field (e.g. "India won by 4 wickets") is
+        used verbatim for scores rather than reconstructing a result
+        sentence from raw runs/wickets — their pre-written text, not
+        generated here. Sorted by recency (scores) or soonest-first
+        (fixtures) and capped at 3 each.
+      - Wired into `app/jobs/build.py`'s per-genre persist loop (sports-
+        genre-only, a plain HTTP pair, not an LLM call) and
+        `app/render/sections.py` (`SectionRenderer.render()` gained
+        `scores`/`fixtures` parameters, rendered in both formats).
+      - 15 new tests: `test_sports.py` (completed/upcoming matches
+        extracted, sorted, and persisted correctly; a rerun doesn't
+        refetch; no key and a failed or malformed fetch are all handled
+        without raising) plus two in `test_sections.py` and two in
+        `test_build_job.py` (a real build attaches both to a sports
+        section's actual HTML; no key attaches neither) — all against a
+        real Postgres where relevant; full suite now **707 tests**, `mypy`
+        (146 files) and `ruff` clean.
+      - Verified live, for real, twice: once as a direct fetch (India v
+        Afghanistan, Bermuda won by 42 runs, real upcoming fixtures) and
+        once through an actual build run (`2026-10-14`, `sports`) — the
+        genre itself was a genuine quiet news day for verified stories
+        that run (0 stories, a real corroboration-gate outcome unrelated to
+        this work), but the score/fixture `extras` rows persisted
+        correctly regardless, exactly as designed: extras don't depend on
+        that day's story count.
+
+- [x] **Game deals built for the gaming genre — the cleanest of the extras
+      built this session, and the last genre extra CLAUDE.md names. Every
+      genre extra now has code behind it.** CLAUDE.md names CheapShark
+      directly as the example provider, so — like movie releases (TMDB) and
+      unlike market data and sports — no provider search was needed.
+      - CheapShark is free, public, and keyless — the only requirement is a
+        descriptive User-Agent; a generic one is explicitly rejected by
+        their API with a clear error, confirmed live. Their own business
+        model is driving affiliate traffic through exactly this kind of
+        third-party display, and their terms page carries none of the
+        redistribution restrictions Twelve Data's, Alpha Vantage's, or
+        TMDB's do — the cleanest data-rights picture of any extra built
+        this session, checked the same way as the others, not assumed.
+      - `app/services/deals.py`: one call to CheapShark's `/deals` endpoint
+        (sorted by their own "Deal Rating" composite score, not a ranking
+        invented here) plus one to `/stores` for human-readable store
+        names, per edition_date. Deduplicated by title — the same game
+        discounted at several stores otherwise crowds out real variety in
+        the 3-item cap — and persisted in `extras`
+        (`ExtraKind.GAME_DEAL`, `genre="gaming"`).
+      - **A real bug, caught by its own test rather than shipped:** a
+        malformed (non-list) API response crashed with an unhandled
+        `AttributeError` — the original `try/except` wrapped the two fetch
+        calls but not the processing loop that assumed a list of dicts.
+        `test_a_malformed_response_is_omitted_instead_of_raising` failed
+        against the real code before the fix (an explicit `isinstance`
+        check, raising the project's own `DealsFetchError` instead), not
+        after — the same "caught it, didn't just assert it" standard as
+        every other test this session.
+      - Also fixed before it ever ran live: `dealID` values come back from
+        CheapShark's API already URL-encoded (their JSON literally contains
+        `%2B`, `%2F`, `%3D` as characters); re-encoding it into the
+        redirect URL would have double-encoded and broken every deal link
+        silently. Caught by comparing a live fetch's output URL against the
+        raw API response before wiring it any further, not by a test.
+      - Wired into `app/jobs/build.py`'s per-genre persist loop (gaming-
+        genre-only, a plain HTTP pair, no API key, no LLM) and
+        `app/render/sections.py` (`SectionRenderer.render()` gained a
+        `game_deals` parameter, rendered in both formats).
+      - 16 new tests: `test_deals.py` (dedup and cap, an unknown store id
+        gets a generic label rather than failing, a deal missing a
+        required field is skipped, a fresh fetch persists, a rerun doesn't
+        refetch, a failed fetch and the malformed-response bug above are
+        both handled without raising) plus two in `test_sections.py` and
+        two in `test_build_job.py` (a real build attaches deals to a
+        gaming section's actual HTML with correctly-encoded links; no
+        fetcher attaches none) — all against a real Postgres where
+        relevant; full suite now **718 tests**, `mypy` (148 files) and
+        `ruff` clean.
+      - Verified live, for real, twice: once as a direct fetch (real Steam/
+        Humble Store deals, e.g. "ENDLESS Legend 2" at 50% off) and once
+        through an actual build run (`2026-10-15`, `gaming`, 7 real
+        verified stories) — the real published section's HTML carries the
+        genuine deals with correctly single-encoded redirect links, exactly
+        matching the direct-fetch output.
+      - **With this, every genre extra CLAUDE.md's config already declared
+        (`config/genres.yaml`'s per-genre `extras` list — AI tool of the
+        day, scores/fixtures, game deals, movie releases ×2, music
+        releases) now has real code behind it, built and verified live
+        against real data, not just against mocks.**

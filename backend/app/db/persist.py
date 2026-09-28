@@ -13,11 +13,13 @@ exists for the edition — published content is never rewritten.
 
 from __future__ import annotations
 
+import uuid
 from datetime import date
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.agents.image_finder import ImageResult
 from app.agents.schemas import DraftSentence, GenreOutcome, VerifiedStory
 from app.clock import now_utc
 from app.models.content import (
@@ -25,6 +27,7 @@ from app.models.content import (
     ArticlePassage,
     ClusterArticle,
     FactCheck,
+    Image,
     SentenceCitation,
     Source,
     Story,
@@ -43,14 +46,48 @@ class PersistError(RuntimeError):
 
 def persist_genre(session: Session, *, edition_date: date, outcome: GenreOutcome) -> int:
     """Write one genre's verified stories. Returns the number stored."""
+    return len(persist_genre_stories(session, edition_date=edition_date, outcome=outcome))
+
+
+def persist_genre_stories(
+    session: Session, *, edition_date: date, outcome: GenreOutcome
+) -> list[Story]:
+    """Same as `persist_genre`, but returns the stored rows in the order
+    `outcome.stories` gave them (index 0 is the top-ranked story) rather than
+    just a count — for callers that need the persisted id, such as attaching
+    the Image finder's pick to the section's top story.
+    """
     _refuse_if_published(session, edition_date)
     _clear_previous(session, edition_date=edition_date, genre=outcome.genre)
 
-    for verified in outcome.stories:
+    stored = [
         _store_story(session, edition_date=edition_date, genre=outcome.genre, verified=verified)
-
+        for verified in outcome.stories
+    ]
     session.flush()
-    return len(outcome.stories)
+    return stored
+
+
+def persist_image(session: Session, *, story_id: uuid.UUID, result: ImageResult) -> Image:
+    """Store the Image finder's pick for one story — its credit is the
+    record CLAUDE.md's Images section requires ("every image has a stored
+    credit"). Hotlinked, never rehosted: `display_url` is the provider's own.
+    """
+    image = Image(
+        story_id=story_id,
+        provider=result.provider,
+        display_url=result.display_url,
+        page_url=result.page_url,
+        author=result.author,
+        license_name=result.license_name,
+        license_url=result.license_url,
+        credit=result.credit,
+        width=result.width,
+        height=result.height,
+    )
+    session.add(image)
+    session.flush()
+    return image
 
 
 def persist_new_stories(

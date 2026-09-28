@@ -42,6 +42,28 @@ class Weather:
 
 
 @dataclass(frozen=True)
+class Quote:
+    text: str
+    author: str
+    source_url: str
+
+
+@dataclass(frozen=True)
+class OnThisDay:
+    year: int
+    text: str
+    source_url: str
+
+
+@dataclass(frozen=True)
+class MarketStrip:
+    label: str
+    rate: float
+    as_of: date
+    source_url: str
+
+
+@dataclass(frozen=True)
 class Links:
     unsubscribe_url: str
     preferences_url: str
@@ -96,6 +118,9 @@ class EmailRenderer:
         selected: Mapping[GenreKey, list[Candidate]],
         links: Links,
         weather: Weather | None = None,
+        quote: Quote | None = None,
+        on_this_day: OnThisDay | None = None,
+        market: MarketStrip | None = None,
         special_edition: str | None = None,
         special_edition_note: str | None = None,
         special_edition_accent: str | None = None,
@@ -129,6 +154,9 @@ class EmailRenderer:
             "special_edition_note": special_edition_note,
             "special_edition_accent": special_edition_accent,
             "weather": weather,
+            "quote": quote,
+            "on_this_day": on_this_day,
+            "market": market,
             "sixty_seconds": self._digest(chosen),
             "reading_minutes": minutes,
             "sections": sections,

@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.collector import Collector
 from app.agents.fact_checker import FactChecker
+from app.agents.image_finder import ImageResult, find_image
 from app.agents.orchestrator import Orchestrator
 from app.agents.ranker import Ranker
 from app.agents.schemas import EditionBuild, PooledStory, VerificationOutcome
@@ -34,7 +35,7 @@ from app.clock import IST, edition_date_for, now_utc
 from app.config.schemas import GenreKey
 from app.config.settings import get_settings
 from app.db.engine import dispose_engine, session_scope
-from app.db.persist import persist_genre
+from app.db.persist import persist_genre_stories, persist_image
 from app.db.publish import PublishError, publish_revision
 from app.jobs.locking import job_lock
 from app.llm.client import LlmClient
@@ -44,6 +45,11 @@ from app.models.enums import JobName, RunStatus
 from app.models.operations import PipelineRun
 from app.render.sections import RenderedSection, SectionRenderer
 from app.render.weekend import persist_weekend_features
+from app.services.deals import load_game_deals, persist_game_deals
+from app.services.markets import persist_market_strip
+from app.services.quotes import persist_daily_extras
+from app.services.releases import load_movie_releases, persist_movie_releases
+from app.services.sports import load_fixtures, load_scores, persist_sports_extras
 from app.sources.fetch import Fetcher, user_agent_for
 from app.sources.robots import RobotsPolicy
 
@@ -61,6 +67,8 @@ class BuildReport:
     stories_persisted: int = 0
     sections: dict[str, str] = field(default_factory=dict)
     weekend_features: list[str] = field(default_factory=list)
+    extras: list[str] = field(default_factory=list)
+    images: list[str] = field(default_factory=list)
     deadline_missed: bool = False
     error: str | None = None
 
@@ -84,6 +92,12 @@ def run_build(
     genres: list[GenreKey] | None = None,
     now: datetime | None = None,
     run_id: uuid.UUID | None = None,
+    extras_fetcher: Fetcher | None = None,
+    image_finder_llm: LlmClient | None = None,
+    unsplash_api_key: str | None = None,
+    pexels_api_key: str | None = None,
+    tmdb_api_key: str | None = None,
+    sports_api_key: str | None = None,
 ) -> BuildReport:
     """Build and publish one edition. The session is committed by the caller.
 
@@ -91,7 +105,11 @@ def run_build(
     (see `main()`) — the LLM client's recorder needs that row visible to its
     own, separate session before any `llm_calls` row can reference it via
     foreign key, and every LLM call in this build happens before this
-    session touches the database at all.
+    session touches the database at all. The Image finder's relevance check
+    is an LLM call too, so it runs in that same pre-persist phase (right
+    after `orchestrator.build()` returns, before the persist loop below) —
+    never interleaved with the open write transaction, which is exactly the
+    idle-in-transaction shape that has killed a Neon connection here before.
     """
     report = BuildReport(edition_date=edition_date)
     started = now or now_utc()
@@ -131,17 +149,99 @@ def run_build(
     )
     report.deadline_missed = build.deadline_missed
 
+    # One image per genre section, for its top-ranked story only (scope
+    # confirmed with the owner — see docs/BACKLOG.md). Computed here, before
+    # the persist loop touches the database at all, same as every other LLM
+    # call in this build.
+    images: dict[str, ImageResult] = {}
+    if image_finder_llm is not None and extras_fetcher is not None:
+        for outcome in build.genres:
+            if not outcome.stories:
+                continue
+            image = find_image(
+                image_finder_llm,
+                extras_fetcher,
+                story=outcome.stories[0].story,
+                unsplash_api_key=unsplash_api_key,
+                pexels_api_key=pexels_api_key,
+            )
+            if image is not None:
+                images[outcome.genre] = image
+
     rendered: dict[str, RenderedSection] = {}
     for outcome in build.genres:
-        report.stories_persisted += persist_genre(
-            session, edition_date=edition_date, outcome=outcome
+        stories = persist_genre_stories(session, edition_date=edition_date, outcome=outcome)
+        report.stories_persisted += len(stories)
+        image = images.get(outcome.genre)
+
+        releases: list[dict[str, str]] | None = None
+        if extras_fetcher is not None and tmdb_api_key is not None:
+            persist_movie_releases(
+                session,
+                edition_date=edition_date,
+                genre=outcome.genre,
+                fetcher=extras_fetcher,
+                api_key=tmdb_api_key,
+                now=started,
+            )
+            releases = (
+                load_movie_releases(session, edition_date=edition_date, genre=outcome.genre) or None
+            )
+            if releases:
+                report.extras.append(f"movie_release:{outcome.genre}")
+
+        scores: list[dict[str, str]] | None = None
+        fixtures: list[dict[str, str]] | None = None
+        if extras_fetcher is not None and sports_api_key is not None and outcome.genre == "sports":
+            for extra in persist_sports_extras(
+                session,
+                edition_date=edition_date,
+                fetcher=extras_fetcher,
+                api_key=sports_api_key,
+                now=started,
+            ):
+                report.extras.append(extra.kind.value)
+            scores = load_scores(session, edition_date=edition_date) or None
+            fixtures = load_fixtures(session, edition_date=edition_date) or None
+
+        game_deals: list[dict[str, str]] | None = None
+        if extras_fetcher is not None and outcome.genre == "gaming":
+            # No API key: CheapShark is free and keyless.
+            persist_game_deals(
+                session, edition_date=edition_date, fetcher=extras_fetcher, now=started
+            )
+            game_deals = load_game_deals(session, edition_date=edition_date) or None
+            if game_deals:
+                report.extras.append("game_deal")
+
+        section = renderer.render(
+            outcome,
+            image=image,
+            movie_releases=releases,
+            scores=scores,
+            fixtures=fixtures,
+            game_deals=game_deals,
         )
-        section = renderer.render(outcome)
         rendered[outcome.genre] = section
         report.sections[outcome.genre] = section.status.value
 
+        if image is not None and stories:
+            persist_image(session, story_id=stories[0].id, result=image)
+            report.images.append(outcome.genre)
+
     for feature in persist_weekend_features(session, edition_date=edition_date):
         report.weekend_features.append(feature.kind.value)
+
+    if extras_fetcher is not None:
+        for extra in persist_daily_extras(
+            session, edition_date=edition_date, fetcher=extras_fetcher, now=started
+        ):
+            report.extras.append(extra.kind.value)
+        market_extra = persist_market_strip(
+            session, edition_date=edition_date, fetcher=extras_fetcher, now=started
+        )
+        if market_extra is not None:
+            report.extras.append(market_extra.kind.value)
 
     try:
         revision = publish_revision(session, build=build, sections=rendered, published_at=now_utc())
@@ -253,6 +353,28 @@ def main(argv: list[str] | None = None) -> int:
                         genres=args.genres,
                         now=started,
                         run_id=run_id,
+                        extras_fetcher=fetcher,
+                        image_finder_llm=llm,
+                        unsplash_api_key=(
+                            settings.unsplash_access_key.get_secret_value()
+                            if settings.unsplash_access_key
+                            else None
+                        ),
+                        pexels_api_key=(
+                            settings.pexels_api_key.get_secret_value()
+                            if settings.pexels_api_key
+                            else None
+                        ),
+                        tmdb_api_key=(
+                            settings.tmdb_api_key.get_secret_value()
+                            if settings.tmdb_api_key
+                            else None
+                        ),
+                        sports_api_key=(
+                            settings.sports_api_key.get_secret_value()
+                            if settings.sports_api_key
+                            else None
+                        ),
                     )
     finally:
         dispose_engine()
@@ -273,6 +395,10 @@ def _print(report: BuildReport) -> None:
         print(f"  {genre:12} {status}")
     for feature in report.weekend_features:
         print(f"  weekend: {feature}")
+    for extra in report.extras:
+        print(f"  extra: {extra}")
+    for genre in report.images:
+        print(f"  image: {genre}")
     if report.error:
         print(f"  error: {report.error}")
 

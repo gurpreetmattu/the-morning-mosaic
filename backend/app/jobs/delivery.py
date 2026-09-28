@@ -56,9 +56,13 @@ from app.models.enums import (
 )
 from app.models.operations import PipelineRun
 from app.models.users import FollowedKeyword, OutageState, User, UserGenre, UserPreference
-from app.render.email import EmailRenderer, Links
+from app.render.email import EmailRenderer, Links, Weather
 from app.render.selection import Reader, load_candidates, select_for_reader
 from app.render.weekend import WeekendContent, load_weekend_features
+from app.services.markets import load_market_strip
+from app.services.quotes import load_on_this_day, load_quote
+from app.services.weather import get_weather
+from app.sources.fetch import Fetcher, user_agent_for
 
 logger = logging.getLogger(__name__)
 
@@ -267,6 +271,33 @@ def correction_note_for(
     )
 
 
+def weather_for(
+    session: Session,
+    *,
+    user: User,
+    edition_date: date,
+    fetcher: Fetcher | None,
+    settings: Settings,
+    now: datetime,
+) -> Weather | None:
+    """None whenever weather cannot or should not be fetched: no city on the
+    account, no API key configured, or no fetcher running for this job
+    (no key -> no fetcher; see `main()`). A missing weather box is cosmetic,
+    never a reason to skip or fail a reader's edition.
+    """
+    api_key = settings.openweathermap_api_key
+    if fetcher is None or api_key is None or user.city is None:
+        return None
+    return get_weather(
+        session,
+        city=user.city,
+        edition_date=edition_date,
+        fetcher=fetcher,
+        api_key=api_key.get_secret_value(),
+        now=now,
+    )
+
+
 def build_links(
     session: Session, *, user: User, revision: EditionRevision, settings: Settings
 ) -> Links:
@@ -297,6 +328,7 @@ def run_delivery(
     renderer: EmailRenderer | None = None,
     settings: Settings | None = None,
     editions: EditionsConfig | None = None,
+    weather_fetcher: Fetcher | None = None,
     now: datetime | None = None,
 ) -> DeliveryReport:
     config = settings or get_settings()
@@ -334,6 +366,9 @@ def run_delivery(
         if edition.is_weekend
         else WeekendContent()
     )
+    quote = load_quote(session, edition_date=edition_date)
+    on_this_day = load_on_this_day(session, edition_date=edition_date)
+    market = load_market_strip(session, edition_date=edition_date)
 
     corrections = pending_corrections(session, edition_date=edition_date)
     session.commit()
@@ -361,6 +396,14 @@ def run_delivery(
             continue
 
         links = build_links(session, user=user, revision=revision, settings=config)
+        weather = weather_for(
+            session,
+            user=user,
+            edition_date=edition_date,
+            fetcher=weather_fetcher,
+            settings=config,
+            now=started,
+        )
         special = (
             editions_config.by_key(edition.special_edition_key)
             if edition.special_edition_key
@@ -372,6 +415,10 @@ def run_delivery(
             edition_number=edition.edition_number,
             selected=selected,
             links=links,
+            weather=weather,
+            quote=quote,
+            on_this_day=on_this_day,
+            market=market,
             # Fall back to the raw key if it no longer matches any configured
             # special edition, rather than silently showing nothing.
             special_edition=special.name if special else edition.special_edition_key,
@@ -459,6 +506,13 @@ def main(argv: list[str] | None = None) -> int:
     edition_date = args.edition_date or edition_date_for(now_utc())
     slot = args.slot or current_ist_slot()
 
+    # No fetcher at all when there is no key, rather than one that would only
+    # ever fail: `weather_for` already treats "no fetcher" as "skip weather".
+    weather_fetcher = (
+        Fetcher(user_agent=user_agent_for(str(settings.base_url)))
+        if settings.openweathermap_api_key is not None
+        else None
+    )
     try:
         with job_lock(JobName.DELIVERY.value) as acquired:
             if not acquired:
@@ -472,10 +526,13 @@ def main(argv: list[str] | None = None) -> int:
                     slot=slot,
                     sender=Sender(settings=settings),
                     settings=settings,
+                    weather_fetcher=weather_fetcher,
                 )
             finally:
                 session.close()
     finally:
+        if weather_fetcher is not None:
+            weather_fetcher.close()
         dispose_engine()
 
     print(

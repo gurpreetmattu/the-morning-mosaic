@@ -33,7 +33,34 @@
       {{ weather.city }}: {{ weather.summary }}, {{ weather.low }}&ndash;{{ weather.high }}&deg;C
     </p>
     {% endif %}
+    {% if market %}
+    <p style="margin:6px 0 0 0;padding:8px 12px;background:#f4f2ee;font-family:Georgia, serif;font-size:12px;color:#3a3a3a;">
+      {{ market.label }}: &#8377;{{ "%.2f"|format(market.rate) }} <span style="color:#9a9a9a;font-size:10px;">(as of {{ market.as_of }}, ECB &middot; not investment advice)</span>
+    </p>
+    {% endif %}
   </td></tr>
+
+  {# --------------------------------------- quote / on this day #}
+  {% if quote %}
+  <tr><td style="padding:14px 28px 0 28px;">
+    <p style="margin:0;padding:10px 14px;background:#faf8f4;border-left:3px solid #141414;font-family:Georgia, serif;font-size:13px;font-style:italic;color:#3a3a3a;">
+      &ldquo;{{ quote.text }}&rdquo; &mdash; {{ quote.author }}
+    </p>
+    <p style="margin:2px 0 0 0;font-family:Georgia, serif;font-size:10px;color:#9a9a9a;">
+      Quote of the day via <a href="{{ quote.source_url }}" style="color:#9a9a9a;">Wikiquote</a> (CC BY-SA)
+    </p>
+  </td></tr>
+  {% endif %}
+  {% if on_this_day %}
+  <tr><td style="padding:8px 28px 0 28px;">
+    <p style="margin:0;font-family:Georgia, serif;font-size:12px;color:#3a3a3a;">
+      <strong>On this day, {{ on_this_day.year }}:</strong> {{ on_this_day.text }}
+    </p>
+    <p style="margin:2px 0 0 0;font-family:Georgia, serif;font-size:10px;color:#9a9a9a;">
+      Via <a href="{{ on_this_day.source_url }}" style="color:#9a9a9a;">Wikipedia</a> (CC BY-SA)
+    </p>
+  </td></tr>
+  {% endif %}
 
   {# -------------------------------------------- today in 60 seconds #}
   {% if sixty_seconds %}

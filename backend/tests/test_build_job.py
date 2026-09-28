@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import UTC, date, datetime, time, timedelta
 
+import httpx
 import pytest
+import respx
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
+from app.agents.image_finder import COMMONS_API, PEXELS_SEARCH_API, UNSPLASH_SEARCH_API
 from app.agents.orchestrator import CollectorLike, Orchestrator, VerifyFn
 from app.agents.schemas import (
     Corroboration,
@@ -20,16 +25,24 @@ from app.agents.schemas import (
     WrittenStory,
 )
 from app.config.loader import load_editions, load_genres
-from app.config.schemas import EditionsConfig, GenreKey
+from app.config.schemas import EditionsConfig, GenreKey, ModelsConfig
+from app.config.settings import Settings
 from app.db.persist import persist_genre
 from app.db.seed import seed_sources
 from app.jobs.build import BUILD_DEADLINE_IST, BuildReport, deadline_for, run_build
 from app.jobs.locking import job_lock, lock_key
-from app.models.content import SentenceCitation, Story, WeekendFeature
+from app.llm.client import LlmClient
+from app.models.content import Extra, Image, SentenceCitation, Story, WeekendFeature
 from app.models.editions import Edition, EditionRevision, EditionSection
-from app.models.enums import JobName, RunStatus, SectionStatus, WeekendFeatureKind
+from app.models.enums import ExtraKind, JobName, RunStatus, SectionStatus, WeekendFeatureKind
 from app.models.operations import PipelineRun
 from app.render.sections import SectionRenderer
+from app.services.deals import CHEAPSHARK_DEALS_API, CHEAPSHARK_STORES_API
+from app.services.markets import FRANKFURTER_API
+from app.services.quotes import WIKIPEDIA_ONTHISDAY_API, WIKIQUOTE_API
+from app.services.releases import TMDB_UPCOMING_API
+from app.services.sports import CRICBUZZ_RECENT_API, CRICBUZZ_UPCOMING_API
+from app.sources.fetch import Fetcher
 from app.sources.schemas import CollectedArticle, CollectionResult, Passage
 
 pytestmark = pytest.mark.integration
@@ -39,6 +52,105 @@ DEADLINE = NOW + timedelta(hours=1)
 EDITION = date(2026, 10, 5)
 
 BODY = "The cabinet approved the eastern freight corridor on Tuesday, officials said."
+
+QUOTE_URL_PATTERN = re.compile(rf"^{re.escape(WIKIQUOTE_API)}\?.*")
+OTD_URL_PATTERN = re.compile(rf"^{re.escape(WIKIPEDIA_ONTHISDAY_API)}/10/05$")
+QUOTE_WIKITEXT = (
+    "{{Wikiquote:Quote of the day/Template\n"
+    "| quote = [[Shakespeare]]'s stage <br /> holds the glass\n"
+    "| author = Francis Turner Palgrave\n"
+    "}}"
+)
+ONTHISDAY_PAYLOAD = {
+    "selected": [
+        {
+            "year": 2023,
+            "text": "The Sycamore Gap tree was illegally felled.",
+            "pages": [{"title": "Sycamore_Gap_tree"}],
+        }
+    ]
+}
+MARKET_URL_PATTERN = re.compile(rf"^{re.escape(FRANKFURTER_API)}\?.*")
+MARKET_PAYLOAD = {"amount": 1.0, "base": "USD", "date": "2026-10-05", "rates": {"INR": 95.82}}
+
+IMAGE_LLM_GATEWAY = "https://primary.llm.test"
+COMMONS_SEARCH_PATTERN = re.compile(rf"^{re.escape(COMMONS_API)}\?action=query&list=search.*")
+COMMONS_INFO_PATTERN = re.compile(rf"^{re.escape(COMMONS_API)}\?action=query&titles=.*")
+UNSPLASH_PATTERN = re.compile(rf"^{re.escape(UNSPLASH_SEARCH_API)}\?.*")
+PEXELS_PATTERN = re.compile(rf"^{re.escape(PEXELS_SEARCH_API)}\?.*")
+
+
+def image_finder_settings() -> Settings:
+    return Settings.model_validate(
+        {
+            "base_url": "https://mosaic.example.com",
+            "database_url": "postgresql://u:p@localhost/db",
+            "smtp_host": "smtp.example.com",
+            "sender_email": "news@example.com",
+            "sender_name": "Example",
+            "gmail_app_password": "x",
+            "imap_host": "imap.example.com",
+            "admin_email": "admin@example.com",
+            "llm_gateway_url": IMAGE_LLM_GATEWAY,
+            "llm_gateway_api_key": "x",
+            "token_signing_key": "x",
+        }
+    )
+
+
+def image_finder_models() -> ModelsConfig:
+    spec = {"model": "img-1", "temperature": 0.0, "max_output_tokens": 256, "pinned": False}
+    return ModelsConfig.model_validate(
+        {
+            "request_timeout_seconds": 5.0,
+            "max_attempts": 1,
+            "agents": {
+                "orchestrator": spec,
+                "ranker": spec,
+                "writer": {**spec, "pinned": True},
+                "fact_checker": {**spec, "pinned": True},
+                "image_finder": spec,
+            },
+        }
+    )
+
+
+def image_finder_llm() -> LlmClient:
+    return LlmClient(
+        settings=image_finder_settings(), models=image_finder_models(), sleep=lambda _: None
+    )
+
+
+def mock_image_llm_picks(index: int) -> None:
+    respx.post(f"{IMAGE_LLM_GATEWAY}/chat/completions").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": "c",
+                "object": "chat.completion",
+                "created": 0,
+                "model": "img-1",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": json.dumps({"index": index})},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            },
+        )
+    )
+
+
+def extras_fetcher() -> Fetcher:
+    """No real sleeping: a failing test would otherwise pay full backoff."""
+    clock = [0.0]
+    return Fetcher(
+        user_agent="TheMorningMosaic/0.1 (+test)",
+        sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds),
+        monotonic=lambda: clock[0],
+    )
 
 
 def article(index: int) -> CollectedArticle:
@@ -264,6 +376,307 @@ def test_a_saturday_build_also_persists_weekend_features(session: Session) -> No
         WeekendFeatureKind.LONGER_READS,
         WeekendFeatureKind.QUIZ,
     }
+
+
+@respx.mock
+def test_a_build_persists_the_days_quote_on_this_day_and_market_strip(
+    session: Session,
+) -> None:
+    respx.get(QUOTE_URL_PATTERN).mock(
+        return_value=httpx.Response(200, json={"parse": {"wikitext": {"*": QUOTE_WIKITEXT}}})
+    )
+    respx.get(OTD_URL_PATTERN).mock(return_value=httpx.Response(200, json=ONTHISDAY_PAYLOAD))
+    respx.get(MARKET_URL_PATTERN).mock(return_value=httpx.Response(200, json=MARKET_PAYLOAD))
+
+    report = run_build(
+        session,
+        edition_date=EDITION,
+        deadline=DEADLINE,
+        orchestrator=orchestrator(),
+        renderer=SectionRenderer(),
+        genres=["india"],
+        now=NOW,
+        extras_fetcher=extras_fetcher(),
+    )
+
+    assert report.succeeded
+    assert set(report.extras) == {"quote", "on_this_day", "market"}
+    rows = session.scalars(select(Extra).where(Extra.edition_date == EDITION)).all()
+    assert {row.kind for row in rows} == {ExtraKind.QUOTE, ExtraKind.ON_THIS_DAY, ExtraKind.MARKET}
+
+
+def test_a_build_without_an_extras_fetcher_persists_no_extras(session: Session) -> None:
+    report = build(session)
+
+    assert report.succeeded
+    assert report.extras == []
+
+
+@respx.mock
+def test_a_build_attaches_an_image_to_the_sections_top_story(session: Session) -> None:
+    respx.get(QUOTE_URL_PATTERN).mock(
+        return_value=httpx.Response(200, json={"parse": {"wikitext": {"*": QUOTE_WIKITEXT}}})
+    )
+    respx.get(OTD_URL_PATTERN).mock(return_value=httpx.Response(200, json=ONTHISDAY_PAYLOAD))
+    respx.get(MARKET_URL_PATTERN).mock(return_value=httpx.Response(200, json=MARKET_PAYLOAD))
+    respx.get(COMMONS_SEARCH_PATTERN).mock(
+        return_value=httpx.Response(
+            200, json={"query": {"search": [{"title": "File:Corridor.jpg"}]}}
+        )
+    )
+    respx.get(COMMONS_INFO_PATTERN).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "query": {
+                    "pages": {
+                        "1": {
+                            "title": "File:Corridor.jpg",
+                            "imageinfo": [
+                                {
+                                    "url": "https://upload.wikimedia.org/corridor.jpg",
+                                    "descriptionurl": "https://commons.wikimedia.org/wiki/File:Corridor.jpg",
+                                    "width": 1200,
+                                    "height": 800,
+                                    "extmetadata": {
+                                        "LicenseShortName": {"value": "CC0"},
+                                        "Artist": {"value": "Jane Doe"},
+                                        "ImageDescription": {"value": "A rail corridor"},
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                }
+            },
+        )
+    )
+    respx.get(UNSPLASH_PATTERN).mock(return_value=httpx.Response(200, json={"results": []}))
+    respx.get(PEXELS_PATTERN).mock(return_value=httpx.Response(200, json={"photos": []}))
+    mock_image_llm_picks(0)
+
+    report = run_build(
+        session,
+        edition_date=EDITION,
+        deadline=DEADLINE,
+        orchestrator=orchestrator(),
+        renderer=SectionRenderer(),
+        genres=["india"],
+        now=NOW,
+        extras_fetcher=extras_fetcher(),
+        image_finder_llm=image_finder_llm(),
+        unsplash_api_key="uk",
+        pexels_api_key="pk",
+    )
+
+    assert report.succeeded
+    assert report.images == ["india"]
+
+    top_story = session.scalar(
+        select(Story)
+        .where(Story.edition_date == EDITION, Story.genre == "india")
+        .order_by(Story.pool_rank)
+        .limit(1)
+    )
+    assert top_story is not None
+    image = session.scalar(select(Image).where(Image.story_id == top_story.id))
+    assert image is not None
+    assert image.display_url == "https://upload.wikimedia.org/corridor.jpg"
+    assert image.credit == "Jane Doe / Wikimedia Commons (CC0)"
+
+    section = session.scalar(select(EditionSection).where(EditionSection.genre == "india"))
+    assert section is not None
+    assert "https://upload.wikimedia.org/corridor.jpg" in (section.html or "")
+
+
+def test_a_build_without_an_image_finder_llm_attaches_no_images(session: Session) -> None:
+    report = build(session)
+
+    assert report.succeeded
+    assert report.images == []
+    assert session.scalar(select(Image)) is None
+
+
+@respx.mock
+def test_a_build_attaches_movie_releases_to_a_bollywood_section(session: Session) -> None:
+    respx.get(QUOTE_URL_PATTERN).mock(
+        return_value=httpx.Response(200, json={"parse": {"wikitext": {"*": QUOTE_WIKITEXT}}})
+    )
+    respx.get(OTD_URL_PATTERN).mock(return_value=httpx.Response(200, json=ONTHISDAY_PAYLOAD))
+    respx.get(MARKET_URL_PATTERN).mock(return_value=httpx.Response(200, json=MARKET_PAYLOAD))
+    respx.get(re.compile(rf"^{re.escape(TMDB_UPCOMING_API)}\?.*")).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "title": "Drishyam 3",
+                        "release_date": "2026-10-09",
+                        "overview": "A family outwits the system once again.",
+                    }
+                ]
+            },
+        )
+    )
+
+    report = run_build(
+        session,
+        edition_date=EDITION,
+        deadline=DEADLINE,
+        orchestrator=orchestrator(),
+        renderer=SectionRenderer(),
+        genres=["bollywood"],
+        now=NOW,
+        extras_fetcher=extras_fetcher(),
+        tmdb_api_key="tk",
+    )
+
+    assert report.succeeded
+    assert "movie_release:bollywood" in report.extras
+
+    extra = session.scalar(select(Extra).where(Extra.kind == ExtraKind.MOVIE_RELEASE))
+    assert extra is not None
+    assert extra.genre == "bollywood"
+
+    section = session.scalar(select(EditionSection).where(EditionSection.genre == "bollywood"))
+    assert section is not None
+    assert "Drishyam 3" in (section.html or "")
+    assert "not endorsed, certified, or otherwise approved by TMDB" in (section.html or "")
+
+
+def test_a_build_without_a_tmdb_key_attaches_no_movie_releases(session: Session) -> None:
+    report = build(session, genres=["bollywood"])
+
+    assert report.succeeded
+    assert not any(extra.startswith("movie_release:") for extra in report.extras)
+    assert session.scalar(select(Extra).where(Extra.kind == ExtraKind.MOVIE_RELEASE)) is None
+
+
+@respx.mock
+def test_a_build_attaches_scores_and_fixtures_to_a_sports_section(session: Session) -> None:
+    respx.get(QUOTE_URL_PATTERN).mock(
+        return_value=httpx.Response(200, json={"parse": {"wikitext": {"*": QUOTE_WIKITEXT}}})
+    )
+    respx.get(OTD_URL_PATTERN).mock(return_value=httpx.Response(200, json=ONTHISDAY_PAYLOAD))
+    respx.get(MARKET_URL_PATTERN).mock(return_value=httpx.Response(200, json=MARKET_PAYLOAD))
+    recent_payload = {
+        "typeMatches": [
+            {
+                "seriesMatches": [
+                    {
+                        "seriesAdWrapper": {
+                            "matches": [
+                                {
+                                    "matchInfo": {
+                                        "state": "Complete",
+                                        "team1": {"teamName": "India"},
+                                        "team2": {"teamName": "Pakistan"},
+                                        "status": "India won by 4 wickets",
+                                        "endDate": "1000",
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+    respx.get(re.compile(rf"^{re.escape(CRICBUZZ_RECENT_API)}$")).mock(
+        return_value=httpx.Response(200, json=recent_payload)
+    )
+    respx.get(re.compile(rf"^{re.escape(CRICBUZZ_UPCOMING_API)}$")).mock(
+        return_value=httpx.Response(200, json={"typeMatches": []})
+    )
+
+    report = run_build(
+        session,
+        edition_date=EDITION,
+        deadline=DEADLINE,
+        orchestrator=orchestrator(),
+        renderer=SectionRenderer(),
+        genres=["sports"],
+        now=NOW,
+        extras_fetcher=extras_fetcher(),
+        sports_api_key="sk",
+    )
+
+    assert report.succeeded
+    assert "score" in report.extras
+
+    extra = session.scalar(select(Extra).where(Extra.kind == ExtraKind.SCORE))
+    assert extra is not None
+    assert extra.genre == "sports"
+
+    section = session.scalar(select(EditionSection).where(EditionSection.genre == "sports"))
+    assert section is not None
+    assert "India won by 4 wickets" in (section.html or "")
+
+
+def test_a_build_without_a_sports_key_attaches_no_scores(session: Session) -> None:
+    report = build(session, genres=["sports"])
+
+    assert report.succeeded
+    assert "score" not in report.extras
+    assert session.scalar(select(Extra).where(Extra.kind == ExtraKind.SCORE)) is None
+
+
+@respx.mock
+def test_a_build_attaches_game_deals_to_a_gaming_section(session: Session) -> None:
+    respx.get(QUOTE_URL_PATTERN).mock(
+        return_value=httpx.Response(200, json={"parse": {"wikitext": {"*": QUOTE_WIKITEXT}}})
+    )
+    respx.get(OTD_URL_PATTERN).mock(return_value=httpx.Response(200, json=ONTHISDAY_PAYLOAD))
+    respx.get(MARKET_URL_PATTERN).mock(return_value=httpx.Response(200, json=MARKET_PAYLOAD))
+    respx.get(re.compile(rf"^{re.escape(CHEAPSHARK_DEALS_API)}\?.*")).mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {
+                    "title": "Great Game",
+                    "dealID": "abc123",
+                    "storeID": "1",
+                    "salePrice": "9.99",
+                    "normalPrice": "19.99",
+                    "savings": "50.0",
+                }
+            ],
+        )
+    )
+    respx.get(re.compile(rf"^{re.escape(CHEAPSHARK_STORES_API)}$")).mock(
+        return_value=httpx.Response(200, json=[{"storeID": "1", "storeName": "Steam"}])
+    )
+
+    report = run_build(
+        session,
+        edition_date=EDITION,
+        deadline=DEADLINE,
+        orchestrator=orchestrator(),
+        renderer=SectionRenderer(),
+        genres=["gaming"],
+        now=NOW,
+        extras_fetcher=extras_fetcher(),
+    )
+
+    assert report.succeeded
+    assert "game_deal" in report.extras
+
+    extra = session.scalar(select(Extra).where(Extra.kind == ExtraKind.GAME_DEAL))
+    assert extra is not None
+    assert extra.genre == "gaming"
+
+    section = session.scalar(select(EditionSection).where(EditionSection.genre == "gaming"))
+    assert section is not None
+    assert "Great Game" in (section.html or "")
+    assert "50% off (Steam)" in (section.html or "")
+
+
+def test_a_build_without_an_extras_fetcher_attaches_no_game_deals(session: Session) -> None:
+    report = build(session, genres=["gaming"])
+
+    assert report.succeeded
+    assert "game_deal" not in report.extras
+    assert session.scalar(select(Extra).where(Extra.kind == ExtraKind.GAME_DEAL)) is None
 
 
 def test_the_run_is_recorded_as_succeeded(session: Session) -> None:

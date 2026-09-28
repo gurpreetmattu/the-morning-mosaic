@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, date, datetime, time, timedelta
 
+import httpx
 import pytest
+import respx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -24,12 +27,13 @@ from app.db.seed import seed_cities, seed_sources
 from app.email import tokens
 from app.email.sender import Message, Sender, SendError, SendOutcome, SendResult
 from app.jobs.delivery import claim, due_readers, is_due, run_delivery
-from app.models.content import Correction, Story
+from app.models.content import Correction, Extra, Story
 from app.models.editions import Delivery, EditionRevision
 from app.models.enums import (
     DeliveryStatus,
     DeliveryType,
     EditionPreference,
+    ExtraKind,
     Frequency,
     RunStatus,
     SectionStatus,
@@ -39,6 +43,8 @@ from app.models.operations import PipelineRun
 from app.models.users import FollowedKeyword, User, UserGenre
 from app.render.sections import RenderedSection
 from app.render.weekend import persist_weekend_features
+from app.services.weather import API_URL
+from app.sources.fetch import Fetcher
 from app.sources.schemas import CollectedArticle, Passage
 
 pytestmark = pytest.mark.integration
@@ -306,6 +312,143 @@ def test_a_due_reader_receives_the_edition(session: Session) -> None:
     assert len(sender.messages) == 1
     assert sender.messages[0].to == "reader@example.com"
     assert "Headline 0" in sender.messages[0].html
+
+
+WEATHER_URL_PATTERN = re.compile(rf"^{re.escape(API_URL)}\?.*")
+
+
+def weather_fetcher() -> Fetcher:
+    """No real sleeping: Fetcher's own backoff would otherwise slow the test."""
+    clock = [0.0]
+    return Fetcher(
+        user_agent="TheMorningMosaic/0.1 (+test)",
+        sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds),
+        monotonic=lambda: clock[0],
+    )
+
+
+def settings_with_weather_key() -> Settings:
+    return Settings.model_validate(settings().model_dump() | {"openweathermap_api_key": "k"})
+
+
+@respx.mock
+def test_a_configured_weather_key_populates_the_box(session: Session) -> None:
+    make_user(session)
+    published_edition(session)
+    respx.get(WEATHER_URL_PATTERN).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "weather": [{"description": "clear sky"}],
+                "main": {"temp_min": 21.4, "temp_max": 29.8},
+            },
+        )
+    )
+
+    sender = FakeSender()
+    report = deliver(
+        session,
+        sender,
+        settings=settings_with_weather_key(),
+        weather_fetcher=weather_fetcher(),
+    )
+
+    assert report.sent == 1  # type: ignore[attr-defined]
+    assert "Mumbai: Clear sky, 21" in sender.messages[0].html
+
+
+def test_without_a_weather_key_the_box_is_simply_absent(session: Session) -> None:
+    make_user(session)
+    published_edition(session)
+    sender = FakeSender()
+
+    report = deliver(session, sender)  # no weather_fetcher, no key
+
+    assert report.sent == 1  # type: ignore[attr-defined]
+    assert "Mumbai:" not in sender.messages[0].html
+
+
+def add_extra(
+    session: Session,
+    *,
+    kind: ExtraKind,
+    payload: dict[str, object],
+    source_url: str,
+    source_name: str = "Wikipedia",
+) -> None:
+    session.add(
+        Extra(
+            edition_date=EDITION,
+            kind=kind,
+            payload=payload,
+            source_name=source_name,
+            source_url=source_url,
+            data_at=NOW,
+        )
+    )
+    session.flush()
+
+
+def test_a_persisted_quote_and_on_this_day_reach_the_email(session: Session) -> None:
+    make_user(session)
+    published_edition(session)
+    add_extra(
+        session,
+        kind=ExtraKind.QUOTE,
+        payload={"text": "Shakespeare's stage holds the glass", "author": "Palgrave"},
+        source_url="https://en.wikiquote.org/wiki/x",
+        source_name="Wikiquote",
+    )
+    add_extra(
+        session,
+        kind=ExtraKind.ON_THIS_DAY,
+        payload={"year": 2023, "text": "The Sycamore Gap tree was illegally felled."},
+        source_url="https://en.wikipedia.org/wiki/Sycamore_Gap_tree",
+    )
+    sender = FakeSender()
+
+    report = deliver(session, sender)
+
+    assert report.sent == 1  # type: ignore[attr-defined]
+    html = sender.messages[0].html
+    assert "Shakespeare&#39;s stage holds the glass" in html or "Shakespeare's stage" in html
+    assert "Palgrave" in html
+    assert "On this day, 2023" in html
+    assert "Sycamore Gap tree" in html
+
+
+def test_a_persisted_market_strip_reaches_the_email(session: Session) -> None:
+    make_user(session)
+    published_edition(session)
+    add_extra(
+        session,
+        kind=ExtraKind.MARKET,
+        payload={"label": "USD/INR", "rate": 95.82, "as_of": "2026-10-05"},
+        source_url="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/"
+        "euro_reference_exchange_rates/html/index.en.html",
+        source_name="European Central Bank (via Frankfurter)",
+    )
+    sender = FakeSender()
+
+    report = deliver(session, sender)
+
+    assert report.sent == 1  # type: ignore[attr-defined]
+    html = sender.messages[0].html
+    assert "USD/INR" in html
+    assert "95.82" in html
+    assert "not investment advice" in html
+
+
+def test_without_persisted_extras_the_boxes_are_simply_absent(session: Session) -> None:
+    make_user(session)
+    published_edition(session)
+    sender = FakeSender()
+
+    report = deliver(session, sender)
+
+    assert report.sent == 1  # type: ignore[attr-defined]
+    assert "On this day" not in sender.messages[0].html
+    assert "USD/INR" not in sender.messages[0].html
 
 
 def test_a_special_edition_is_shown_by_name_not_by_its_raw_config_key(

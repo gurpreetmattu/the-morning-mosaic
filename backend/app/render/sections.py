@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 from pydantic import BaseModel, ConfigDict
 
+from app.agents.image_finder import ImageResult
 from app.agents.orchestrator import QUIET_DAY_NOTE
 from app.agents.schemas import GenreOutcome, VerifiedStory
 from app.config.loader import load_genres, load_sources
@@ -23,6 +24,14 @@ from app.config.schemas import GenreKey, GenresConfig, SourcesConfig
 from app.models.enums import SectionStatus
 from app.render import TEMPLATE_DIR
 from app.render.selection import Candidate
+
+# CLAUDE.md: "Music releases: official label/platform announcements covered
+# by whitelisted sources" — not a separate API like movie releases (TMDB),
+# but drawn straight from the day's own verified music stories, the same way
+# "AI tool of the day" is. `album-releases`/`single-releases` are in
+# config/genres.yaml's own closed topic-tag taxonomy for the music genre.
+MUSIC_RELEASE_TAGS = frozenset({"album-releases", "single-releases"})
+MUSIC_RELEASES_LIMIT = 3
 
 
 class RenderedSection(BaseModel):
@@ -77,13 +86,28 @@ class SectionRenderer:
         }
         self._env = environment or build_environment()
 
-    def render(self, outcome: GenreOutcome) -> RenderedSection:
+    def render(
+        self,
+        outcome: GenreOutcome,
+        *,
+        image: ImageResult | None = None,
+        movie_releases: list[dict[str, str]] | None = None,
+        scores: list[dict[str, str]] | None = None,
+        fixtures: list[dict[str, str]] | None = None,
+        game_deals: list[dict[str, str]] | None = None,
+    ) -> RenderedSection:
         return self._render(
             genre=outcome.genre,
             status=outcome.status,
             stories=[self._story(story) for story in outcome.stories],
             note=outcome.note or "",
+            scores=scores,
+            fixtures=fixtures,
+            game_deals=game_deals,
             ai_tool=self._ai_tool_from_verified(outcome.genre, outcome.stories),
+            image=image,
+            movie_releases=movie_releases,
+            music_releases=self._music_releases_from_verified(outcome.genre, outcome.stories),
         )
 
     def render_candidates(
@@ -111,6 +135,7 @@ class SectionRenderer:
             ],
             note="" if candidates else QUIET_DAY_NOTE,
             ai_tool=self._ai_tool_from_candidates(genre, candidates),
+            music_releases=self._music_releases_from_candidates(genre, candidates),
         )
 
     def _ai_tool_from_verified(
@@ -148,6 +173,39 @@ class SectionRenderer:
             "source": {"name": top.sources[0].name, "url": top.sources[0].url},
         }
 
+    def _music_releases_from_verified(
+        self, genre: str, stories: Sequence[VerifiedStory]
+    ) -> list[dict[str, object]]:
+        if genre != "music":
+            return []
+        picked = [s for s in stories if MUSIC_RELEASE_TAGS & set(s.story.topic_tags)]
+        releases: list[dict[str, object]] = []
+        for verified in picked[:MUSIC_RELEASES_LIMIT]:
+            sources = self._sources(verified)
+            if not sources:
+                continue
+            releases.append({"headline": verified.story.headline.text, "source": sources[0]})
+        return releases
+
+    def _music_releases_from_candidates(
+        self, genre: str, candidates: Sequence[Candidate]
+    ) -> list[dict[str, object]]:
+        if genre != "music":
+            return []
+        picked = [c for c in candidates if MUSIC_RELEASE_TAGS & c.topic_tags]
+        releases: list[dict[str, object]] = []
+        for candidate in picked[:MUSIC_RELEASES_LIMIT]:
+            if not candidate.sources:
+                continue
+            source = candidate.sources[0]
+            releases.append(
+                {
+                    "headline": candidate.headline,
+                    "source": {"name": source.name, "url": source.url},
+                }
+            )
+        return releases
+
     def _render(
         self,
         *,
@@ -156,6 +214,12 @@ class SectionRenderer:
         stories: list[dict[str, object]],
         note: str,
         ai_tool: dict[str, object] | None = None,
+        image: ImageResult | None = None,
+        movie_releases: list[dict[str, str]] | None = None,
+        music_releases: list[dict[str, object]] | None = None,
+        scores: list[dict[str, str]] | None = None,
+        fixtures: list[dict[str, str]] | None = None,
+        game_deals: list[dict[str, str]] | None = None,
     ) -> RenderedSection:
         settings = self._genres.by_key()[genre]  # type: ignore[index]
         context = {
@@ -166,6 +230,12 @@ class SectionRenderer:
             "stories": stories,
             "note": note,
             "ai_tool": ai_tool,
+            "image": image,
+            "movie_releases": movie_releases,
+            "music_releases": music_releases,
+            "scores": scores,
+            "fixtures": fixtures,
+            "game_deals": game_deals,
         }
 
         html = self._env.get_template("section.html.j2").render(**context)
