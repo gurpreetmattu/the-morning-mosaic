@@ -15,6 +15,7 @@ from app.config import (
     load_models,
     load_sources,
 )
+from app.config.loader import LAUNCH_DATE_OVERRIDE_ENV, clear_cache
 from app.config.schemas import (
     AGENT_KEYS,
     GENRE_KEYS,
@@ -125,6 +126,41 @@ def test_cities_are_unique_and_addressable() -> None:
     cities = load_cities()
     assert len(cities.by_id()) == len(cities.cities)
     assert "mumbai" in cities.by_id()
+
+
+# --------------------------------------------------- launch_date test override
+
+
+def test_launch_date_override_applies_outside_prod(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENV", "dev")
+    monkeypatch.setenv(LAUNCH_DATE_OVERRIDE_ENV, "2020-01-01")
+    clear_cache()
+    try:
+        assert load_editions().launch_date == date(2020, 1, 1)
+    finally:
+        clear_cache()
+
+
+def test_launch_date_override_is_refused_in_prod(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENV", "prod")
+    monkeypatch.setenv(LAUNCH_DATE_OVERRIDE_ENV, "2020-01-01")
+    clear_cache()
+    try:
+        with pytest.raises(RuntimeError, match="is set in prod"):
+            load_editions()
+    finally:
+        clear_cache()
+
+
+def test_launch_date_is_unaffected_when_override_is_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(LAUNCH_DATE_OVERRIDE_ENV, raising=False)
+    clear_cache()
+    try:
+        assert load_editions().launch_date == date(2026, 10, 1)
+    finally:
+        clear_cache()
 
 
 # ------------------------------------------------------------------- validators

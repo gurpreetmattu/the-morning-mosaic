@@ -6,6 +6,7 @@ Each loader is cached for the process lifetime: config is read once per job run.
 from __future__ import annotations
 
 import os
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
@@ -21,6 +22,14 @@ from app.config.schemas import (
 )
 
 CONFIG_DIR_ENV = "CONFIG_DIR"
+# Dev/test-only escape hatch: lets local testing use any edition_date without
+# editing the committed, still-PROVISIONAL launch_date in editions.yaml, and
+# without that placeholder blocking `run_build` (see
+# Orchestrator.edition_number). editions.yaml's own launch_date stays the one
+# real value that actually gates going live — set only once, when the owner
+# is ready. Never honoured in prod: a launch date silently overridden there
+# would desync edition numbering from what was actually sent.
+LAUNCH_DATE_OVERRIDE_ENV = "EDITION_LAUNCH_DATE_OVERRIDE"
 
 
 def config_dir() -> Path:
@@ -57,7 +66,16 @@ def load_models() -> ModelsConfig:
 
 @lru_cache(maxsize=1)
 def load_editions() -> EditionsConfig:
-    return _load("editions.yaml", EditionsConfig)
+    config = _load("editions.yaml", EditionsConfig)
+    override = os.getenv(LAUNCH_DATE_OVERRIDE_ENV)
+    if override:
+        if os.getenv("APP_ENV", "dev") == "prod":
+            raise RuntimeError(
+                f"{LAUNCH_DATE_OVERRIDE_ENV} is set in prod; remove it — "
+                "editions.yaml's own launch_date is the only real launch date."
+            )
+        config = config.model_copy(update={"launch_date": date.fromisoformat(override)})
+    return config
 
 
 @lru_cache(maxsize=1)
