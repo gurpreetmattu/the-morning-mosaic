@@ -40,7 +40,7 @@ from app.db.publish import PublishError, latest_revision, publish_revision
 from app.jobs.build import build_orchestrator
 from app.jobs.locking import job_lock
 from app.llm.client import LlmClient
-from app.llm.recorder import DatabaseCallRecorder
+from app.llm.langfuse_recorder import build_call_recorder
 from app.logging_config import configure_logging
 from app.models.editions import Edition, EditionSection
 from app.models.enums import JobName, RevisionReason, RunStatus, SectionStatus
@@ -254,21 +254,24 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             user_agent = user_agent_for(str(settings.base_url))
             run_id = uuid.uuid4()
-            recorder = DatabaseCallRecorder(pipeline_run_id=run_id)
-            with (
-                Fetcher(user_agent=user_agent) as fetcher,
-                LlmClient(recorder=recorder) as llm,
-                session_scope() as session,
-            ):
-                report = run_late_update(
-                    session,
-                    edition_date=edition_date,
-                    deadline=deadline,
-                    orchestrator=build_orchestrator(llm, fetcher),
-                    renderer=SectionRenderer(),
-                    genres=args.genres,
-                    run_id=run_id,
-                )
+            recorder_bundle = build_call_recorder(run_id, settings=settings)
+            try:
+                with (
+                    Fetcher(user_agent=user_agent) as fetcher,
+                    LlmClient(recorder=recorder_bundle.recorder) as llm,
+                    session_scope() as session,
+                ):
+                    report = run_late_update(
+                        session,
+                        edition_date=edition_date,
+                        deadline=deadline,
+                        orchestrator=build_orchestrator(llm, fetcher),
+                        renderer=SectionRenderer(),
+                        genres=args.genres,
+                        run_id=run_id,
+                    )
+            finally:
+                recorder_bundle.flush()
     finally:
         dispose_engine()
 

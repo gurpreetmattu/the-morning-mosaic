@@ -11,12 +11,21 @@ from app.llm.errors import (
     PersonalDataInPromptError,
 )
 from app.llm.guard import assert_free_of_personal_data, find_identifiers
+from app.llm.langfuse_recorder import (
+    BroadcastCallRecorder,
+    LangfuseCallRecorder,
+    RecorderBundle,
+    build_call_recorder,
+    build_langfuse_client,
+)
 from app.llm.recorder import DatabaseCallRecorder
 
 __all__ = [
+    "BroadcastCallRecorder",
     "CallRecorder",
     "DatabaseCallRecorder",
     "EmptyCompletionError",
+    "LangfuseCallRecorder",
     "LlmClient",
     "LlmConfigurationError",
     "LlmError",
@@ -26,7 +35,10 @@ __all__ = [
     "LlmUnavailableError",
     "Message",
     "PersonalDataInPromptError",
+    "RecorderBundle",
     "Route",
     "assert_free_of_personal_data",
+    "build_call_recorder",
+    "build_langfuse_client",
     "find_identifiers",
 ]

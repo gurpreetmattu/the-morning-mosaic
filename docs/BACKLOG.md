@@ -7,27 +7,23 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-29, at commit `2bfa9fe`. The previous header
-  (2026-09-18, `583ea3b`) went stale for over a week of real work — this
-  refresh was itself overdue, caught the same way earlier staleness in this
-  file was: an audit against the actual code and test counts, not anyone
-  noticing by inspection. Between those two dates, none of the work was
-  committed until this refresh (`df3f75a` sat as `HEAD` through 8 new
-  features); flagged to the owner before committing it, per instruction.
-- **State:** 126 commits · 94 backend modules, 23 eval modules, 21 frontend
+- **Last updated:** 2026-09-29, at commit `8ee6994` (this refresh adds the
+  Langfuse-tracing work on top of it — see its own Done entry — and has not
+  been committed as its own separate change yet).
+- **State:** 129 commits · 95 backend modules, 23 eval modules, 21 frontend
   TS/TSX files, 15 Terraform files, 2 Dockerfiles, 3 GitHub Actions
-  workflows, 2 ADRs, an architecture doc, and an incident runbook ·
-  **747 Python tests** (718 backend + 29 evals) · 31 frontend tests (unchanged
-  this round — no frontend work since the last header refresh) · `ruff`,
-  `mypy --strict`, `eslint`, `tsc` all reverified clean this round; `prettier`,
+  workflows, 2 ADRs, an architecture doc, and an incident runbook · **764
+  Python tests passing** with `TEST_DATABASE_URL` set (nothing skipped) · 31
+  frontend tests (unchanged this round — no frontend work) · `ruff`,
+  `mypy --strict` reverified clean this round; `eslint`, `tsc`, `prettier`,
   `terraform fmt`, and `actionlint` unchanged since the last check (no
-  frontend styling or infra files touched) · **10 of 10 agents built** — Image
-  finder and Weather (the last two) closed out this round, see their own
-  Done entries · **7 scheduled jobs**, unchanged · **every genre extra
-  CLAUDE.md names now has real code behind it**, each verified live against
-  its real provider (weather, quotes/on-this-day, market strip, movie
-  releases, music releases, sports scores/fixtures, game deals) — see the
-  Done entries for each; two data-rights gaps are recorded rather than
+  frontend or infra files touched) · **10 of 10 agents built**, unchanged ·
+  **7 scheduled jobs**, unchanged · **every genre extra CLAUDE.md names now
+  has real code behind it AND actually reaches the delivered email** — see
+  the critical extras-never-reached-email fix's Done entry · **Langfuse
+  tracing now wired and verified against the real, provisioned account** —
+  see its own Done entry, the last item in CLAUDE.md's Observability section
+  that had no code behind it; two data-rights gaps are recorded rather than
   resolved (Nifty/Sensex/gold, and Cricbuzz's own redistribution terms) ·
   the real Neon database still has the full schema and reference data (87
   cities, 27 sources) — unchanged this round.
@@ -68,7 +64,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       and `GET /admin/api/runs` now makes it visible to someone who checks —
       but nothing pushes to anyone, which is what "alert" actually means. That
       still needs a GCP project (see Blockers).
-- [ ] **No Langfuse tracing** wired, though it is a dependency and in the spec.
 - [x] ~~Planted-error catch rate is measured by hand, not by an eval.~~ Now
       `evals/fact_checker_catch_rate.py`: 10 deterministic cases (control +
       4 error categories, across 2 base stories) pass today at 100%; the
@@ -2018,3 +2013,38 @@ finder (6) is the last one closed — see its own Done entry.)
         bug — the image and "Deals:" block were both absent before the fix
         and both present, with the correct photo credit and correctly-
         encoded CheapShark links, after it.
+- [x] **Langfuse tracing is wired in.** New `app/llm/langfuse_recorder.py`:
+      `LangfuseCallRecorder` (implements the same `CallRecorder` protocol as
+      `DatabaseCallRecorder`, one Langfuse `generation` observation per LLM
+      call attempt — metadata only: agent, model, provider, token counts,
+      latency, status; never message content, since Writer/Fact-checker
+      input is unpublished source text and CLAUDE.md never says that's safe
+      to hand a third party), `BroadcastCallRecorder` (fans one `record()`
+      call out to several recorders, so the database and Langfuse both see
+      every attempt without either knowing about the other), and
+      `build_call_recorder()` — the single factory both the build and
+      late-update jobs now call instead of constructing
+      `DatabaseCallRecorder` directly: always the database, Langfuse joining
+      only when `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY`/`LANGFUSE_HOST`
+      are actually configured, so nothing changes for a dev environment
+      without them. Returns a small `RecorderBundle(recorder, flush)`; the
+      `flush` is a real call to the Langfuse client's own `flush()` when
+      Langfuse is wired (these are short-lived Cloud Run jobs, so nothing
+      else would force its buffered spans out before the process exits) and
+      a no-op otherwise, so both jobs can call it unconditionally in a
+      `finally` block. A Langfuse-side failure is caught and logged, never
+      raised — tracing must not break a build over an outage in the service
+      that only exists to observe it.
+      Verified against the real, already-provisioned account, not just
+      mocked: built a real client from the actual `.env` keys, sent one real
+      `record()` call, called `flush()`, then confirmed over Langfuse's own
+      API (`auth_check()` true, `api.observations.get_many(name="writer")`
+      returned the just-sent observation) that it actually landed on
+      `cloud.langfuse.com` — not only that the SDK call didn't raise. 11 new
+      tests in `test_langfuse_recorder.py`, all against fakes (a
+      `FakeLangfuseClient`/`FakeObservation` standing in for the real SDK
+      objects, and `DatabaseCallRecorder` itself monkeypatched out in the
+      one test that exercises `build_call_recorder`'s wiring) so the unit
+      suite stays free of any real network or database call; full suite
+      (`TEST_DATABASE_URL` set, nothing skipped) now **764 tests passing**,
+      `mypy --strict` and `ruff` clean.
