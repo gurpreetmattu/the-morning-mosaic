@@ -83,10 +83,16 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `CONFIG_DIR` override — `backend/Dockerfile` sets it to `/app/config`
       and copies `/config` there — rather than changing the loader, since
       the override already existed for exactly this.
-- [ ] **Section HTML has never been seen in a real mail client.** It is built
-      to the email-safe rules (inline styles, no classes, no flexbox) and tests
-      assert those, but CLAUDE.md requires checking Gmail web and mobile plus
-      Outlook. Nothing has been sent anywhere.
+- [ ] **Section HTML has now been sent for real, but not yet visually
+      checked in a mail client.** Added the owner's address to
+      `TEST_EMAIL_ALLOWLIST` and sent one full multi-genre edition through
+      the real path (`EmailRenderer` -> `Sender` -> actual Gmail SMTP, not a
+      mock) — `Sender.send()` returned `outcome=sent` with a real
+      `Message-ID`. What's still open is CLAUDE.md's actual ask: someone
+      looking at it in Gmail web, Gmail mobile, and Outlook to confirm the
+      email-safe markup (inline styles, no classes, no flexbox) actually
+      renders as intended in each — that has to be a human check, not
+      something this can self-verify.
 - [ ] **Turnstile has never been exercised against Cloudflare.** Without a
       secret configured the check is skipped outside prod and raises in prod,
       and the verify call itself is covered only by its own error paths. It
