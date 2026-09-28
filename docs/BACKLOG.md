@@ -7,27 +7,30 @@ broken. Kept in the repo so it survives between sessions.
 as the work. Move finished items to "Done" with the commit that closed them.
 Add anything discovered mid-task rather than leaving it in a chat message.
 
-- **Last updated:** 2026-09-18, at commit `583ea3b`
-- **State:** 123 commits · 82 backend modules, 16 eval modules, 27 frontend files, 15 Terraform
-  files, 2 Dockerfiles, 3 GitHub Actions workflows, 2 ADRs, an architecture doc, and an incident
-  runbook · 671 Python tests (642 backend + 29 evals, three migrations now verified against a real
-  throwaway database, seven of which actually launch every scheduled job as a subprocess — see
-  the critical fix in Done, three of which race real concurrent database connections against each
-  other, thirty of which cover the weekend edition's selection logic and its build/delivery
-  wiring — see the weekend-content entry in Done, seven of which cover "AI tool of the day" —
-  see its own Done entry, six of which cover the two real LangGraph graphs the build and
-  late-update jobs now run on — see the langgraph-pipeline entry in Done, six of which catch
-  a real Turnstile bug a blank-but-present `TURNSTILE_SECRET_KEY=` caused — see the
-  llm-gateway-groq entry in Done, and eleven of which cover a source's malformed feed dates and
-  an unbounded cluster size, both found by actually running the pipeline against real, live
-  sources — see the source-terms-review entry in Done), 31 frontend tests
-  (8 pure-logic + 23 new component/interaction tests under jsdom and React Testing Library — see
-  the component-tests entry in Done) ·
-  ruff, `mypy --strict`, eslint, prettier, tsc, `terraform fmt`, and `actionlint` all clean
-  (`terraform validate` needs `terraform init`'s cached providers, not available in this
-  environment) · **7 scheduled jobs** — see the purge-job entry in Done · the real Neon database
-  now has the full schema and reference data (87 cities, 27 sources, all disabled) — see the
-  accounts-provisioned entry in Done
+- **Last updated:** 2026-09-29, at commit `2bfa9fe`. The previous header
+  (2026-09-18, `583ea3b`) went stale for over a week of real work — this
+  refresh was itself overdue, caught the same way earlier staleness in this
+  file was: an audit against the actual code and test counts, not anyone
+  noticing by inspection. Between those two dates, none of the work was
+  committed until this refresh (`df3f75a` sat as `HEAD` through 8 new
+  features); flagged to the owner before committing it, per instruction.
+- **State:** 126 commits · 94 backend modules, 23 eval modules, 21 frontend
+  TS/TSX files, 15 Terraform files, 2 Dockerfiles, 3 GitHub Actions
+  workflows, 2 ADRs, an architecture doc, and an incident runbook ·
+  **747 Python tests** (718 backend + 29 evals) · 31 frontend tests (unchanged
+  this round — no frontend work since the last header refresh) · `ruff`,
+  `mypy --strict`, `eslint`, `tsc` all reverified clean this round; `prettier`,
+  `terraform fmt`, and `actionlint` unchanged since the last check (no
+  frontend styling or infra files touched) · **10 of 10 agents built** — Image
+  finder and Weather (the last two) closed out this round, see their own
+  Done entries · **7 scheduled jobs**, unchanged · **every genre extra
+  CLAUDE.md names now has real code behind it**, each verified live against
+  its real provider (weather, quotes/on-this-day, market strip, movie
+  releases, music releases, sports scores/fixtures, game deals) — see the
+  Done entries for each; two data-rights gaps are recorded rather than
+  resolved (Nifty/Sensex/gold, and Cricbuzz's own redistribution terms) ·
+  the real Neon database still has the full schema and reference data (87
+  cities, 27 sources) — unchanged this round.
 
 ---
 
