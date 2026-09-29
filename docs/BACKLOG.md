@@ -131,10 +131,16 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `EDITION_LAUNCH_DATE_OVERRIDE` entry in Done.
 - [ ] **21 lunar festival dates missing** (Diwali, Holi, Eid, …), deliberately
       left blank in `awaiting_dates` rather than guessed.
-- [ ] **Model choices are unvalidated hypotheses.** Chosen on verified
-      behaviour and latency, not measured quality. CLAUDE.md requires an eval
-      run before trusting them. The Fact-checker (`kilo/cohere/north-mini-code`)
-      is code-oriented by name and specifically needs checking on prose claims.
+- [ ] **The pinned Fact-checker model has a measured, real groundedness gap.**
+      No longer an unvalidated hypothesis — see the eval-run Done entry below
+      for the full measurement. `tag_accuracy` and `clustering` score 1.00
+      for real; `groundedness` scores 0.55–0.90 across repeated live runs
+      (threshold 0.90), and even the real `write_and_verify` retry path
+      (which this isn't a raw score of) correctly drops a non-trivial share
+      of stories rather than publish them under-verified. Something —
+      Fact-checker prompt tolerance, a targeted retry on a JSON-decode
+      failure specifically, or a different pinned model — needs to change;
+      which one is a real decision, not made here.
 - [ ] **Free-tier fragility.** During verification OVH rate-limited into a
       circuit-open state, Pollinations began returning 402, and four ids in the
       gateway's own catalogue 404'd or 401'd. A vanished pinned model stops the
@@ -2157,3 +2163,47 @@ finder (6) is the last one closed — see its own Done entry.)
       the file's own header comment already claimed, is now a verified
       fact rather than an assumption. No code or config change — the
       existing coordinates were simply correct.
+- [x] **The LLM-dependent evals ran against live models for the first time
+      ever, and surfaced a real, reproducible groundedness gap** — see
+      `evals/README.md`'s "LLM-dependent tiers: now scored for real" section
+      for the full writeup, condensed here. `uv run python -m evals.run` (no
+      more gateway blocker): **0 evals skipped**, for the first time.
+      `tag_accuracy` (1.00, 9-10/9-10 proposed tags kept across runs) and
+      `clustering.full_pipeline` (1.00) score cleanly and consistently.
+      `groundedness` does not: **8 live runs scored 0.55, 0.64, 0.67, 0.80,
+      0.80, 0.80, 0.80, 0.90** (mean ≈0.75) against a 0.90 threshold —
+      7 of 8 runs failed the eval's own bar.
+      Root-caused with two follow-up diagnostics (not just measured and left
+      alone):
+      - A direct `Writer`+`FactChecker` script, re-run several times, showed
+        the failures aren't one bug: sometimes 5/5 claims support cleanly;
+        one run returned `verification unavailable: JSONDecodeError` on
+        *every* claim — the pinned Fact-checker model
+        (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`, Cloudflare) occasionally
+        returns malformed JSON, and `FactChecker.check()` correctly fails
+        closed exactly as designed ("nothing is verified, so every element
+        fails rather than passing by default") — this is the safety net
+        working, not a hallucination, but it drags the raw score down for a
+        reason unrelated to claim quality. Other failures were a genuinely
+        defensible but arguably over-strict paraphrase catch (a claim
+        flagged because it said "price growth" against a passage that said
+        "inflation").
+      - A second script ran the *actual* production path
+        (`write_and_verify`'s real retry loop, max 2 retries) instead of one
+        raw pass, since the eval deliberately measures the latter and
+        real delivery never publishes on a raw pass. Across 10 real
+        end-to-end attempts (2 fixture stories × 5 rounds): 8 published
+        cleanly (several after 1 attempt, some after retries recovered a
+        transient failure), but **2 were dropped even after exhausting all
+        3 attempts** — a real, measured "quiet news day" rate under today's
+        pinned models, not a hypothetical one, and the correct behaviour
+        per CLAUDE.md ("if the core headline/summary still fails, drop the
+        story") rather than a bug.
+      Nothing was changed in response — deciding what to change (Fact-checker
+      prompt tolerance for paraphrase, a targeted retry specifically for a
+      JSON-decode failure rather than treating it the same as a real
+      unsupported claim, or pinning a different model) is a real decision
+      with real trade-offs, not something to guess at in the same pass that
+      found the gap. Recorded as a still-open item above rather than closed,
+      since the underlying groundedness shortfall is real and unresolved —
+      only "run the eval and find out" is done.

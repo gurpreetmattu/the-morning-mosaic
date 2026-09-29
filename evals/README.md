@@ -43,12 +43,38 @@ is invented for this project — CLAUDE.md's public-repo hygiene rule: "test
 fixtures and eval datasets must not contain full copyrighted articles."
 Nothing here should ever be replaced with a real scraped article.
 
-## What's genuinely untested here
+## LLM-dependent tiers: now scored for real (2026-09-29)
 
-The deterministic tiers above have real, current scores (see
-`docs/BACKLOG.md` for the exact numbers, including the measured — not
-assumed — 80% pairwise accuracy of the title-only clustering fallback on
-paraphrased duplicate headlines). The LLM-dependent tiers are fully built
-and ready to run the moment the gateway blocker is resolved, but have never
-scored a real result in this environment. Run `uv run python -m evals.run`
-again once that's fixed and update the numbers here and in the backlog.
+The gateway blocker is resolved (Groq, plus Cloudflare as the Fact-checker's
+pinned secondary gateway), so every tier above ran for real, repeatedly, for
+the first time. See `docs/BACKLOG.md`'s "model choices are unvalidated
+hypotheses" Done entry for the full writeup — summary: `tag_accuracy` and
+`clustering.full_pipeline` scored 1.00 consistently across 8 live runs.
+`groundedness` did not: 0.55–0.90 across 8 runs (mean ≈0.75, threshold 0.90),
+7 of 8 runs failing the eval's own bar. Root-caused, not just measured — a
+real mix of causes, not one bug:
+- The pinned Fact-checker model (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`,
+  Cloudflare) occasionally returns malformed JSON. `FactChecker.check()`
+  fails closed on this exactly as designed ("If it cannot run, nothing is
+  verified, so every element fails rather than passing by default") — this
+  inflates the *raw* groundedness score's failure count without reflecting
+  any actual ungrounded claim.
+- Some claims are marked `partial` over a defensible but arguably
+  over-strict paraphrase distinction (e.g. "price growth" flagged against a
+  passage that says "inflation").
+- The real production path is `write_and_verify`'s retry loop (max 2
+  retries), which this eval deliberately does not use — it measures one raw
+  pass, on purpose, since that's what CLAUDE.md's "share of claims
+  supported" asks for. A separate check confirmed the retry loop does
+  recover the JSON-decode failures most of the time, but not always: across
+  10 real end-to-end attempts (2 fixture stories × 5 rounds) through the
+  actual retry loop, **2 were correctly dropped even after exhausting
+  retries** — the safety net working as intended, not silently publishing,
+  but a real, non-trivial "quiet news day" rate under today's pinned models.
+
+This is exactly the kind of gap CLAUDE.md's eval requirement exists to
+surface before trusting a model choice. Nothing was changed here — deciding
+whether to adjust the Fact-checker's paraphrase tolerance, add a retry
+specifically on a JSON-decode failure, or pin a different model is a real
+decision with its own trade-offs, left to the owner rather than guessed at
+in the same pass that only found the gap.
