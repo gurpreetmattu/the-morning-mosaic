@@ -192,10 +192,6 @@ finder (6) is the last one closed — see its own Done entry.)
       `build_genre` graph — late update already called the same
       `Orchestrator.build()` the build job does; nothing genre-pipeline-
       specific was ever unique to either job.
-- [ ] **Bounce parsing has never seen a real Gmail DSN.** The parser is built
-      to RFC 3464 and tested against synthetic reports; `ImapBounceSource` has
-      never spoken to an actual IMAP server. Both need a live check once the
-      Gmail app password exists.
 - [ ] Late update: re-collection of breaking stories and publishing a new
       revision
 - [ ] **The Image finder never runs during a late update.** It only attempts
@@ -219,7 +215,11 @@ finder (6) is the last one closed — see its own Done entry.)
       part of "give the weekend flag some content."
 - [x] PDF assembly and caching — `LocalObjectStorage` in dev, `GcsObjectStorage`
       behind the same interface for prod (untested against a real bucket)
-- [ ] Bounce handling over IMAP
+- [x] ~~Bounce handling over IMAP~~ Built long ago (`79726bd`) and left
+      unchecked here since — caught by the same kind of audit-against-the-
+      code that has caught this file's staleness before. See the real-Gmail-
+      DSN Done entry for the live verification this line was actually
+      waiting on.
 
 **Services**
 - [x] ~~weather~~ — see the weather-agent Done entry.
@@ -2322,3 +2322,28 @@ finder (6) is the last one closed — see its own Done entry.)
       isolation claim to be true.
       3 new tests; full suite now **776 tests**, `mypy --strict` and
       `ruff` clean.
+- [x] **Bounce parsing verified end to end against a real Gmail DSN, not
+      just synthetic fixtures.** Confirmed real IMAP connectivity first
+      (`ImapBounceSource.fetch()` against the real, already-provisioned
+      `imap.gmail.com` account — connects, logs in, searches, zero
+      mailer-daemon messages found in the last 30 days, as expected since
+      nothing had ever bounced). Then triggered a real one: sent a real
+      email over real Gmail SMTP to a guaranteed-nonexistent address at
+      the sender's own domain (`definitely-nonexistent-<random>@gmail.com`
+      — Gmail-to-Gmail, so the real bounce came back in **3 seconds**, not
+      the async delay the module's own docstring describes for other
+      domains). `ImapBounceSource` found it, and `parse_bounce()` correctly
+      extracted the real recipient, `permanent=True`, `status="5.1.1"` from
+      the actual RFC 3464 report — not a hand-written fixture.
+      Then ran the full job, not just the parser: inserted a real `User`
+      row in the test database with that exact bounced address, called
+      `run_bounces()` with the real `ImapBounceSource` as its source, and
+      confirmed the report (`examined=1 permanent=1 marked=1`) and that the
+      user's `status` actually flipped to `bounced` — the complete real
+      path, mailbox to database row, not a mock anywhere in it.
+      No code change — the parser and job were already correct; this
+      replaces "never verified against anything real" with an actual
+      verified result. One side effect worth knowing: the real bounce
+      notification itself is still sitting in the sender's real inbox —
+      `ImapBounceSource` opens it read-only by design (see the module's own
+      docstring on why), so nothing here can delete it.
