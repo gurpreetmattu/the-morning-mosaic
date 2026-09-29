@@ -51,4 +51,14 @@ describe("PrivacyPage", () => {
 
     expect(container.textContent).not.toMatch(/\[.*\]/);
   });
+
+  it("still discloses that the wording has not had legal review", async () => {
+    // The facts (operator, version, contact) became real; the underlying
+    // prose is still an unreviewed draft, and that must stay visible.
+    stubConfigFetch(REAL_CONFIG);
+
+    render(await PrivacyPage());
+
+    expect(screen.getByText(/has not yet had legal review/)).toBeInTheDocument();
+  });
 });

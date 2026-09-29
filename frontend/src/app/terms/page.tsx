@@ -1,4 +1,4 @@
-import { PageTitle } from "@/components/ui";
+import { Notice, PageTitle } from "@/components/ui";
 import { serverGet } from "@/lib/server-api";
 import type { SiteConfig } from "@/lib/types";
 
@@ -15,6 +15,11 @@ export default async function TermsPage() {
   return (
     <article className="prose-sm max-w-none">
       <PageTitle>Terms of Service</PageTitle>
+      <Notice kind="info">
+        Draft — this wording has not yet had legal review. The facts on this
+        page (who operates this service, the version date, and the contact
+        address) are real; the phrasing is not final.
+      </Notice>
 
       <p className="mb-4 text-sm text-muted">
         Last updated: {version}. Applies to {operatorName}.

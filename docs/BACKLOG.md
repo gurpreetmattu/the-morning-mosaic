@@ -2420,3 +2420,20 @@ finder (6) is the last one closed — see its own Done entry.)
       `terraform fmt` and `validate` both pass (no GCP project to `plan`/
       `apply` against, same limitation this file already records
       elsewhere); no Python code changed.
+- [x] **Restored the "draft, pending legal review" disclosure on `/privacy`
+      and `/terms`, wrongly removed entirely by the earlier
+      real-policy-config change.** That change correctly replaced every
+      bracketed placeholder with real values, but its Done entry above also
+      records removing "the 'pending legal review' banner" — the visible
+      warning that the wording itself hasn't had legal review, a fact that
+      is still true today and stays true independent of the facts on the
+      page being real. Found auditing `frontend/README.md`, which still
+      (correctly) said "see the in-page notice" for those two pages — there
+      no longer was one, a real, user-facing regression, not a docs nit.
+      Restored a `<Notice>` on both pages with corrected wording (no longer
+      naming specific placeholders, since those are genuinely gone) that
+      says plainly: the operator/date/contact facts are real, the phrasing
+      is not final. 2 new tests confirming the disclosure renders; verified
+      live against the actual running dev server (still up from earlier
+      today) that both pages show it. Full suite: 38 frontend tests,
+      `eslint`, `tsc`, and `next build` all clean.

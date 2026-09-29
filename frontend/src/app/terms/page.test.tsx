@@ -41,4 +41,12 @@ describe("TermsPage", () => {
 
     expect(container.textContent).not.toMatch(/\[.*\]/);
   });
+
+  it("still discloses that the wording has not had legal review", async () => {
+    stubConfigFetch(REAL_CONFIG);
+
+    render(await TermsPage());
+
+    expect(screen.getByText(/has not yet had legal review/)).toBeInTheDocument();
+  });
 });
