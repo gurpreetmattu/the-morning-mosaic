@@ -98,11 +98,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       all (e.g. through a subdomain takeover) could satisfy both sides. Fine
       for a single-domain deployment with no subdomains in play; worth
       revisiting if that ever changes.
-- [ ] **A session cookie cannot be revoked before it expires.** It is a
-      30-day stateless signed token, like a feedback link, so there is no row
-      to delete on logout — logout only clears the browser's copy. A stolen
-      cookie stays valid until it expires or the signing key is rotated
-      (which invalidates every token in the system, not just sessions).
 - [ ] **Preferences PATCH has no server-side idempotency key**, unlike
       signup and the delivery claim. Two identical requests both apply
       cleanly (last write wins), so this is a style gap, not a correctness
@@ -2437,3 +2432,34 @@ finder (6) is the last one closed — see its own Done entry.)
       live against the actual running dev server (still up from earlier
       today) that both pages show it. Full suite: 38 frontend tests,
       `eslint`, `tsc`, and `next build` all clean.
+- [x] **A reader's session cookie can now be revoked before it expires** —
+      the first of four accepted trade-offs the owner asked to actually fix
+      rather than leave accepted. Deliberately scoped to the reader session
+      only, not the admin one: the admin session's 12-hour TTL (versus a
+      reader's 30 days) was already reasoned as the accepted mitigation for
+      the same gap, and CLAUDE.md never asks for revocation there.
+      New `user_sessions` table (migration `ec5914620e4f`, upgrade/downgrade
+      verified against a real Postgres): one row per login, its id embedded
+      in the session token as a new `sid` claim. `issue_session()` creates
+      the row; `current_user_id()` checks `revoked_at IS NULL` on every
+      request in addition to verifying the signature — a real, accepted
+      extra cost (one indexed lookup per authenticated request, negligible
+      at this project's traffic per ADR 0001) for a real fix, not free.
+      `clear_session()` (logout) now revokes the row instead of only asking
+      the browser to forget the cookie; `POST /api/me/delete` revokes every
+      session the account ever had, not just the current one — the same
+      precedent the route already followed for `Token` rows. A session
+      token issued before this migration (no `sid` claim) is treated as
+      unusable rather than trusted on signature alone — a one-time forced
+      re-login for anyone signed in at deploy time, accepted the same way a
+      `TOKEN_SIGNING_KEY` rotation already forces one.
+      Verified the fix is real, not just plausible: a test captures the raw
+      cookie value before logout, logs out, then replays that exact value
+      in a fresh client — confirmed this test genuinely fails against the
+      pre-fix code (200, not 401) by temporarily reverting the fix and
+      rerunning it, the same "prove the regression test catches the
+      regression" rigor used elsewhere this session. Also added expired-
+      session cleanup to the purge job (`user_sessions_cleared`), matching
+      the existing `rate_limit_hits` precedent so the table doesn't grow
+      forever. `docs/architecture.md` updated. 6 new tests; full suite now
+      **781 tests**, `mypy --strict` and `ruff` clean.

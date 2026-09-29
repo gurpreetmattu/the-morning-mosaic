@@ -35,7 +35,7 @@ from app.email.sender import Message, Sender
 from app.email.tokens import TokenError
 from app.models.editions import Delivery, Feedback
 from app.models.enums import EditionPreference, Frequency, SubscriptionStatus, TokenPurpose
-from app.models.users import City, Consent, FollowedKeyword, Token, User, UserGenre
+from app.models.users import City, Consent, FollowedKeyword, Token, User, UserGenre, UserSession
 from app.render.email import BRAND
 
 logger = logging.getLogger(__name__)
@@ -115,17 +115,18 @@ def login_confirm(
         title="You're signed in",
         body="You can close this tab and return to the site to manage your preferences.",
     )
-    issue_session(html, user_id=user.id, settings=config)
+    issue_session(html, user_id=user.id, settings=config, session=session)
     return html
 
 
 @router.post("/api/logout")
 def logout(
     request: Request,
+    session: Annotated[Session, Depends(db_session)],
     _csrf: Annotated[None, Depends(require_csrf)],
 ) -> JSONResponse:
     response = JSONResponse({"status": "signed_out"})
-    clear_session(response)
+    clear_session(request, response, session)
     return response
 
 
@@ -326,6 +327,7 @@ def export_me(
 
 @router.post("/api/me/delete")
 def delete_me(
+    request: Request,
     user_id: Annotated[uuid.UUID, Depends(require_user)],
     session: Annotated[Session, Depends(db_session)],
     _csrf: Annotated[None, Depends(require_csrf)],
@@ -344,6 +346,9 @@ def delete_me(
     session.execute(delete(UserGenre).where(UserGenre.user_id == user.id))
     session.execute(delete(FollowedKeyword).where(FollowedKeyword.user_id == user.id))
     session.execute(delete(Token).where(Token.user_id == user.id))
+    # Every session this user ever opened, not just the one in this request's
+    # own cookie — the account is being erased, not just logged out.
+    session.execute(delete(UserSession).where(UserSession.user_id == user.id))
 
     user.name = "Deleted reader"
     user.email = f"deleted-{user.id}@deleted.invalid"
@@ -355,7 +360,7 @@ def delete_me(
     session.flush()
 
     response = JSONResponse({"status": "deleted"})
-    clear_session(response)
+    clear_session(request, response, session)
     return response
 
 

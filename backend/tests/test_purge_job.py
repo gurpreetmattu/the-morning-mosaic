@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -15,11 +15,18 @@ from app.agents.schemas import (
     WrittenStory,
 )
 from app.db.persist import persist_genre
-from app.db.seed import seed_sources
+from app.db.seed import seed_cities, seed_sources
 from app.jobs.purge import DEFAULT_RETENTION_DAYS, RATE_LIMIT_HIT_RETENTION_DAYS, run_purge
 from app.models.content import Article
-from app.models.enums import RunStatus, SectionStatus
+from app.models.enums import (
+    EditionPreference,
+    Frequency,
+    RunStatus,
+    SectionStatus,
+    SubscriptionStatus,
+)
 from app.models.operations import PipelineRun, RateLimitHit
+from app.models.users import User, UserSession
 from app.sources.schemas import CollectedArticle, Passage
 
 pytestmark = pytest.mark.integration
@@ -55,9 +62,7 @@ def store(session: Session, tag: str, *, fetched_at: datetime) -> None:
                 VerifiedStory(
                     story=WrittenStory(
                         headline=DraftSentence(text=f"Headline {tag}", passage_ids=["a1:p1"]),
-                        summary=[
-                            DraftSentence(text="Ministers approved.", passage_ids=["a1:p1"])
-                        ],
+                        summary=[DraftSentence(text="Ministers approved.", passage_ids=["a1:p1"])],
                     ),
                     articles=[article(tag, fetched_at=fetched_at)],
                     pool_rank=1,
@@ -71,7 +76,24 @@ def store(session: Session, tag: str, *, fetched_at: datetime) -> None:
 @pytest.fixture(autouse=True)
 def _sources(session: Session) -> None:
     seed_sources(session)
+    seed_cities(session)
     session.flush()
+
+
+def make_user(session: Session) -> User:
+    user = User(
+        email="reader@example.com",
+        name="Asha Rao",
+        city_id="mumbai",
+        status=SubscriptionStatus.ACTIVE,
+        delivery_slot=time(7, 0),
+        frequency=Frequency.DAILY,
+        edition_preference=EditionPreference.MIXED,
+        age_confirmed=True,
+    )
+    session.add(user)
+    session.flush()
+    return user
 
 
 def by_tag(session: Session, tag: str) -> Article:
@@ -142,6 +164,7 @@ def test_the_run_is_recorded(session: Session) -> None:
         "purged": 1,
         "retention_days": DEFAULT_RETENTION_DAYS,
         "rate_limit_hits_cleared": 0,
+        "user_sessions_cleared": 0,
     }
 
 
@@ -172,3 +195,25 @@ def test_a_fresh_rate_limit_hit_is_left_alone(session: Session) -> None:
 
     assert report.rate_limit_hits_cleared == 0
     assert session.scalar(select(RateLimitHit)) is not None
+
+
+def test_an_expired_session_is_cleared(session: Session) -> None:
+    user = make_user(session)
+    session.add(UserSession(user_id=user.id, expires_at=NOW - timedelta(seconds=1)))
+    session.flush()
+
+    report = run_purge(session, now=NOW)
+
+    assert report.user_sessions_cleared == 1
+    assert session.scalar(select(UserSession)) is None
+
+
+def test_a_still_valid_session_is_left_alone(session: Session) -> None:
+    user = make_user(session)
+    session.add(UserSession(user_id=user.id, expires_at=NOW + timedelta(days=1)))
+    session.flush()
+
+    report = run_purge(session, now=NOW)
+
+    assert report.user_sessions_cleared == 0
+    assert session.scalar(select(UserSession)) is not None

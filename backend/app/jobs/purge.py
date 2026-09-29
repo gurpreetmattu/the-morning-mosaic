@@ -13,6 +13,11 @@ fetched with.
 Also clears old `rate_limit_hits` rows (app/api/security.py): every window
 is at most a few minutes, so nothing past a day is ever read again, and
 without this the table would grow forever.
+
+Also clears expired `user_sessions` rows (app/models/users.py): once a row's
+`expires_at` has passed, the session token it backs can never verify again
+regardless of this row's presence (its own signed `e` claim already fails),
+so the row exists only to grow the table forever if nothing ever clears it.
 """
 
 from __future__ import annotations
@@ -36,6 +41,7 @@ from app.logging_config import configure_logging
 from app.models.content import Article
 from app.models.enums import JobName, RunStatus
 from app.models.operations import PipelineRun, RateLimitHit
+from app.models.users import UserSession
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +53,7 @@ RATE_LIMIT_HIT_RETENTION_DAYS = 1
 class PurgeReport:
     purged: int = 0
     rate_limit_hits_cleared: int = 0
+    user_sessions_cleared: int = 0
 
 
 def run_purge(
@@ -82,12 +89,16 @@ def run_purge(
     )
     report.rate_limit_hits_cleared = cast(CursorResult[Any], rate_limit_result).rowcount
 
+    session_result = session.execute(delete(UserSession).where(UserSession.expires_at < started))
+    report.user_sessions_cleared = cast(CursorResult[Any], session_result).rowcount
+
     run.status = RunStatus.SUCCEEDED
     run.finished_at = now_utc()
     run.detail = {
         "purged": report.purged,
         "retention_days": retention_days,
         "rate_limit_hits_cleared": report.rate_limit_hits_cleared,
+        "user_sessions_cleared": report.user_sessions_cleared,
     }
     session.commit()
     return report
@@ -118,7 +129,10 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         dispose_engine()
 
-    print(f"purged={report.purged} rate_limit_hits_cleared={report.rate_limit_hits_cleared}")
+    print(
+        f"purged={report.purged} rate_limit_hits_cleared={report.rate_limit_hits_cleared} "
+        f"user_sessions_cleared={report.user_sessions_cleared}"
+    )
     return 0
 
 

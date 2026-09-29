@@ -171,9 +171,16 @@ double-submit CSRF *pattern*: a reader's session (`app/api/session.py`)
 and an admin session (`app/api/admin_session.py`) use different cookie
 names, different token purposes, and different signing subjects (a user id
 vs. the allowlisted admin email), so neither can be replayed as the other.
-Both are stateless signed tokens — see the ADR-worthy trade-off called out
-in `docs/BACKLOG.md`: a stolen session cookie can't be revoked before it
-expires, because there's no session table to delete a row from.
+
+A reader's session token still carries its own signature and expiry, but is
+no longer purely stateless: it also names a row in `user_sessions`, checked
+on every request, so logout or account deletion can revoke it before its
+30-day expiry actually arrives — see `docs/BACKLOG.md` for the fix and how
+it was verified (a captured cookie replayed after logout, not just checking
+the browser's copy was cleared). The admin session is unchanged and stays
+purely stateless — its 12-hour TTL (versus a reader's 30 days) was already
+the accepted mitigation for the same gap, reasoned to be short enough that
+adding the same machinery wasn't worth it.
 
 ## Data model, in five groups
 

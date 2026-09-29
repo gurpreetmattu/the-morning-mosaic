@@ -218,6 +218,39 @@ class TestSession:
 
         assert client.get("/api/me").status_code == 401
 
+    def test_a_captured_session_cookie_stops_working_after_logout(
+        self, client: TestClient, session: Session
+    ) -> None:
+        """The actual fix: logout used to only ask the browser to forget the
+        cookie, so a copy captured beforehand (a log, a stolen device) kept
+        working until it naturally expired. Replaying the raw value after
+        logout — not just checking the client's own cookie jar emptied out,
+        which test_logging_out_clears_the_session already does — is the only
+        way to prove the session itself, not just this client's copy of it,
+        was actually revoked."""
+        user = make_user(session)
+        sign_in(client, session, user)
+        stolen_cookie = client.cookies[SESSION_COOKIE]
+
+        client.post("/api/logout", headers=csrf_headers(client))
+
+        replay = TestClient(client.app)
+        replay.cookies.set(SESSION_COOKIE, stolen_cookie)
+        assert replay.get("/api/me").status_code == 401
+
+    def test_a_captured_session_cookie_stops_working_after_account_deletion(
+        self, client: TestClient, session: Session
+    ) -> None:
+        user = make_user(session)
+        sign_in(client, session, user)
+        stolen_cookie = client.cookies[SESSION_COOKIE]
+
+        client.post("/api/me/delete", headers=csrf_headers(client))
+
+        replay = TestClient(client.app)
+        replay.cookies.set(SESSION_COOKIE, stolen_cookie)
+        assert replay.get("/api/me").status_code == 401
+
 
 # =========================================================== preferences
 

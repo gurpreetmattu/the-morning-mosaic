@@ -231,6 +231,28 @@ class Token(Base):
     )
 
 
+class UserSession(Base):
+    """The one row a reader's session cookie needs to be revocable before it
+    expires (see `app/api/session.py`). The cookie itself stays a stateless
+    signed token — this table only lets it be killed early: its id is
+    embedded in the token as the `sid` claim, and `current_user_id()` checks
+    this row's `revoked_at` on every request in addition to verifying the
+    signature. Logout, and nothing else yet, sets `revoked_at`; a future
+    "sign out everywhere" or a security incident could revoke by `user_id`
+    without any change here.
+    """
+
+    __tablename__ = "user_sessions"
+
+    id: Mapped[UuidPk]
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[CreatedAt]
+    expires_at: Mapped[Instant]
+    revoked_at: Mapped[OptionalInstant]
+
+
 class OutageState(Base):
     """Consecutive failed days per user, driving the 'newsletter paused' notice.
 

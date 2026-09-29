@@ -40,6 +40,7 @@ from app.models.users import (
     User,
     UserGenre,
     UserPreference,
+    UserSession,
     WaitlistEntry,
 )
 
@@ -76,6 +77,7 @@ __all__ = [
     "User",
     "UserGenre",
     "UserPreference",
+    "UserSession",
     "WaitlistEntry",
     "WeatherCache",
     "WeekendFeature",
