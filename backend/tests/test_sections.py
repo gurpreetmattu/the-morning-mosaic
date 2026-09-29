@@ -134,6 +134,18 @@ def test_every_story_links_to_its_sources() -> None:
     assert "https://example.test/a" in text
 
 
+def test_a_story_does_not_split_across_a_pdf_page_break() -> None:
+    """Found by actually rendering a real section through WeasyPrint (see
+    docs/BACKLOG.md): without this, a story's body and its own "Source:"
+    line could land on opposite sides of a page break. This template is
+    shared with the email and the web archive, where the property is
+    simply ignored, so one inline style covers all three."""
+    html, _ = render(outcome(SectionStatus.OK, verified()))
+
+    assert "page-break-inside:avoid" in html
+    assert "break-inside:avoid" in html
+
+
 def test_multiple_sources_are_listed_and_deduplicated() -> None:
     story = verified(
         articles=[article("the-hindu", "a"), article("ndtv", "b"), article("the-hindu", "c")]

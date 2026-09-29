@@ -119,13 +119,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       unless it stops the newsletter. Low priority: there's no monitoring
       system detecting downtime to drive it yet either, so this is a page
       with nothing to trigger it.
-- [ ] **A PDF story can split across a page break, separating its body from
-      its own "Source:" line.** Found rendering a real section through
-      WeasyPrint for real (see the WeasyPrint Done entry) — no
-      `break-inside: avoid` on a story's block in `page_html()`'s CSS.
-      Cosmetic, not incorrect (nothing is lost or mislabeled), and narrow
-      enough to fix in `_PAGE_CSS`/the section HTML's own styling whenever
-      someone next touches PDF layout.
 
 ## 3. Provisional values that will cause harm if forgotten
 
@@ -2378,3 +2371,24 @@ finder (6) is the last one closed — see its own Done entry.)
       notification itself is still sitting in the sender's real inbox —
       `ImapBounceSource` opens it read-only by design (see the module's own
       docstring on why), so nothing here can delete it.
+- [x] **The PDF page-break gap found while verifying WeasyPrint against a
+      real section is fixed.** `_story.html.j2`'s `<article>` — shared by
+      the email, the web archive, and every PDF page, so one change covers
+      all three — now carries `page-break-inside:avoid;break-inside:avoid;`
+      inline. Harmless where it doesn't apply (email clients and browsers
+      simply ignore it; it only does anything at all in a paginated
+      context like WeasyPrint's).
+      Verified the fix for real, not just by inspecting the template: the
+      already-published `EditionSection.html` row in the database predates
+      the fix, so re-used it would have silently proven nothing. Instead
+      rebuilt the Docker image, re-rendered the same real gaming/2026-10-15
+      stories fresh through `SectionRenderer.render_candidates()` (the
+      now-fixed template), confirmed `page-break-inside:avoid` actually
+      landed in the freshly-generated HTML, then rendered that through the
+      real `weasyprint_renderer()` and read the resulting PDF: every story
+      now stays intact on one page — the exact story that split across
+      the page 1/2 boundary before (body on page 1, "Source:" stranded at
+      the top of page 2) now has both on the same page, and the next story
+      starts cleanly on the next one instead. One new test
+      (`test_a_story_does_not_split_across_a_pdf_page_break`); full suite
+      now **777 tests**, `mypy --strict` and `ruff` clean.
