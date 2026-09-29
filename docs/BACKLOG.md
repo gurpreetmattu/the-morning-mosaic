@@ -192,8 +192,13 @@ finder (6) is the last one closed — see its own Done entry.)
       `build_genre` graph — late update already called the same
       `Orchestrator.build()` the build job does; nothing genre-pipeline-
       specific was ever unique to either job.
-- [ ] Late update: re-collection of breaking stories and publishing a new
-      revision
+- [x] ~~Late update: re-collection of breaking stories and publishing a new
+      revision~~ Built long ago (`f032aa0`, see the late-update-job Done
+      entry) and left unchecked here since — the same staleness pattern
+      caught elsewhere in this file (bounce handling, the agent count),
+      always by auditing against the code rather than anyone noticing.
+      `app/jobs/late_update.py` exists, has its own docstring describing
+      exactly this, and 14 tests in `test_late_update_job.py`.
 - [ ] **The Image finder never runs during a late update.** It only attempts
       an image at the initial build, attached once to the section's top
       story at that time. A late update that changes a section's stories
