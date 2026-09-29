@@ -92,10 +92,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       secret configured the check is skipped outside prod and raises in prod,
       and the verify call itself is covered only by its own error paths. It
       needs one real token round trip once the account exists.
-- [ ] **Preferences PATCH has no server-side idempotency key**, unlike
-      signup and the delivery claim. Two identical requests both apply
-      cleanly (last write wins), so this is a style gap, not a correctness
-      one — flagged in case a retrying frontend ever races itself.
 - [ ] **Turnstile has a real widget now but no real site key to test it
       against.** `TurnstileWidget` renders nothing without
       `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, matching the backend's own "skip
@@ -2483,3 +2479,32 @@ finder (6) is the last one closed — see its own Done entry.)
       memory pressure mid-run, not a test failure; re-ran it clean once
       that passed — full suite now **782 tests**, `mypy --strict` and
       `ruff` clean.
+- [x] **`PATCH /api/me` now supports an optional `Idempotency-Key` header.**
+      The third of four accepted trade-offs the owner asked to actually fix.
+      New `idempotency_keys` table (migration `ef0f927aed1a`): a client that
+      sends the header and retries the exact same request gets the first
+      response replayed instead of the update reapplied; a client that
+      never sends it keeps today's behaviour exactly. A concurrent race
+      between two identical retries is handled with a `SAVEPOINT`
+      (`session.begin_nested()`) around just the key's own insert, not the
+      whole request — the same shape as `weather.py`'s existing
+      `WeatherCache` race handling, but scoped narrower on purpose: unlike
+      that case, rolling back the *outer* transaction here would have
+      discarded the real preference update alongside the harmless
+      bookkeeping conflict.
+      Verified with the same rigor as the other two fixes: a test retries a
+      PATCH with the same key after a *different*, real edit happened in
+      between, and confirms the retry returns the first response while the
+      intervening edit survives untouched — confirmed this genuinely fails
+      against the pre-fix code (the retry clobbers the intervening edit)
+      by reverting and rerunning it.
+      Deliberately did not touch the frontend: `readerPatch` has no retry
+      logic today, so sending the header from a client that only ever
+      makes one attempt per save would be unused plumbing protecting
+      nothing — this closes the gap the backlog item actually named (no
+      *server-side* mechanism to protect a retry, at all), not a new
+      client-retry feature nobody asked for. Also added stale-key cleanup
+      to the purge job (`idempotency_keys_cleared`, 1-day retention — a
+      dropped-response retry happens in seconds, never days), matching the
+      `rate_limit_hits`/`user_sessions` precedent. 5 new tests; full suite
+      now **787 tests**, `mypy --strict` and `ruff` clean.

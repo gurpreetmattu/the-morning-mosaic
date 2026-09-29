@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api import pages
@@ -35,7 +36,16 @@ from app.email.sender import Message, Sender
 from app.email.tokens import TokenError
 from app.models.editions import Delivery, Feedback
 from app.models.enums import EditionPreference, Frequency, SubscriptionStatus, TokenPurpose
-from app.models.users import City, Consent, FollowedKeyword, Token, User, UserGenre, UserSession
+from app.models.users import (
+    City,
+    Consent,
+    FollowedKeyword,
+    IdempotencyKey,
+    Token,
+    User,
+    UserGenre,
+    UserSession,
+)
 from app.render.email import BRAND
 
 logger = logging.getLogger(__name__)
@@ -45,6 +55,9 @@ router = APIRouter()
 # A magic link, like signup, is an unauthenticated write (it sends mail), so
 # it gets the same protection.
 login_limiter = RateLimiter(name="account_login", limit=5, window_seconds=300)
+
+# Optional, checked by PATCH /api/me — see IdempotencyKey's own docstring.
+IDEMPOTENCY_KEY_HEADER = "Idempotency-Key"
 
 
 # ------------------------------------------------------------------ request
@@ -193,11 +206,31 @@ def read_me(
 
 @router.patch("/api/me", response_model=MeResponse)
 def update_me(
+    request: Request,
     payload: PreferencesUpdate,
     user_id: Annotated[uuid.UUID, Depends(require_user)],
     session: Annotated[Session, Depends(db_session)],
     _csrf: Annotated[None, Depends(require_csrf)],
 ) -> JSONResponse | MeResponse:
+    """Optional `Idempotency-Key` header: a client that includes one and
+    retries the exact same request (a timeout, a dropped response) gets the
+    first response replayed rather than the update applied a second time.
+    Omitting the header keeps today's behaviour exactly — the update
+    applies, last write wins — which is already correct for a single
+    request; this only protects a genuine retry from clobbering a real
+    edit that happened in between with the stale data the retry still
+    carries.
+    """
+    idempotency_key = request.headers.get(IDEMPOTENCY_KEY_HEADER)
+    if idempotency_key:
+        cached = session.scalar(
+            select(IdempotencyKey).where(
+                IdempotencyKey.user_id == user_id, IdempotencyKey.key == idempotency_key
+            )
+        )
+        if cached is not None:
+            return JSONResponse(cached.response_body)
+
     user = _load_account(session, user_id)
     fields = payload.model_fields_set
 
@@ -234,7 +267,28 @@ def update_me(
 
     session.flush()
     session.refresh(user)
-    return _profile(user)
+    response = _profile(user)
+
+    if idempotency_key:
+        # A SAVEPOINT, not the outer transaction: two concurrent requests
+        # with the same key both do the (identical, harmless) update above,
+        # but only one may win recording it happened. The loser's own
+        # response is equally correct, so there is nothing to recover from
+        # the winner's row — just don't let the conflict roll back the real
+        # preference update alongside it.
+        try:
+            with session.begin_nested():
+                session.add(
+                    IdempotencyKey(
+                        user_id=user_id,
+                        key=idempotency_key,
+                        response_body=response.model_dump(mode="json"),
+                    )
+                )
+        except IntegrityError:
+            pass
+
+    return response
 
 
 @router.post("/api/me/pause", response_model=MeResponse)

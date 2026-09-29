@@ -350,6 +350,71 @@ class TestPreferences:
         assert row is not None
         assert row.delivery_slot == time(7, 0)
 
+    def test_a_retried_request_with_the_same_idempotency_key_is_replayed(
+        self, client: TestClient, session: Session
+    ) -> None:
+        """The actual fix: a retry now gets the first response back instead
+        of reapplying the update — proven here by having a second, real
+        edit land in between (as a genuinely concurrent tab might), then
+        confirming the "retry" still returns the *first* response rather
+        than the current state the second edit produced."""
+        user = make_user(session)
+        sign_in(client, session, user)
+        headers = csrf_headers(client) | {"Idempotency-Key": "retry-1"}
+
+        first = client.patch("/api/me", json={"name": "Asha"}, headers=headers)
+        assert first.json()["name"] == "Asha"
+
+        # A different edit — a second tab, or a legitimate later change —
+        # happens before the client's retry arrives.
+        client.patch("/api/me", json={"name": "Someone Else"}, headers=csrf_headers(client))
+
+        retry = client.patch("/api/me", json={"name": "Asha"}, headers=headers)
+
+        assert retry.status_code == 200
+        assert retry.json() == first.json()
+        # The intervening edit is untouched by the replay, not overwritten.
+        row = session.get(User, user.id)
+        assert row is not None
+        assert row.name == "Someone Else"
+
+    def test_a_different_idempotency_key_applies_normally(
+        self, client: TestClient, session: Session
+    ) -> None:
+        user = make_user(session)
+        sign_in(client, session, user)
+
+        first = client.patch(
+            "/api/me",
+            json={"name": "Asha"},
+            headers=csrf_headers(client) | {"Idempotency-Key": "key-1"},
+        )
+        second = client.patch(
+            "/api/me",
+            json={"name": "Rita"},
+            headers=csrf_headers(client) | {"Idempotency-Key": "key-2"},
+        )
+
+        assert first.json()["name"] == "Asha"
+        assert second.json()["name"] == "Rita"
+
+    def test_without_an_idempotency_key_every_request_applies(
+        self, client: TestClient, session: Session
+    ) -> None:
+        """Unchanged behaviour for a client that never sends the header."""
+        user = make_user(session)
+        sign_in(client, session, user)
+
+        client.patch("/api/me", json={"name": "Asha"}, headers=csrf_headers(client))
+        second = client.patch(
+            "/api/me", json={"name": "Someone Else"}, headers=csrf_headers(client)
+        )
+
+        assert second.json()["name"] == "Someone Else"
+        row = session.get(User, user.id)
+        assert row is not None
+        assert row.name == "Someone Else"
+
 
 # ================================================================ pause
 

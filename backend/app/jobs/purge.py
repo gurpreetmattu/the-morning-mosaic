@@ -18,6 +18,10 @@ Also clears expired `user_sessions` rows (app/models/users.py): once a row's
 `expires_at` has passed, the session token it backs can never verify again
 regardless of this row's presence (its own signed `e` claim already fails),
 so the row exists only to grow the table forever if nothing ever clears it.
+
+Also clears old `idempotency_keys` rows (app/models/users.py): a client
+retries a dropped response within seconds or minutes, never days, so
+nothing here is ever read again past a day either.
 """
 
 from __future__ import annotations
@@ -41,12 +45,13 @@ from app.logging_config import configure_logging
 from app.models.content import Article
 from app.models.enums import JobName, RunStatus
 from app.models.operations import PipelineRun, RateLimitHit
-from app.models.users import UserSession
+from app.models.users import IdempotencyKey, UserSession
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_RETENTION_DAYS = 30
 RATE_LIMIT_HIT_RETENTION_DAYS = 1
+IDEMPOTENCY_KEY_RETENTION_DAYS = 1
 
 
 @dataclass
@@ -54,6 +59,7 @@ class PurgeReport:
     purged: int = 0
     rate_limit_hits_cleared: int = 0
     user_sessions_cleared: int = 0
+    idempotency_keys_cleared: int = 0
 
 
 def run_purge(
@@ -62,6 +68,7 @@ def run_purge(
     now: datetime | None = None,
     retention_days: int = DEFAULT_RETENTION_DAYS,
     rate_limit_hit_retention_days: int = RATE_LIMIT_HIT_RETENTION_DAYS,
+    idempotency_key_retention_days: int = IDEMPOTENCY_KEY_RETENTION_DAYS,
 ) -> PurgeReport:
     started = now or now_utc()
     report = PurgeReport()
@@ -92,6 +99,12 @@ def run_purge(
     session_result = session.execute(delete(UserSession).where(UserSession.expires_at < started))
     report.user_sessions_cleared = cast(CursorResult[Any], session_result).rowcount
 
+    idempotency_cutoff = started - timedelta(days=idempotency_key_retention_days)
+    idempotency_result = session.execute(
+        delete(IdempotencyKey).where(IdempotencyKey.created_at < idempotency_cutoff)
+    )
+    report.idempotency_keys_cleared = cast(CursorResult[Any], idempotency_result).rowcount
+
     run.status = RunStatus.SUCCEEDED
     run.finished_at = now_utc()
     run.detail = {
@@ -99,6 +112,7 @@ def run_purge(
         "retention_days": retention_days,
         "rate_limit_hits_cleared": report.rate_limit_hits_cleared,
         "user_sessions_cleared": report.user_sessions_cleared,
+        "idempotency_keys_cleared": report.idempotency_keys_cleared,
     }
     session.commit()
     return report
@@ -131,7 +145,8 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         f"purged={report.purged} rate_limit_hits_cleared={report.rate_limit_hits_cleared} "
-        f"user_sessions_cleared={report.user_sessions_cleared}"
+        f"user_sessions_cleared={report.user_sessions_cleared} "
+        f"idempotency_keys_cleared={report.idempotency_keys_cleared}"
     )
     return 0
 

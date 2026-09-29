@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, time
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -260,6 +261,31 @@ class UserSession(Base):
     created_at: Mapped[CreatedAt]
     expires_at: Mapped[Instant]
     revoked_at: Mapped[OptionalInstant]
+
+
+class IdempotencyKey(Base):
+    """Lets `PATCH /api/me` (`app/api/routes/account.py`) recognise a
+    retried request and replay the first response instead of reapplying it.
+
+    Optional by design: a client that never sends the `Idempotency-Key`
+    header gets exactly today's behaviour — the update applies, "last write
+    wins" — which is already correct for one well-behaved request. This only
+    protects a request a client genuinely retries (a timeout, a dropped
+    response) from silently clobbering a real edit that happened in between,
+    using stale data the retry still carries.
+    """
+
+    __tablename__ = "idempotency_keys"
+
+    id: Mapped[UuidPk]
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    key: Mapped[str] = mapped_column(String(128), nullable=False)
+    response_body: Mapped[dict[str, Any]]
+    created_at: Mapped[CreatedAt]
+
+    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_idempotency_keys_user_key"),)
 
 
 class OutageState(Base):

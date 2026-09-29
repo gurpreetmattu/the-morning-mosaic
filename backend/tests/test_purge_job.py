@@ -16,7 +16,12 @@ from app.agents.schemas import (
 )
 from app.db.persist import persist_genre
 from app.db.seed import seed_cities, seed_sources
-from app.jobs.purge import DEFAULT_RETENTION_DAYS, RATE_LIMIT_HIT_RETENTION_DAYS, run_purge
+from app.jobs.purge import (
+    DEFAULT_RETENTION_DAYS,
+    IDEMPOTENCY_KEY_RETENTION_DAYS,
+    RATE_LIMIT_HIT_RETENTION_DAYS,
+    run_purge,
+)
 from app.models.content import Article
 from app.models.enums import (
     EditionPreference,
@@ -26,7 +31,7 @@ from app.models.enums import (
     SubscriptionStatus,
 )
 from app.models.operations import PipelineRun, RateLimitHit
-from app.models.users import User, UserSession
+from app.models.users import IdempotencyKey, User, UserSession
 from app.sources.schemas import CollectedArticle, Passage
 
 pytestmark = pytest.mark.integration
@@ -165,6 +170,7 @@ def test_the_run_is_recorded(session: Session) -> None:
         "retention_days": DEFAULT_RETENTION_DAYS,
         "rate_limit_hits_cleared": 0,
         "user_sessions_cleared": 0,
+        "idempotency_keys_cleared": 0,
     }
 
 
@@ -223,3 +229,34 @@ def test_a_still_valid_session_is_left_alone(session: Session) -> None:
 
     assert report.user_sessions_cleared == 0
     assert session.scalar(select(UserSession)) is not None
+
+
+def test_a_stale_idempotency_key_is_cleared(session: Session) -> None:
+    user = make_user(session)
+    session.add(
+        IdempotencyKey(
+            user_id=user.id,
+            key="retry-1",
+            response_body={"ok": True},
+            created_at=NOW - timedelta(days=IDEMPOTENCY_KEY_RETENTION_DAYS + 1),
+        )
+    )
+    session.flush()
+
+    report = run_purge(session, now=NOW)
+
+    assert report.idempotency_keys_cleared == 1
+    assert session.scalar(select(IdempotencyKey)) is None
+
+
+def test_a_fresh_idempotency_key_is_left_alone(session: Session) -> None:
+    user = make_user(session)
+    session.add(
+        IdempotencyKey(user_id=user.id, key="retry-1", response_body={"ok": True}, created_at=NOW)
+    )
+    session.flush()
+
+    report = run_purge(session, now=NOW)
+
+    assert report.idempotency_keys_cleared == 0
+    assert session.scalar(select(IdempotencyKey)) is not None
