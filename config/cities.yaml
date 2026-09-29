@@ -1,8 +1,10 @@
 # Selectable cities at signup. India only; coordinates feed the weather box.
 #
-# Coordinates are approximate city-centre points, adequate for a daily forecast.
-# Verify against the OpenWeatherMap geocoding API when that key is available,
-# and add cities on request rather than shipping a long unverified list.
+# Coordinates are approximate city-centre points, adequate for a daily
+# forecast. Verified against the real OpenWeatherMap geocoding API
+# (docs/BACKLOG.md) — every one is within 7.8km of a real OWM match. Add
+# cities on request rather than shipping a long unverified list, and
+# re-verify a city's coordinates the same way if it's ever added by hand.
 
 cities:
   - { id: mumbai, name: Mumbai, state: Maharashtra, lat: 19.0760, lon: 72.8777 }

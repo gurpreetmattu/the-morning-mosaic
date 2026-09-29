@@ -135,7 +135,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       behaviour and latency, not measured quality. CLAUDE.md requires an eval
       run before trusting them. The Fact-checker (`kilo/cohere/north-mini-code`)
       is code-oriented by name and specifically needs checking on prose claims.
-- [ ] **87 city coordinates unverified** against OpenWeatherMap geocoding.
 - [ ] **Free-tier fragility.** During verification OVH rate-limited into a
       circuit-open state, Pollinations began returning 402, and four ids in the
       gateway's own catalogue 404'd or 401'd. A vanished pinned model stops the
@@ -2144,3 +2143,17 @@ finder (6) is the last one closed — see its own Done entry.)
       other stale references — this closes the specific "bracketed
       placeholder" and "version lives beside the route" gaps the backlog
       named, not a general legal audit.
+- [x] **All 87 `config/cities.yaml` coordinates verified against the real
+      OpenWeatherMap geocoding API**, not spot-checked or reasoned about.
+      One-off script (real `OPENWEATHERMAP_API_KEY` from `.env`, not
+      committed): for each city, queried OWM's direct geocoding endpoint
+      for `"{name},IN"`, took the candidate closest (great-circle distance)
+      to our stored `lat`/`lon` — disambiguating same-named towns in
+      different states rather than trusting whichever result OWM ranks
+      first — and flagged anything more than 25km off as a real error, not
+      a guess. Result: **all 87 within 7.8km of a real OWM match** (the
+      worst was Visakhapatnam; most were under 3km), zero flagged, zero
+      cities with no OWM result at all. "Adequate for a daily forecast," as
+      the file's own header comment already claimed, is now a verified
+      fact rather than an assumption. No code or config change — the
+      existing coordinates were simply correct.
