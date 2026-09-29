@@ -218,6 +218,14 @@ expires, because there's no session table to delete a row from.
   built-in metrics — see `docs/BACKLOG.md` for the two CLAUDE.md also asks
   for (deadline misses, a sharp drop in verified story counts) that need
   structured logging or a custom metric neither of which exist yet.
+- **Observability:** structured JSON logs (`structlog`, `app/logging_config.py`)
+  from every job's `main()` and the API, to stdout, where Cloud Logging
+  parses them automatically. Every LLM call's metadata — agent, model,
+  provider, token counts, latency, status — is recorded twice,
+  independently: the `llm_calls` table always, and Langfuse
+  (`app/llm/langfuse_recorder.py`) whenever it's configured, joining the
+  database recorder rather than replacing it. Metadata only, never message
+  content, for either.
 
 None of the above has been applied anywhere: there is no GCP project. See
 `docs/BACKLOG.md`'s Blockers for the full list, and `infra/README.md` for

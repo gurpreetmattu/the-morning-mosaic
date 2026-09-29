@@ -125,6 +125,12 @@ variable "turnstile_site_key" {
   default     = ""
 }
 
+variable "langfuse_host" {
+  description = "Not a secret — the matching public/secret keys live in Secret Manager (secrets.tf). build_langfuse_client() (app/llm/langfuse_recorder.py) requires all three to be set before it traces anything at all, so this must be set alongside the two keys, not left to its empty default, for tracing to actually activate."
+  type        = string
+  default     = ""
+}
+
 # --- Cloud Run sizing ---
 
 variable "web_min_instances" {

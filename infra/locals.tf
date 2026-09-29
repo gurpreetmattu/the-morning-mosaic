@@ -17,27 +17,39 @@ locals {
   # non-secret configuration. Job-specific and service-specific values
   # (BASE_URL, BACKEND_ORIGIN, the job's own module) are added where each
   # is defined.
+  #
+  # Filtered to drop any variable still at its empty-string default rather
+  # than setting it to "" in the container: several of these back an
+  # `AnyHttpUrl | None` Settings field (LLM_FALLBACK_URL, LANGFUSE_HOST),
+  # and pydantic accepts a genuinely absent env var as None but rejects ""
+  # outright ("Input should be a valid URL, input is empty") — confirmed by
+  # actually constructing Settings with LANGFUSE_HOST="" and watching it
+  # fail, not assumed. An unset var would otherwise crash every workload at
+  # startup rather than simply leaving that integration unconfigured.
   common_env = {
-    APP_ENV                   = "prod"
-    BASE_URL                  = var.base_url
-    TIMEZONE                  = var.timezone
-    LOG_LEVEL                 = var.log_level
-    GCP_PROJECT_ID            = var.project_id
-    GCP_REGION                = var.region
-    SMTP_HOST                 = var.smtp_host
-    SMTP_PORT                 = tostring(var.smtp_port)
-    SENDER_EMAIL              = var.sender_email
-    SENDER_NAME               = var.sender_name
-    IMAP_HOST                 = var.imap_host
-    IMAP_PORT                 = tostring(var.imap_port)
-    ADMIN_EMAIL               = var.admin_email
-    TEST_EMAIL_ALLOWLIST      = var.test_email_allowlist
-    MAX_ACTIVE_SUBSCRIBERS    = tostring(var.max_active_subscribers)
-    FAILURE_NOTICE_AUTO_LIMIT = tostring(var.failure_notice_auto_limit)
-    LLM_GATEWAY_URL           = var.llm_gateway_url
-    LLM_FALLBACK_URL          = var.llm_fallback_url
-    TURNSTILE_SITE_KEY        = var.turnstile_site_key
-    GCS_PDF_BUCKET            = google_storage_bucket.pdf_cache.name
+    for key, value in {
+      APP_ENV                   = "prod"
+      BASE_URL                  = var.base_url
+      TIMEZONE                  = var.timezone
+      LOG_LEVEL                 = var.log_level
+      GCP_PROJECT_ID            = var.project_id
+      GCP_REGION                = var.region
+      SMTP_HOST                 = var.smtp_host
+      SMTP_PORT                 = tostring(var.smtp_port)
+      SENDER_EMAIL              = var.sender_email
+      SENDER_NAME               = var.sender_name
+      IMAP_HOST                 = var.imap_host
+      IMAP_PORT                 = tostring(var.imap_port)
+      ADMIN_EMAIL               = var.admin_email
+      TEST_EMAIL_ALLOWLIST      = var.test_email_allowlist
+      MAX_ACTIVE_SUBSCRIBERS    = tostring(var.max_active_subscribers)
+      FAILURE_NOTICE_AUTO_LIMIT = tostring(var.failure_notice_auto_limit)
+      LLM_GATEWAY_URL           = var.llm_gateway_url
+      LLM_FALLBACK_URL          = var.llm_fallback_url
+      TURNSTILE_SITE_KEY        = var.turnstile_site_key
+      LANGFUSE_HOST             = var.langfuse_host
+      GCS_PDF_BUCKET            = google_storage_bucket.pdf_cache.name
+    } : key => value if value != ""
   }
 
   # name -> Secret Manager secret id. Values are never set by Terraform

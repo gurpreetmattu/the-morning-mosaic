@@ -2392,3 +2392,31 @@ finder (6) is the last one closed — see its own Done entry.)
       starts cleanly on the next one instead. One new test
       (`test_a_story_does_not_split_across_a_pdf_page_break`); full suite
       now **777 tests**, `mypy --strict` and `ruff` clean.
+- [x] **A real, critical Terraform bug found and fixed while auditing
+      `docs/architecture.md` against the code for staleness (the same kind
+      of audit that caught the bounce/late-update/agent-count staleness
+      elsewhere in this file).** `architecture.md` had no Observability
+      section at all — missing both the structured-logging and the
+      Langfuse work from earlier today — so added one. Writing it surfaced
+      that `infra/locals.tf`'s `common_env` set `LANGFUSE_PUBLIC_KEY`/
+      `LANGFUSE_SECRET_KEY` as real secrets but never `LANGFUSE_HOST` at
+      all, which `build_langfuse_client()` also requires before it does
+      anything.
+      Added the missing `langfuse_host` Terraform variable (empty default,
+      same pattern as `llm_fallback_url`/`turnstile_site_key`) and wired it
+      into `common_env` — then found a second, worse bug while doing it:
+      an empty-string Terraform default was being set as a literal `""`
+      Cloud Run env var rather than left unset, and confirmed directly
+      (constructed `Settings` with `LANGFUSE_HOST=""` and watched it fail)
+      that pydantic accepts a genuinely absent env var as `None` for an
+      `AnyHttpUrl | None` field but rejects `""` outright. Every workload
+      would have crashed at startup the day this was ever actually
+      deployed with Langfuse (or the pre-existing `LLM_FALLBACK_URL`)
+      left unconfigured — never caught before because nothing has been
+      deployed yet (no GCP project). Fixed generally, not just for these
+      two: `common_env` now filters out any variable still at its
+      empty-string default before it reaches the container, so a field
+      left unconfigured is genuinely absent rather than present-and-empty.
+      `terraform fmt` and `validate` both pass (no GCP project to `plan`/
+      `apply` against, same limitation this file already records
+      elsewhere); no Python code changed.
