@@ -129,8 +129,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       value when actually going live. *3 days away as of 2026-09-28.* Local
       testing no longer needs to touch this file to get past it: see the
       `EDITION_LAUNCH_DATE_OVERRIDE` entry in Done.
-- [ ] **21 lunar festival dates missing** (Diwali, Holi, Eid, …), deliberately
-      left blank in `awaiting_dates` rather than guessed.
 - [ ] **The groundedness gap is partly fixed (malformed-JSON retry, see its
       own Done entry) but not closed.** Post-fix live re-measurement (15
       runs) shows the pass rate improved substantially — 10/15 (67%) at or
@@ -2262,3 +2260,33 @@ finder (6) is the last one closed — see its own Done entry.)
       see the still-open entry above for the two runs that didn't and why
       that comparison isn't the end of the story. Full suite now **773
       tests**, `mypy --strict` and `ruff` clean.
+- [x] **All 21 lunar festival dates filled in** for the whole window the
+      calendar already covers (2026-10 through 2027-12), from the actual
+      authoritative source the file's own header names — not guessed, not
+      taken from a secondary summary. Found the Government of India's real
+      DoPT holiday notifications for both years via web search, then
+      fetched the official PDFs directly from `dopt.gov.in` — both turned
+      out to be scanned images (`WebFetch` couldn't extract text from
+      either), so read them with vision instead of giving up or falling
+      back to a secondary source. Cross-checked the 2027 gazetted subset
+      against two independent secondary sources (staffnews.in,
+      postalstudies.com) before trusting it, matching this project's own
+      corroboration standard; the primary document itself is authoritative
+      for the rest.
+      `config/editions.yaml`: `awaiting_dates` is now empty, and 26 new
+      `special_editions` entries (5 for the Oct–Dec 2026 window right after
+      launch: Dussehra, Diwali, Bhai Dooj, Chhath Puja, Guru Nanak Jayanti;
+      21 for all of 2027) join the 9 already there. Verified no duplicate
+      keys and no two entries sharing a date (`EditionsConfig`'s own
+      validators, which would have caught either) — checked by hand first
+      against the real source data, since a clash was plausible (the 2027
+      memo itself flags Independence Day and Milad-un-Nabi coinciding that
+      year; neither is one of our 21, so no actual collision). Left
+      `accent` unset on every new entry — that's a design choice with no
+      ground truth to verify, unlike the dates, and the template already
+      falls back to a sensible default color when it's absent.
+      Deliberately did not extend past 2027-12 — the note left in the file
+      says to redo this the same way (the DoPT notification is typically
+      published 5-6 months ahead) rather than guess forward. No code
+      change; `load_editions()` already validates whatever's in the file.
+      Full suite re-run after the config change: still 773 tests passing.

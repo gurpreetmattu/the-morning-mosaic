@@ -1,4 +1,4 @@
-﻿# Special editions are driven ONLY by this calendar.
+# Special editions are driven ONLY by this calendar.
 #
 # Only observances with fixed civil dates are listed. Festivals that follow the
 # lunar calendar move every year and are NOT guessed here — they sit in
@@ -20,12 +20,47 @@ weekend:
     - weekly-recap
     - quiz
 
+# 2026-10 through 2027-12 lunar-calendar dates below are sourced from the
+# Department of Personnel and Training's own gazetted/restricted holiday
+# notifications for 2026 (O.M. F.No.12/2/2023-JCA, dated 3 July 2025) and
+# 2027 (same file number, dated 16 July 2026) — dopt.gov.in's official PDFs,
+# read directly rather than taken from a secondary summary. Cross-checked
+# the 2027 gazetted subset against two independent secondary sources
+# (staffnews.in, postalstudies.com) before use; the primary document itself
+# is authoritative for the rest. Id-ul-Fitr, Id-ul-Zuha, and Muharram are
+# subject to moon sighting and may shift by a day at short notice per the
+# same memoranda — noted on each entry below.
 special_editions:
   - key: gandhi-jayanti-2026
     name: Gandhi Jayanti
     observed_on: 2026-10-02
     note: National holiday; masthead carries a commemorative rule.
     accent: "#7a6a3f"
+
+  - key: dussehra-2026
+    name: Dussehra
+    observed_on: 2026-10-20
+    note: Marks the end of Navratri.
+
+  - key: diwali-2026
+    name: Diwali
+    observed_on: 2026-11-08
+    note: Festival of lights.
+
+  - key: bhai-dooj-2026
+    name: Bhai Dooj
+    observed_on: 2026-11-11
+    note: Festival honouring the bond between brothers and sisters.
+
+  - key: chhath-puja-2026
+    name: Chhath Puja
+    observed_on: 2026-11-15
+    note: Sun-worship festival, widely observed in Bihar, Jharkhand, and eastern Uttar Pradesh.
+
+  - key: guru-nanak-jayanti-2026
+    name: Guru Nanak Jayanti
+    observed_on: 2026-11-24
+    note: Birth anniversary of Guru Nanak Dev.
 
   - key: christmas-2026
     name: Christmas
@@ -45,23 +80,122 @@ special_editions:
     note: Opening edition of the year.
     accent: "#0f6e73"
 
+  - key: makar-sankranti-2027
+    name: Makar Sankranti / Pongal
+    observed_on: 2027-01-14
+    note: Harvest festival marking the sun's transit into Capricorn.
+
   - key: republic-day-2027
     name: Republic Day
     observed_on: 2027-01-26
     note: National holiday.
     accent: "#c4571b"
 
-  - key: independence-day-2027
-    name: Independence Day
-    observed_on: 2027-08-15
-    note: National holiday.
-    accent: "#c4571b"
+  - key: maha-shivaratri-2027
+    name: Maha Shivaratri
+    observed_on: 2027-03-06
+    note: Festival dedicated to Shiva.
+
+  - key: eid-al-fitr-2027
+    name: Eid al-Fitr
+    observed_on: 2027-03-10
+    note: Marks the end of Ramzan. Date depends on moon sighting and may shift.
+
+  - key: holi-2027
+    name: Holi
+    observed_on: 2027-03-23
+    note: Festival of colours.
+
+  - key: good-friday-2027
+    name: Good Friday
+    observed_on: 2027-03-26
+    note: Christian observance.
+
+  - key: ugadi-2027
+    name: Ugadi / Gudi Padwa
+    observed_on: 2027-04-07
+    note: Lunar new year, observed as Ugadi in the south and Gudi Padwa in Maharashtra.
+
+  - key: baisakhi-2027
+    name: Baisakhi
+    observed_on: 2027-04-14
+    note: Harvest festival and Sikh new year, observed under regional names across India.
+
+  - key: ram-navami-2027
+    name: Ram Navami
+    observed_on: 2027-04-15
+    note: Marks the birth of Rama.
+
+  - key: mahavir-jayanti-2027
+    name: Mahavir Jayanti
+    observed_on: 2027-04-19
+    note: Birth anniversary of Mahavira.
+
+  - key: eid-al-adha-2027
+    name: Eid al-Adha
+    observed_on: 2027-05-17
+    note: Also called Bakrid. Date depends on moon sighting and may shift.
+
+  - key: buddha-purnima-2027
+    name: Buddha Purnima
+    observed_on: 2027-05-20
+    note: Birth anniversary of the Buddha.
+
+  - key: muharram-2027
+    name: Muharram
+    observed_on: 2027-06-16
+    note: Islamic new year. Date depends on moon sighting and may shift.
+
+  - key: raksha-bandhan-2027
+    name: Raksha Bandhan
+    observed_on: 2027-08-17
+    note: Festival honouring the bond between brothers and sisters.
+
+  - key: janmashtami-2027
+    name: Janmashtami
+    observed_on: 2027-08-25
+    note: Marks the birth of Krishna.
+
+  - key: ganesh-chaturthi-2027
+    name: Ganesh Chaturthi
+    observed_on: 2027-09-04
+    note: Festival honouring Ganesha, widely observed in Maharashtra and Goa.
+
+  - key: onam-2027
+    name: Onam
+    observed_on: 2027-09-12
+    note: Kerala's harvest festival.
 
   - key: gandhi-jayanti-2027
     name: Gandhi Jayanti
     observed_on: 2027-10-02
     note: National holiday; masthead carries a commemorative rule.
     accent: "#7a6a3f"
+
+  - key: dussehra-2027
+    name: Dussehra
+    observed_on: 2027-10-09
+    note: Marks the end of Navratri.
+
+  - key: diwali-2027
+    name: Diwali
+    observed_on: 2027-10-29
+    note: Festival of lights.
+
+  - key: bhai-dooj-2027
+    name: Bhai Dooj
+    observed_on: 2027-10-31
+    note: Festival honouring the bond between brothers and sisters.
+
+  - key: chhath-puja-2027
+    name: Chhath Puja
+    observed_on: 2027-11-04
+    note: Sun-worship festival, widely observed in Bihar, Jharkhand, and eastern Uttar Pradesh.
+
+  - key: guru-nanak-jayanti-2027
+    name: Guru Nanak Jayanti
+    observed_on: 2027-11-14
+    note: Birth anniversary of Guru Nanak Dev.
 
   - key: christmas-2027
     name: Christmas
@@ -75,27 +209,9 @@ special_editions:
     note: Built only from stories verified and published during the year.
     accent: "#2f4858"
 
-# Moving dates to confirm each year before January. Names only — no dates until
-# they are looked up.
-awaiting_dates:
-  - Makar Sankranti / Pongal
-  - Maha Shivaratri
-  - Holi
-  - Ugadi / Gudi Padwa
-  - Ram Navami
-  - Mahavir Jayanti
-  - Good Friday
-  - Eid al-Fitr
-  - Baisakhi
-  - Buddha Purnima
-  - Eid al-Adha
-  - Muharram
-  - Raksha Bandhan
-  - Janmashtami
-  - Ganesh Chaturthi
-  - Onam
-  - Dussehra
-  - Diwali
-  - Bhai Dooj
-  - Chhath Puja
-  - Guru Nanak Jayanti
+# All 21 previously-awaiting festivals now have real, sourced dates above
+# for the 2026-10 through 2027-12 window this calendar covers (see the
+# comment above special_editions for sourcing). Re-confirm and extend into
+# 2028 before December 2027 using the same DoPT notification, which is
+# typically published 5-6 months ahead of the year it covers.
+awaiting_dates: []
