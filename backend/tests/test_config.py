@@ -26,7 +26,7 @@ from app.config.schemas import (
     ModelSpec,
     Source,
 )
-from app.config.settings import Settings
+from app.config.settings import SeedSettings, Settings
 
 
 def _theme() -> dict[str, str]:
@@ -344,8 +344,11 @@ def _settings(**overrides: Any) -> Settings:
         "llm_gateway_api_key": "secret",
         "token_signing_key": "secret",
     }
-    # model_validate bypasses the env/.env sources, so a developer's local .env
-    # cannot change the outcome of these tests.
+    # NOTE: model_validate does NOT bypass env/.env sources (verified: an
+    # omitted field is silently filled from the real environment, not
+    # rejected) — every field these tests care about must be listed above
+    # explicitly, never left out expecting a validation error or a
+    # deterministic default.
     return Settings.model_validate(base | overrides)
 
 
@@ -372,3 +375,19 @@ def test_secrets_do_not_leak_into_repr() -> None:
     assert sentinel not in repr(settings)
     assert sentinel not in str(settings.model_dump())
     assert settings.gmail_app_password.get_secret_value() == sentinel
+
+
+def test_seed_settings_needs_only_database_url() -> None:
+    """The seed job (app/jobs/seed.py) never sends mail, calls an LLM, or
+    signs a token, so it should not need any of the ten other fields the
+    full Settings requires just to construct one."""
+    seed_settings = SeedSettings.model_validate({"database_url": "postgresql://u:p@localhost/db"})
+    assert seed_settings.database_url.get_secret_value() == "postgresql://u:p@localhost/db"
+
+
+def test_seed_settings_still_requires_database_url() -> None:
+    """Checked on the field itself, not by omitting it and expecting a
+    ValidationError from model_validate({}) — that does NOT bypass env/.env
+    sources (see the note on _settings() above), so an omitted field is
+    silently filled from the real environment rather than rejected."""
+    assert SeedSettings.model_fields["database_url"].is_required()

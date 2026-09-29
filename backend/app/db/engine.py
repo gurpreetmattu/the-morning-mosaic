@@ -14,7 +14,7 @@ from functools import lru_cache
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config.settings import get_settings
+from app.config.settings import get_seed_settings, get_settings
 
 
 def normalise_url(url: str) -> str:
@@ -72,6 +72,22 @@ def get_direct_engine() -> Engine:
 
 
 @lru_cache(maxsize=1)
+def get_seed_engine() -> Engine:
+    """The seed script's own engine, built from `SeedSettings` (just
+    `DATABASE_URL`) rather than the full `Settings` every other job needs.
+    Same pooling/prepare_threshold reasoning as `get_engine()`, just a
+    smaller pool — seed.py is a one-shot script, not a long-lived process."""
+    settings = get_seed_settings()
+    return create_engine(
+        normalise_url(settings.database_url.get_secret_value()),
+        pool_pre_ping=True,
+        pool_size=2,
+        max_overflow=0,
+        connect_args={"prepare_threshold": None},
+    )
+
+
+@lru_cache(maxsize=1)
 def get_sessionmaker() -> sessionmaker[Session]:
     return sessionmaker(bind=get_engine(), expire_on_commit=False)
 
@@ -88,6 +104,27 @@ def session_scope() -> Iterator[Session]:
         raise
     finally:
         session.close()
+
+
+@contextmanager
+def seed_session_scope() -> Iterator[Session]:
+    """`session_scope()`, bound to `get_seed_engine()` instead of the app-wide
+    engine — the seed script's only entry point into the database."""
+    session = sessionmaker(bind=get_seed_engine(), expire_on_commit=False)()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def dispose_seed_engine() -> None:
+    if get_seed_engine.cache_info().currsize:
+        get_seed_engine().dispose()
+    get_seed_engine.cache_clear()
 
 
 def dispose_engine() -> None:

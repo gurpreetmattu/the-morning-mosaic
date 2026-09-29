@@ -70,8 +70,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       other 3 categories (invented prose fact, reversed meaning, unstated
       causation) are built and ready but need a live model to actually
       score — see `evals/README.md`.
-- [ ] **Seed job requires every env var** just to read `DATABASE_URL`. Fine in
-      Cloud Run, friction in dev. Undecided whether to loosen.
 - [x] ~~`app/config/loader.py` finds `/config` by walking up from its own
       file, which only lands on the repo root in an editable dev
       checkout.~~ Confirmed by actually building and running the backend
@@ -2290,3 +2288,37 @@ finder (6) is the last one closed — see its own Done entry.)
       published 5-6 months ahead) rather than guess forward. No code
       change; `load_editions()` already validates whatever's in the file.
       Full suite re-run after the config change: still 773 tests passing.
+- [x] **The seed job now needs only `DATABASE_URL`, not the ten other
+      variables the full app `Settings` requires.** Resolved "undecided
+      whether to loosen" by not touching `Settings` at all — weakening it
+      (making fields optional) would drop the guarantee every other
+      consumer relies on, that a constructed `Settings` means a fully
+      configured app. Instead: a new, narrower `SeedSettings` (just
+      `database_url`) and `get_seed_engine()`/`seed_session_scope()`/
+      `dispose_seed_engine()` in `app/db/engine.py`, same pooling/
+      `prepare_threshold` reasoning as the shared engine, built from
+      `SeedSettings` instead. `app/jobs/seed.py` is the only caller.
+      Verified the friction is actually gone, not just plausible: a real
+      subprocess test (`test_the_job_runs_with_only_database_url_set`)
+      runs `python -m app.jobs.seed --dry-run` with a genuinely stripped
+      environment (`DATABASE_URL` and nothing else the app would
+      otherwise need) against the real test database. `--help` alone
+      would not have proven this — argparse exits during `parse_args()`,
+      before `main()` ever constructs a settings object, which is
+      probably why this friction went unnoticed as long as it did.
+      Found and fixed a real, separate latent issue while writing this:
+      the comment on `test_config.py`'s `_settings()` helper claimed
+      "`model_validate` bypasses the env/.env sources, so a developer's
+      local `.env` cannot change the outcome of these tests" —
+      empirically false (`Settings.model_validate({})` and
+      `SeedSettings.model_validate({})` both silently succeed using the
+      real `.env`'s values instead of raising). No current test actually
+      relied on the false guarantee (every one of the dozen files using
+      this pattern always supplies every field explicitly), so nothing
+      was silently wrong — corrected the comment so a future test doesn't
+      omit a field expecting rejection and get an environment-dependent
+      result instead. Checked `SeedSettings` requires `database_url` via
+      `model_fields[...].is_required()` instead, which needs no env
+      isolation claim to be true.
+      3 new tests; full suite now **776 tests**, `mypy --strict` and
+      `ruff` clean.

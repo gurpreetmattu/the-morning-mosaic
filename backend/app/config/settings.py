@@ -124,3 +124,28 @@ class Settings(BaseSettings):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]
+
+
+class SeedSettings(BaseSettings):
+    """The seed job (`app/jobs/seed.py`) only ever reads and writes
+    reference tables from `/config` — it never sends mail, calls an LLM, or
+    does anything else the full `Settings` requires a value for. Requiring
+    all eleven of those anyway was real, reported friction in dev (see
+    docs/BACKLOG.md) for no reason tied to what the job actually does.
+    A separate, narrower model — not `Settings` with more fields made
+    optional — keeps every other consumer's guarantee that a `Settings`
+    instance means a fully configured app intact."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    database_url: SecretStr
+
+
+@lru_cache(maxsize=1)
+def get_seed_settings() -> SeedSettings:
+    return SeedSettings()  # type: ignore[call-arg]

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -117,3 +121,39 @@ def test_a_source_dropped_from_config_is_disabled_not_deleted(session: Session) 
     assert survivor is not None, "articles reference sources; the row must survive"
     assert survivor.enabled is False
     assert result.deactivated == 1
+
+
+# ------------------------------------------------------------- entry point
+
+
+def test_the_job_runs_with_only_database_url_set() -> None:
+    """The actual friction this fixed: running the full app Settings needs
+    ten other variables (SMTP, LLM, tokens, ...) this job never reads. A
+    subprocess with a genuinely stripped environment is the only way to
+    prove that -- calling seed_all() directly, as every other test in this
+    file does, goes through the test session fixture and would never
+    exercise SeedSettings/get_seed_engine at all.
+
+    `--help` alone would not have caught the original bug: argparse exits
+    during parse_args(), before main() ever constructs a settings object.
+    """
+    url = os.getenv("TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("TEST_DATABASE_URL is not set")
+
+    env = {"DATABASE_URL": url}
+    # Windows needs these to start a Python interpreter at all; still none
+    # of the app's own required settings are present.
+    if sys.platform == "win32":
+        env["SYSTEMROOT"] = os.environ.get("SYSTEMROOT", "")
+        env["PATH"] = os.environ.get("PATH", "")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "app.jobs.seed", "--dry-run"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "dry run: rolled back" in result.stdout
