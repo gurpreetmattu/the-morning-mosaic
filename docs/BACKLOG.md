@@ -70,9 +70,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       other 3 categories (invented prose fact, reversed meaning, unstated
       causation) are built and ready but need a live model to actually
       score — see `evals/README.md`.
-- [ ] **Neon-specific engine settings untested against Neon.** `pool_pre_ping`
-      and `prepare_threshold=None` were reasoned from PgBouncer behaviour and
-      have only run against local PostgreSQL.
 - [ ] **Seed job requires every env var** just to read `DATABASE_URL`. Fine in
       Cloud Run, friction in dev. Undecided whether to loosen.
 - [x] ~~`app/config/loader.py` finds `/config` by walking up from its own
@@ -2054,3 +2051,40 @@ finder (6) is the last one closed — see its own Done entry.)
       suite stays free of any real network or database call; full suite
       (`TEST_DATABASE_URL` set, nothing skipped) now **764 tests passing**,
       `mypy --strict` and `ruff` clean.
+- [x] **Neon-specific engine settings verified against the real Neon
+      endpoint**, not reasoned about or run only against local Postgres.
+      Two manual scripts (real `DATABASE_URL`/`DATABASE_DIRECT_URL` from
+      `.env`, not committed — this needs the real, provisioned database, not
+      something to run in CI):
+      - `prepare_threshold=None`: reproduced the exact shape the code
+        comment warns about — one long-lived client `Connection`, many
+        separate transactions, well past psycopg's auto-prepare threshold
+        (60 rounds) — with the override both on and off. **Zero errors
+        either way.** Looked closer at why: Neon's PgBouncer is issuing its
+        own `PGBOUNCER_N`-named prepared statements — PgBouncer's newer
+        prepared-statement-passthrough feature (added ~1.21+), which
+        transparently re-prepares across backend swaps in transaction-
+        pooling mode. So the failure this setting guards against (a classic,
+        older-PgBouncer limitation) no longer reproduces on Neon's current
+        pooler — confirmed, not assumed. Separately killed a live pooled
+        connection's backend process via `pg_terminate_backend` (over the
+        direct, non-pooled endpoint, to avoid killing the admin connection
+        itself — the first attempt did exactly that, a real gotcha worth
+        recording) and the next query succeeded even without
+        `pool_pre_ping`: PgBouncer itself absorbed the dead backend and
+        silently assigned a new one. Kept the setting anyway — it is
+        correct, standard practice, and costs one cheap round-trip per
+        checkout — but the specific bug it was reasoned to prevent is not
+        currently reproducible against Neon's pooler.
+      - `pool_pre_ping`: this one *did* reproduce for real. Opened a pooled
+        connection, idled it 8 real minutes (`time.sleep`, not simulated),
+        then queried again. Without `pool_pre_ping`: **`OperationalError:
+        SSL connection has been closed unexpectedly`** — a genuine failure,
+        not a hypothetical one. With it: the same 8-minute idle recovered
+        transparently, result correct. This is the one the code comment's
+        claim ("Neon drops idle connections") holds up exactly as stated,
+        and the setting is the reason a real deployment wouldn't see it.
+      No code change — both settings were already correct in
+      `app/db/engine.py`; this closes the "untested" half of the earlier
+      entry with real, contradictory-in-one-case evidence instead of an
+      unverified assumption.

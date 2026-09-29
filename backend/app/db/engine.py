@@ -40,10 +40,15 @@ def get_engine() -> Engine:
         max_overflow=5,
         pool_recycle=300,
         connect_args={
-            # Neon's pooled endpoint is PgBouncer in transaction mode, which
-            # cannot carry server-side prepared statements between requests.
-            # psycopg 3 prepares automatically after a few executions, so it
-            # must be told not to.
+            # Classic transaction-mode PgBouncer can't carry a server-side
+            # prepared statement across a backend swap between requests.
+            # Verified against the real Neon endpoint (docs/BACKLOG.md) that
+            # its current PgBouncer already handles this itself (its own
+            # PGBOUNCER_N-named passthrough survives 60 rounds past
+            # psycopg's auto-prepare threshold with no error either way) —
+            # so this is no longer fixing a reproducible bug here, but it's
+            # free insurance against an older or differently-configured
+            # pooler, so it stays.
             "prepare_threshold": None,
         },
     )
