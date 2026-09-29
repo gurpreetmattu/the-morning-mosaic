@@ -18,6 +18,7 @@ from app.config.schemas import (
     EditionsConfig,
     GenresConfig,
     ModelsConfig,
+    PolicyConfig,
     SourcesConfig,
 )
 
@@ -83,7 +84,12 @@ def load_cities() -> CitiesConfig:
     return _load("cities.yaml", CitiesConfig)
 
 
+@lru_cache(maxsize=1)
+def load_policy() -> PolicyConfig:
+    return _load("policy.yaml", PolicyConfig)
+
+
 def clear_cache() -> None:
     """Drop cached config. Used by tests that point CONFIG_DIR elsewhere."""
-    for loader in (load_genres, load_sources, load_models, load_editions, load_cities):
+    for loader in (load_genres, load_sources, load_models, load_editions, load_cities, load_policy):
         loader.cache_clear()

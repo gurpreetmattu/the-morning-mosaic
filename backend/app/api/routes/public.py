@@ -30,6 +30,7 @@ from app.api.deps import db_session
 from app.api.deps import settings as get_request_settings
 from app.api.security import RateLimiter, TurnstileError, client_key, verify_turnstile
 from app.clock import now_utc
+from app.config.loader import load_policy
 from app.config.schemas import GENRE_KEYS, GenreKey
 from app.config.settings import Settings
 from app.email import tokens
@@ -59,8 +60,6 @@ router = APIRouter()
 signup_limiter = RateLimiter(name="signup", limit=5, window_seconds=300)
 # Feedback is one click per story, but a scanner can hammer it.
 feedback_limiter = RateLimiter(name="feedback", limit=60, window_seconds=60)
-
-CURRENT_POLICY_VERSION = "2026-09-01"
 
 # Parsed from the same list the database CHECK constraint is built from.
 DELIVERY_SLOTS = tuple(clock_time.fromisoformat(slot) for slot in PUBLISHED_SLOTS)
@@ -157,7 +156,7 @@ def _register(session: Session, payload: SignupRequest, config: Settings) -> JSO
     session.add(
         Consent(
             user_id=user.id,
-            policy_version=CURRENT_POLICY_VERSION,
+            policy_version=load_policy().version,
             consented_at=now_utc(),
             channel="signup",
         )

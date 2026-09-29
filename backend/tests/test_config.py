@@ -13,6 +13,7 @@ from app.config import (
     load_editions,
     load_genres,
     load_models,
+    load_policy,
     load_sources,
 )
 from app.config.loader import LAUNCH_DATE_OVERRIDE_ENV, clear_cache
@@ -71,6 +72,13 @@ def test_every_config_file_loads() -> None:
     assert load_models().agents
     assert load_cities().cities
     assert load_editions().launch_date
+    assert load_policy().version
+
+
+def test_the_policy_version_is_a_real_value_not_the_old_placeholder() -> None:
+    # The version this route used to hardcode before it moved here.
+    assert load_policy().version != "2026-09-01"
+    assert load_policy().operator_name
 
 
 def test_all_ten_genres_are_defined() -> None:

@@ -20,6 +20,9 @@ export interface SiteConfig {
   delivery_slots: string[]; // "HH:MM:SS"
   frequencies: string[];
   edition_preferences: string[];
+  policy_operator_name: string;
+  policy_version: string;
+  policy_contact_email: string;
 }
 
 export interface SignupPayload {

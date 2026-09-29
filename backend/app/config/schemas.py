@@ -359,3 +359,17 @@ class CitiesConfig(ConfigBase):
 
     def by_id(self) -> dict[str, City]:
         return {city.id: city for city in self.cities}
+
+
+# --------------------------------------------------------------------------- policy
+
+
+class PolicyConfig(ConfigBase):
+    """The one fact both the privacy/terms pages and the signup consent
+    record must agree on: which policy version a reader is consenting to.
+    Living in config, next to nothing else that changes it, is what the
+    backlog note asked for — previously this was a constant sitting beside
+    the signup route, disconnected from the actual published policy text."""
+
+    operator_name: str = Field(min_length=1)
+    version: str = Field(min_length=1, max_length=32)

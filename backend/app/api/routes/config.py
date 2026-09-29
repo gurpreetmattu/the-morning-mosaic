@@ -21,7 +21,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_session
-from app.config.loader import load_genres
+from app.api.deps import settings as get_request_settings
+from app.config.loader import load_genres, load_policy
+from app.config.settings import Settings
 from app.models.users import DELIVERY_SLOTS, City
 
 router = APIRouter()
@@ -54,10 +56,19 @@ class ConfigResponse(BaseModel):
     delivery_slots: list[clock_time]
     frequencies: list[str]
     edition_preferences: list[str]
+    policy_operator_name: str
+    policy_version: str
+    # The same real inbox as ADMIN_EMAIL/SENDER_EMAIL — one address, not a
+    # second one to keep in sync, for the privacy/terms pages' grievance and
+    # contact sections.
+    policy_contact_email: str
 
 
 @router.get("/api/config", response_model=ConfigResponse)
-def read_config(session: Annotated[Session, Depends(db_session)]) -> ConfigResponse:
+def read_config(
+    session: Annotated[Session, Depends(db_session)],
+    settings: Annotated[Settings, Depends(get_request_settings)],
+) -> ConfigResponse:
     genres = [
         GenreOption(key=genre.key, display_name=genre.display_name, blurb=genre.blurb)
         for genre in load_genres().genres
@@ -66,10 +77,14 @@ def read_config(session: Annotated[Session, Depends(db_session)]) -> ConfigRespo
         CityOption(id=row.id, name=row.name, state=row.state)
         for row in session.scalars(select(City).where(City.active.is_(True)).order_by(City.name))
     ]
+    policy = load_policy()
     return ConfigResponse(
         genres=genres,
         cities=cities,
         delivery_slots=[clock_time.fromisoformat(slot) for slot in DELIVERY_SLOTS],
         frequencies=list(FREQUENCIES),
         edition_preferences=list(EDITION_PREFERENCES),
+        policy_operator_name=policy.operator_name,
+        policy_version=policy.version,
+        policy_contact_email=settings.admin_email,
     )

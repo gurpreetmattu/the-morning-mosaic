@@ -1,17 +1,24 @@
-import { Notice, PageTitle } from "@/components/ui";
+import { PageTitle } from "@/components/ui";
+import { serverGet } from "@/lib/server-api";
+import type { SiteConfig } from "@/lib/types";
 
 export const metadata = { title: "Terms of Service — The Morning Mosaic" };
 
-export default function TermsPage() {
+const FALLBACK_CONTACT = "gurpreetsinghmattu2002@gmail.com";
+
+export default async function TermsPage() {
+  const config = await serverGet<SiteConfig>("/api/config");
+  const operatorName = config?.policy_operator_name ?? "The Morning Mosaic";
+  const version = config?.policy_version ?? "unavailable";
+  const contactEmail = config?.policy_contact_email ?? FALLBACK_CONTACT;
+
   return (
     <article className="prose-sm max-w-none">
       <PageTitle>Terms of Service</PageTitle>
-      <Notice kind="info">
-        Draft — pending legal review before launch. Replace the bracketed placeholders with the
-        operator&rsquo;s real details.
-      </Notice>
 
-      <p className="mb-4 text-sm text-muted">Last updated: [date]. Applies to [operator name].</p>
+      <p className="mb-4 text-sm text-muted">
+        Last updated: {version}. Applies to {operatorName}.
+      </p>
 
       <h2 className="mb-2 mt-6 text-lg font-semibold">The service</h2>
       <p className="mb-4 text-sm">
@@ -58,7 +65,13 @@ export default function TermsPage() {
       </p>
 
       <h2 className="mb-2 mt-6 text-lg font-semibold">Contact</h2>
-      <p className="text-sm">Questions about these terms: [contact@example.com].</p>
+      <p className="text-sm">
+        Questions about these terms:{" "}
+        <a href={`mailto:${contactEmail}`} className="text-accent underline">
+          {contactEmail}
+        </a>
+        .
+      </p>
     </article>
   );
 }

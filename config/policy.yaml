@@ -1,0 +1,7 @@
+# The privacy policy and terms of service (frontend/src/app/privacy,
+# frontend/src/app/terms) are the actual published text; this file is only
+# the version label they and every new signup's consent record must agree
+# on. Bump `version` whenever the published text changes materially, and
+# update the "Last updated" line on both pages in the same change.
+operator_name: "The Morning Mosaic"
+version: "2026-09-29"

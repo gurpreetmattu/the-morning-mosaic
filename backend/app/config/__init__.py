@@ -6,6 +6,7 @@ from app.config.loader import (
     load_editions,
     load_genres,
     load_models,
+    load_policy,
     load_sources,
 )
 from app.config.settings import Settings, get_settings
@@ -18,5 +19,6 @@ __all__ = [
     "load_editions",
     "load_genres",
     "load_models",
+    "load_policy",
     "load_sources",
 ]

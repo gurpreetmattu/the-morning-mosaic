@@ -15,6 +15,9 @@ const CONFIG: SiteConfig = {
   delivery_slots: ["06:00:00", "07:00:00"],
   frequencies: ["daily", "weekdays"],
   edition_preferences: ["india", "mixed", "global"],
+  policy_operator_name: "The Morning Mosaic",
+  policy_version: "2026-09-29",
+  policy_contact_email: "gurpreetsinghmattu2002@gmail.com",
 };
 
 const ME: MeResponse = {

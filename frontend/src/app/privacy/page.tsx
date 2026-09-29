@@ -1,17 +1,24 @@
-import { Notice, PageTitle } from "@/components/ui";
+import { PageTitle } from "@/components/ui";
+import { serverGet } from "@/lib/server-api";
+import type { SiteConfig } from "@/lib/types";
 
 export const metadata = { title: "Privacy Policy — The Morning Mosaic" };
 
-export default function PrivacyPage() {
+const FALLBACK_CONTACT = "gurpreetsinghmattu2002@gmail.com";
+
+export default async function PrivacyPage() {
+  const config = await serverGet<SiteConfig>("/api/config");
+  const operatorName = config?.policy_operator_name ?? "The Morning Mosaic";
+  const version = config?.policy_version ?? "unavailable";
+  const contactEmail = config?.policy_contact_email ?? FALLBACK_CONTACT;
+
   return (
     <article className="prose-sm max-w-none">
       <PageTitle>Privacy Policy</PageTitle>
-      <Notice kind="info">
-        Draft — pending legal review before launch. Replace the bracketed placeholders with the
-        operator&rsquo;s real details.
-      </Notice>
 
-      <p className="mb-4 text-sm text-muted">Last updated: [date]. Applies to [operator name].</p>
+      <p className="mb-4 text-sm text-muted">
+        Last updated: {version}. Applies to {operatorName}.
+      </p>
 
       <h2 className="mb-2 mt-6 text-lg font-semibold">What we collect</h2>
       <p className="mb-4 text-sm">
@@ -53,8 +60,11 @@ export default function PrivacyPage() {
 
       <h2 className="mb-2 mt-6 text-lg font-semibold">Grievances</h2>
       <p className="mb-4 text-sm">
-        For a privacy complaint or grievance, contact [grievance officer name] at
-        [privacy@example.com]. We aim to respond within [30] days.
+        For a privacy complaint or grievance, contact the {operatorName} privacy team at{" "}
+        <a href={`mailto:${contactEmail}`} className="text-accent underline">
+          {contactEmail}
+        </a>
+        . We aim to respond within 30 days.
       </p>
 
       <h2 className="mb-2 mt-6 text-lg font-semibold">Changes</h2>

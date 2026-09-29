@@ -109,10 +109,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       signup and the delivery claim. Two identical requests both apply
       cleanly (last write wins), so this is a style gap, not a correctness
       one — flagged in case a retrying frontend ever races itself.
-- [ ] **`CURRENT_POLICY_VERSION` is a constant in `routes/public.py`.** Every
-      consent row records `2026-09-01`, a policy that has not been written.
-      DPDP wants consent tied to the text the reader actually saw, so this has
-      to move next to the published policy, not live beside the route.
 - [ ] **Turnstile has a real widget now but no real site key to test it
       against.** `TurnstileWidget` renders nothing without
       `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, matching the backend's own "skip
@@ -125,11 +121,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       unless it stops the newsletter. Low priority: there's no monitoring
       system detecting downtime to drive it yet either, so this is a page
       with nothing to trigger it.
-- [ ] **Privacy and terms are drafts with bracketed placeholders**
-      (`[operator name]`, `[date]`, grievance contact), flagged as such on the
-      pages themselves. `CURRENT_POLICY_VERSION` (see above) still names a
-      policy text that doesn't really exist yet; writing the real policy and
-      wiring the two together is one piece of work, not two.
 
 ## 3. Provisional values that will cause harm if forgotten
 
@@ -2088,3 +2079,68 @@ finder (6) is the last one closed — see its own Done entry.)
       `app/db/engine.py`; this closes the "untested" half of the earlier
       entry with real, contradictory-in-one-case evidence instead of an
       unverified assumption.
+- [x] **The privacy and terms pages no longer carry bracketed placeholders,
+      and the consent-record policy version now lives next to the actual
+      published policy instead of beside the signup route.** Asked the
+      owner first, since neither fact could be invented: the operator name
+      to use ("The Morning Mosaic," not a personal name) and the contact
+      address for both the grievance officer and general terms questions
+      (`gurpreetsinghmattu2002@gmail.com`, the same real inbox already
+      configured as `ADMIN_EMAIL`/`SENDER_EMAIL`, rather than a second
+      address to maintain).
+      - New `config/policy.yaml` (`operator_name`, `version`), validated by
+        a new `PolicyConfig` schema and `load_policy()` — same pattern as
+        every other `config/*.yaml`. `routes/public.py`'s signup handler
+        now records `load_policy().version` on each `Consent` row instead
+        of the `CURRENT_POLICY_VERSION` constant that used to sit beside
+        it, disconnected from any actual policy text.
+      - `/api/config` gained `policy_operator_name`, `policy_version`, and
+        `policy_contact_email` — the one place CLAUDE.md already says a
+        client learns what's authoritative. `policy_contact_email` reads
+        `Settings.admin_email` directly rather than duplicating the address
+        into `policy.yaml`: a first version of this change hardcoded the
+        same literal string separately into both frontend page files, which
+        would have silently drifted from `ADMIN_EMAIL` the first time
+        either one changed — caught before committing by checking the
+        change against the project's own single-source-of-truth pattern,
+        not by a test.
+      - `frontend/src/app/privacy` and `.../terms` changed from static
+        Server Components to ones that `await serverGet<SiteConfig>(
+        "/api/config")` (the same direct-to-backend helper the archive
+        pages already used) and render the real operator name, real
+        version, and the real grievance/contact email — replacing every
+        `[operator name]` / `[date]` / `[grievance officer name]` /
+        `[privacy@example.com]` / `[contact@example.com]` placeholder and
+        the "pending legal review" banner. A missing/failed fetch falls
+        back to a real operator name and the same real address (compiled
+        in as a fallback constant) rather than showing a placeholder or a
+        blank page.
+      - Verified live against the actual running dev servers, not just unit
+        tests: restarted the backend, confirmed `/api/config` returns all
+        three real values (`"The Morning Mosaic"`, `"2026-09-29"`,
+        `"gurpreetsinghmattu2002@gmail.com"`), then fetched `/privacy` and
+        `/terms` through the Next.js dev server (which proxies to that
+        backend) and read the real rendered HTML and a real `mailto:` link
+        on both pages — no bracketed text anywhere.
+      - 6 new tests (plus existing `test_config.py`/`test_api.py` assertions
+        extended to check `load_policy()`/`policy_contact_email` instead of
+        the old constant): `test_config.py` (the version is a real value,
+        not the old `"2026-09-01"` placeholder), and new
+        `privacy/page.test.tsx` / `terms/page.test.tsx` (real values
+        including the contact `mailto:` link render; the fetch-failure
+        fallback still shows no placeholder; no bracketed text survives
+        anywhere in the rendered output). Also fixed one latent `mypy`
+        error in `test_langfuse_recorder.py` from the previous entry — a
+        `# type: ignore` comment was on the wrong line and had stopped
+        catching the error it was meant to suppress once the call was
+        reformatted across two lines — found because this change ran full
+        `mypy backend`/`pytest -q` rather than only the files it touched,
+        which the previous entry hadn't done. Full suite: 765 backend
+        tests (`TEST_DATABASE_URL` set), 36 frontend tests, `ruff`,
+        `mypy --strict`, `eslint`, `tsc`, and `next build` all clean.
+      Still open, deliberately out of scope here: the actual policy prose
+      has not had legal review (CLAUDE.md never claimed it would), and
+      `docs/architecture.md`/the incident runbook were not audited for
+      other stale references — this closes the specific "bracketed
+      placeholder" and "version lives beside the route" gaps the backlog
+      named, not a general legal audit.

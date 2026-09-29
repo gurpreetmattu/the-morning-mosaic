@@ -102,9 +102,10 @@ def test_a_successful_call_becomes_one_ended_generation() -> None:
 
 def test_a_failed_call_is_recorded_at_error_level_with_the_message() -> None:
     client = FakeLangfuseClient()
-    LangfuseCallRecorder(client).record(
-        **call_kwargs(status="error", error="timeout", prompt_tokens=None, completion_tokens=None)  # type: ignore[arg-type]
+    kwargs = call_kwargs(
+        status="error", error="timeout", prompt_tokens=None, completion_tokens=None
     )
+    LangfuseCallRecorder(client).record(**kwargs)  # type: ignore[arg-type]
 
     observation = client.observations[0]
     assert observation.fields["level"] == "ERROR"

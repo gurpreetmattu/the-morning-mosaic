@@ -24,6 +24,7 @@ from app.api.deps import db_session
 from app.api.deps import settings as settings_dep
 from app.api.routes import public
 from app.api.routes.archive import is_public
+from app.config.loader import load_policy
 from app.config.settings import Settings
 from app.db.persist import persist_genre
 from app.db.publish import publish_revision
@@ -314,7 +315,7 @@ class TestSignup:
         assert genres == {"india", "business"}
         assert keywords == {"cricket"}  # the CHECK constraint requires lower case
         assert consent is not None
-        assert consent.policy_version == public.CURRENT_POLICY_VERSION
+        assert consent.policy_version == load_policy().version
 
     def test_a_confirmation_email_is_sent(self, client: TestClient) -> None:
         client.post("/api/signup", json=signup_payload())
@@ -665,6 +666,11 @@ class TestConfig:
         assert "06:00:00" in body["delivery_slots"]
         assert body["frequencies"] == ["daily", "weekdays"]
         assert body["edition_preferences"] == ["india", "global", "mixed"]
+        assert body["policy_operator_name"] == load_policy().operator_name
+        assert body["policy_version"] == load_policy().version
+        # The same real inbox as ADMIN_EMAIL, not a second address to keep
+        # in sync — see config.py's read_config.
+        assert body["policy_contact_email"] == "admin@example.com"
 
     def test_an_inactive_city_is_not_listed(self, client: TestClient, session: Session) -> None:
         from app.models.users import City
