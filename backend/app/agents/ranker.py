@@ -32,7 +32,7 @@ from app.agents.schemas import (
 from app.clock import now_utc
 from app.config.loader import load_genres, load_sources
 from app.config.schemas import GenreKey, GenresConfig, SourcesConfig
-from app.llm.client import LlmClient, Message
+from app.llm.client import LlmClient, Message, strip_json_fence
 from app.llm.errors import LlmError
 from app.llm.guard import redact_identifiers
 from app.llm.prompts import ranker_v1
@@ -113,17 +113,14 @@ class Ranker:
         rebuilt = self._build_pool(widened, reference)
         return rebuilt.model_copy(update={"requested_more_coverage": True})
 
-    def _worth_asking_for_more_coverage(
-        self, collected: CollectionResult, pool: StoryPool
-    ) -> bool:
+    def _worth_asking_for_more_coverage(self, collected: CollectionResult, pool: StoryPool) -> bool:
         if self._collector is None:
             return False
         genre = self._genres.by_key()[collected.genre]
         if genre.corroboration != "strict":
             return False
         return any(
-            dropped.reason is PoolDropReason.INSUFFICIENT_CORROBORATION
-            for dropped in pool.dropped
+            dropped.reason is PoolDropReason.INSUFFICIENT_CORROBORATION for dropped in pool.dropped
         )
 
     def _build_pool(self, collected: CollectionResult, reference: datetime) -> StoryPool:
@@ -258,7 +255,7 @@ class Ranker:
             prompt_version=ranker_v1.VERSION,
         )
 
-        payload = json.loads(_strip_fence(result.text))
+        payload = json.loads(strip_json_fence(result.text))
         proposed: list[list[str]] = []
         labels: dict[int, str] = {}
         for cluster in payload["clusters"]:
@@ -266,12 +263,3 @@ class Ranker:
             labels[len(proposed)] = str(cluster.get("event", ""))[:120]
             proposed.append(ids)
         return proposed, labels
-
-
-def _strip_fence(text: str) -> str:
-    """Models wrap JSON in ``` fences often enough to be worth handling."""
-    stripped = text.strip()
-    if not stripped.startswith("```"):
-        return stripped
-    body = stripped.strip("`")
-    return body.split("\n", 1)[1] if "\n" in body else body

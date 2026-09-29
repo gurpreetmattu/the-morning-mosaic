@@ -26,7 +26,7 @@ from app.agents.schemas import (
     PassageRef,
     WrittenStory,
 )
-from app.llm.client import LlmClient, Message
+from app.llm.client import LlmClient, Message, strip_json_fence
 from app.llm.errors import LlmError
 from app.llm.guard import redact_identifiers
 from app.llm.prompts import fact_checker_v1
@@ -122,7 +122,13 @@ class FactChecker:
                 json_object=True,
                 prompt_version=fact_checker_v1.VERSION,
             )
-            payload = json.loads(_strip_fence(result.text))
+            # LlmClient itself already retried a malformed (unparseable)
+            # response before returning it (see strip_json_fence's docstring
+            # in app/llm/client.py) — what's left to catch here is either a
+            # real LlmError (every route/attempt exhausted) or a
+            # syntactically valid but wrongly-shaped payload (no "claims"
+            # key, wrong types), which is not something a retry would fix.
+            payload = json.loads(strip_json_fence(result.text))
             claims = payload["claims"]
         except (LlmError, ValueError, KeyError, TypeError) as exc:
             # The checker is the safety net. If it cannot run, nothing is
@@ -186,11 +192,3 @@ def _feedback(findings: list[CheckFinding]) -> str:
         if finding.failed
     ]
     return "\n".join(lines)
-
-
-def _strip_fence(text: str) -> str:
-    stripped = text.strip()
-    if not stripped.startswith("```"):
-        return stripped
-    body = stripped.strip("`")
-    return body.split("\n", 1)[1] if "\n" in body else body

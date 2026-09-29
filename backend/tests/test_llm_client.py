@@ -15,7 +15,7 @@ import respx
 
 from app.config.schemas import UNSET_MODEL, ModelsConfig
 from app.config.settings import Settings
-from app.llm.client import LlmClient, Message
+from app.llm.client import LlmClient, Message, strip_json_fence
 from app.llm.errors import (
     LlmConfigurationError,
     LlmUnavailableError,
@@ -160,6 +160,69 @@ def test_json_object_mode_is_requested_when_asked() -> None:
 
     body = json.loads(route.calls[0].request.content)
     assert body["response_format"] == {"type": "json_object"}
+
+
+# ---------------------------------------------------- malformed JSON content
+
+
+@respx.mock
+def test_a_malformed_json_response_is_retried_and_can_recover() -> None:
+    """Measured live against a real pinned model (docs/BACKLOG.md): a 200 OK
+    with unparseable content happens often enough under json_object mode to
+    noticeably hurt every agent that requests structured output. This is a
+    different failure from a transport/HTTP error, so it gets its own check
+    rather than silently passing malformed content on to every caller."""
+    respx.post(f"{PRIMARY}/chat/completions").mock(
+        side_effect=[
+            httpx.Response(200, json=completion("not valid json at all")),
+            httpx.Response(200, json=completion('{"claims": []}')),
+        ]
+    )
+    result = client().complete("ranker", PROMPT, json_object=True)
+
+    assert result.text == '{"claims": []}'
+    assert result.attempts == 2
+
+
+@respx.mock
+def test_persistently_malformed_json_responses_exhaust_attempts_and_fail() -> None:
+    respx.post(f"{PRIMARY}/chat/completions").mock(
+        return_value=httpx.Response(200, json=completion("still not json"))
+    )
+    with pytest.raises(LlmUnavailableError):
+        client().complete("ranker", PROMPT, json_object=True)
+
+
+@respx.mock
+def test_malformed_content_is_not_checked_when_json_object_is_not_requested() -> None:
+    """The validation only applies when the caller actually asked for JSON —
+    an ordinary prose response is never expected to parse as one."""
+    respx.post(f"{PRIMARY}/chat/completions").mock(
+        return_value=httpx.Response(200, json=completion("this is not json, and that's fine"))
+    )
+    result = client().complete("ranker", PROMPT)
+
+    assert result.text == "this is not json, and that's fine"
+    assert result.attempts == 1
+
+
+def test_strip_json_fence_handles_a_fenced_block_with_a_language_tag_and_newline() -> None:
+    assert strip_json_fence('```json\n{"a": 1}\n```') == '{"a": 1}'
+
+
+def test_strip_json_fence_handles_a_fenced_block_with_no_language_tag() -> None:
+    assert strip_json_fence('```\n{"a": 1}\n```') == '{"a": 1}'
+
+
+def test_strip_json_fence_handles_a_single_line_fence_with_a_language_tag() -> None:
+    """The case the four separate agent-local copies of this used to miss:
+    no newline after the language tag, so the word "json" itself leaked
+    into what was handed to json.loads."""
+    assert strip_json_fence('```json{"a": 1}```') == '{"a": 1}'
+
+
+def test_strip_json_fence_leaves_unfenced_text_alone() -> None:
+    assert strip_json_fence('{"a": 1}') == '{"a": 1}'
 
 
 # -------------------------------------------------------------------- routing

@@ -373,6 +373,21 @@ def test_an_unavailable_checker_fails_everything_rather_than_passing_it() -> Non
 
 
 @respx.mock
+def test_a_malformed_response_also_fails_everything_closed() -> None:
+    """A 200 OK with unparseable content — measured live (docs/BACKLOG.md)
+    to happen often enough with the pinned Fact-checker model to noticeably
+    hurt groundedness. LlmClient itself now retries this (see
+    test_llm_client.py's malformed-JSON tests); this only confirms that once
+    it genuinely exhausts its attempts, FactChecker fails closed exactly
+    like any other LlmError, rather than mistaking it for a real verdict."""
+    respx.post(f"{PRIMARY}/chat/completions").mock(return_value=reply("not valid json at all"))
+    result = FactChecker(llm=client()).check(story(), passages())
+
+    assert result.story is None
+    assert all(f.verdict is ClaimVerdict.UNSUPPORTED for f in result.failures())
+
+
+@respx.mock
 def test_a_verdict_about_an_unknown_element_is_ignored() -> None:
     respx.post(f"{PRIMARY}/chat/completions").mock(
         return_value=reply(

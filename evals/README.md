@@ -73,8 +73,32 @@ real mix of causes, not one bug:
   but a real, non-trivial "quiet news day" rate under today's pinned models.
 
 This is exactly the kind of gap CLAUDE.md's eval requirement exists to
-surface before trusting a model choice. Nothing was changed here — deciding
-whether to adjust the Fact-checker's paraphrase tolerance, add a retry
-specifically on a JSON-decode failure, or pin a different model is a real
-decision with its own trade-offs, left to the owner rather than guessed at
-in the same pass that only found the gap.
+surface before trusting a model choice.
+
+## Follow-up: the malformed-JSON retry (2026-09-29, same day)
+
+Implemented the first of the three options above — `LlmClient` itself now
+retries a malformed response under `json_object=True` (see
+`docs/BACKLOG.md`'s Done entry for the full design: this moved from a
+Fact-checker-only fix to the client layer once a diagnostic showed the
+*Writer*, on a completely different pinned model, has the identical failure
+shape). Re-measured live: **15 more runs, 10 passing (67%) versus 1 of 8
+(12.5%) before** — a real improvement. But 2 of those 15 scored
+catastrophically (0.00, 0.18), and chasing down why surfaced something more
+important than the eval result itself: repeated live testing had quietly
+burned through Groq's real daily token quota (confirmed via the raw
+`LlmHttpError` — `openai/gpt-oss-20b` at 199,714/200,000 TPD), which is also
+the Fact-checker's `availability_fallback_model` for when Cloudflare has a
+bad moment. Testing stopped there rather than continuing to retry into an
+exhausted provider and produce more noise.
+
+So: the fix is real and correctly implemented (unit-tested at the client
+layer, `test_llm_client.py`), the pass-rate improvement is real, and the two
+remaining bad runs are **unattributed** — genuine remaining quality issues,
+quota-exhaustion artifacts from the same investigation, or both. Re-run
+`uv run python -m evals.run` a further several times once quota resets to
+find out, rather than trust either explanation without checking. The
+paraphrase-strictness false positives from the first measurement are
+untouched by this fix and still real. Deciding whether to also adjust the
+Fact-checker's paraphrase tolerance or pin a different model remains a real
+decision with its own trade-offs, left to the owner.

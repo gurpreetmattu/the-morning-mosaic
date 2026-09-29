@@ -19,6 +19,7 @@ would leave the routing rules above untested.
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
@@ -45,6 +46,24 @@ RETRYABLE_STATUS = frozenset({408, 409, 425, 429, 500, 502, 503, 504})
 
 BACKOFF_BASE_SECONDS = 0.5
 BACKOFF_MAX_SECONDS = 8.0
+
+
+def strip_json_fence(text: str) -> str:
+    """Some models wrap a requested JSON object in a ```json ... ``` fence
+    despite being asked for raw JSON. The one place this is stripped, so
+    every `json_object=True` caller (this client's own validation below,
+    plus every agent that requests structured output) agrees on what "the
+    JSON" means. Handles the language tag with or without a following
+    newline (a single-line ```json{...}``` fence previously slipped the
+    literal word "json" into the four agent-local copies of this that
+    only stripped up to the first newline)."""
+    stripped = text.strip()
+    if not stripped.startswith("```"):
+        return stripped
+    body = stripped.strip("`").strip()
+    if body[:4].lower() == "json":
+        body = body[4:]
+    return body.strip()
 
 
 @dataclass(frozen=True)
@@ -341,6 +360,19 @@ class LlmClient:
         content = choices[0].get("message", {}).get("content")
         if not content or not content.strip():
             raise EmptyCompletionError(f"{route.model} returned empty content")
+
+        if json_object:
+            # A 200 OK with unparseable content is a real, measured failure
+            # mode on free/budget-tier models under json_object mode (see
+            # docs/BACKLOG.md) — worth exactly the same retry as any other
+            # transient failure, not a silent pass-through to every caller
+            # that requested structured output.
+            try:
+                json.loads(strip_json_fence(content))
+            except ValueError as exc:
+                raise LlmProtocolError(
+                    f"{route.model}: json_object requested but response was not valid JSON"
+                ) from exc
 
         usage = data.get("usage") or {}
         return _Completion(

@@ -25,7 +25,7 @@ from app.agents.schemas import (
 from app.agents.writing import build_passages, validate_draft
 from app.config.loader import load_genres
 from app.config.schemas import GenreKey, GenresConfig
-from app.llm.client import LlmClient, Message
+from app.llm.client import LlmClient, Message, strip_json_fence
 from app.llm.errors import LlmError
 from app.llm.guard import redact_identifiers
 from app.llm.prompts import writer_v1
@@ -105,12 +105,7 @@ class Writer:
             json_object=True,
             prompt_version=writer_v1.VERSION,
         )
-        return json.loads(_strip_fence(result.text)), result.model
-
-
-def _strip_fence(text: str) -> str:
-    stripped = text.strip()
-    if not stripped.startswith("```"):
-        return stripped
-    body = stripped.strip("`")
-    return body.split("\n", 1)[1] if "\n" in body else body
+        # LlmClient itself already retried a malformed (unparseable)
+        # response before returning it — see strip_json_fence's docstring in
+        # app/llm/client.py.
+        return json.loads(strip_json_fence(result.text)), result.model

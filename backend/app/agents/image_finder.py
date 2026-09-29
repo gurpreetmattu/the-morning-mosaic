@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from urllib.parse import quote as urlquote
 
 from app.agents.schemas import WrittenStory
-from app.llm.client import LlmClient, Message
+from app.llm.client import LlmClient, Message, strip_json_fence
 from app.llm.errors import LlmError
 from app.llm.prompts import image_finder_v1
 from app.models.enums import ImageProvider
@@ -252,14 +252,6 @@ def _credit_for(candidate: ImageCandidate) -> str:
     return f"Photo by {author} on Pexels"
 
 
-def _strip_fence(text: str) -> str:
-    """Models wrap JSON in ``` fences often enough to be worth handling."""
-    stripped = text.strip()
-    if not stripped.startswith("```"):
-        return stripped
-    return stripped.strip("`").removeprefix("json").strip()
-
-
 # ------------------------------------------------------------- entry point
 
 
@@ -306,7 +298,7 @@ def find_image(
             json_object=True,
             prompt_version=image_finder_v1.VERSION,
         )
-        payload = json.loads(_strip_fence(result.text))
+        payload = json.loads(strip_json_fence(result.text))
         index = payload.get("index")
     except (LlmError, ValueError, KeyError, TypeError):
         logger.warning("image finder relevance check failed", exc_info=True)

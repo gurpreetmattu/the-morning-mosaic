@@ -131,20 +131,36 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       `EDITION_LAUNCH_DATE_OVERRIDE` entry in Done.
 - [ ] **21 lunar festival dates missing** (Diwali, Holi, Eid, …), deliberately
       left blank in `awaiting_dates` rather than guessed.
-- [ ] **The pinned Fact-checker model has a measured, real groundedness gap.**
-      No longer an unvalidated hypothesis — see the eval-run Done entry below
-      for the full measurement. `tag_accuracy` and `clustering` score 1.00
-      for real; `groundedness` scores 0.55–0.90 across repeated live runs
-      (threshold 0.90), and even the real `write_and_verify` retry path
-      (which this isn't a raw score of) correctly drops a non-trivial share
-      of stories rather than publish them under-verified. Something —
-      Fact-checker prompt tolerance, a targeted retry on a JSON-decode
-      failure specifically, or a different pinned model — needs to change;
-      which one is a real decision, not made here.
+- [ ] **The groundedness gap is partly fixed (malformed-JSON retry, see its
+      own Done entry) but not closed.** Post-fix live re-measurement (15
+      runs) shows the pass rate improved substantially — 10/15 (67%) at or
+      above the 0.90 threshold, versus 1/8 (12.5%) before — but two runs
+      still scored catastrophically (0.00, 0.18), and re-testing further was
+      cut short by hitting a real Groq daily token-quota limit (see the
+      free-tier-fragility entry below, now personally encountered, not just
+      documented) before those two could be root-caused. They may be
+      genuine remaining Writer/Fact-checker quality issues, or they may
+      themselves be quota-exhaustion artifacts from the same investigation
+      that found them — undetermined. What's confirmed, not guessed: the
+      malformed-JSON fix is real and correctly implemented (unit-tested at
+      the client layer), the remaining paraphrase-strictness false positives
+      documented in the eval-run entry are real and unaffected by this fix,
+      and full re-verification needs to wait for quota to reset rather than
+      retry into an already-exhausted provider.
 - [ ] **Free-tier fragility.** During verification OVH rate-limited into a
       circuit-open state, Pollinations began returning 402, and four ids in the
       gateway's own catalogue 404'd or 401'd. A vanished pinned model stops the
       build rather than degrading it — correct, but it will happen.
+      **Personally hit, not just anticipated, on 2026-09-29:** repeated live
+      eval runs (see the groundedness Done entries) exhausted Groq's real
+      daily token quota (`openai/gpt-oss-20b`: 199,714/200,000 TPD used) —
+      confirmed via the raw `LlmHttpError` text, not inferred. This is
+      exactly the Fact-checker's own `availability_fallback_model`, so once
+      Cloudflare *also* has a bad moment, verification has nowhere left to
+      go until the quota resets. One real, load-bearing implication: a day
+      of heavy manual eval/diagnostic runs against live models can burn
+      the same quota real subscriber traffic needs — worth keeping in mind
+      before running many live evals back-to-back close to a real send.
 
 ## 4. Not built yet
 
@@ -2207,3 +2223,42 @@ finder (6) is the last one closed — see its own Done entry.)
       found the gap. Recorded as a still-open item above rather than closed,
       since the underlying groundedness shortfall is real and unresolved —
       only "run the eval and find out" is done.
+- [x] **`LlmClient` itself now retries a malformed (unparseable) response
+      when `json_object=True`**, instead of every JSON-consuming agent
+      discovering the problem separately after the fact. Chosen over the
+      first draft of this fix (a retry loop added only inside
+      `FactChecker._model_claims`): a direct diagnostic showed the *Writer*
+      hits the identical failure shape (a 200 OK with content that doesn't
+      parse), on a completely different pinned model
+      (`gemini-flash-lite-latest` vs the Fact-checker's Cloudflare
+      `llama-3.3-70b`) — so this isn't one model's quirk, it's a property of
+      `json_object` mode on budget-tier models generally, and belongs in the
+      one place every such call already goes through.
+      `_call()` now parses `content` when `json_object` was requested and
+      raises `LlmProtocolError` on failure — already a member of
+      `_is_retryable`'s set, so the existing per-route retry/backoff loop
+      (`_try_routes`) handles it with no new retry logic needed at the
+      client layer either.
+      Also fixed, found while doing this: **four separate, near-identical
+      `_strip_fence`/`strip_json_fence` helpers** (Writer, Fact-checker,
+      Ranker, Image finder) had silently drifted — three stripped only up to
+      the first newline after a ` ```json ` fence, missing a single-line
+      `` ```json{...}``` `` fence entirely (leaving the literal word "json"
+      prepended to what got handed to `json.loads`); Image finder's own copy
+      had already patched exactly that case independently. Unified into one
+      `strip_json_fence()` in `app/llm/client.py`, built to handle every
+      shape all four originals covered between them, and every agent now
+      imports it instead of keeping its own copy.
+      Reverted the first draft's `FactChecker`-level retry loop once the fix
+      moved to the right layer — the two tests it added there were replaced
+      with one confirming `FactChecker` still fails closed once `LlmClient`
+      itself genuinely exhausts its attempts, and the real retry-and-recover
+      behaviour is tested once, correctly, in `test_llm_client.py` (7 new
+      tests there: recovery, exhaustion, that non-JSON calls are never
+      checked against this rule at all, and four `strip_json_fence` shape
+      cases including the one three of the four originals missed).
+      Verified live, not just unit-tested: post-fix, 15 live `evals.run`
+      groundedness runs passed 10 times (67%) versus 1 of 8 (12.5%) before —
+      see the still-open entry above for the two runs that didn't and why
+      that comparison isn't the end of the story. Full suite now **773
+      tests**, `mypy --strict` and `ruff` clean.
