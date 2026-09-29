@@ -45,7 +45,7 @@ from app.models.enums import (
     StoryStatus,
     SubscriptionStatus,
 )
-from app.models.operations import NoticeBatch, PipelineRun
+from app.models.operations import NoticeBatch, PipelineRun, SiteStatus
 from app.models.users import User
 from app.render.sections import RenderedSection
 from app.sources.schemas import CollectedArticle, Passage
@@ -797,3 +797,65 @@ class TestCorrections:
         assert [row["description"] for row in body] == ["second", "first"]
         assert body[0]["headline"] == "Corridor cleared"
         assert body[0]["announced_on"] is None
+
+
+class TestStatus:
+    def test_with_nothing_ever_set_the_site_is_reported_operational(
+        self, client: TestClient
+    ) -> None:
+        sign_in_admin(client)
+
+        response = client.get("/admin/api/status")
+
+        assert response.status_code == 200
+        assert response.json()["degraded"] is False
+        assert response.json()["message"] is None
+
+    def test_setting_a_degraded_status_is_recorded(
+        self, client: TestClient, session: Session
+    ) -> None:
+        sign_in_admin(client)
+
+        response = client.post(
+            "/admin/api/status",
+            json={"degraded": True, "message": "Emails are delayed; we're on it."},
+            headers=admin_csrf_headers(client),
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["degraded"] is True
+        assert body["message"] == "Emails are delayed; we're on it."
+
+        row = session.get(SiteStatus, 1)
+        assert row is not None
+        assert row.degraded is True
+
+    def test_clearing_the_status_afterwards(self, client: TestClient, session: Session) -> None:
+        sign_in_admin(client)
+        client.post(
+            "/admin/api/status",
+            json={"degraded": True, "message": "Down for maintenance."},
+            headers=admin_csrf_headers(client),
+        )
+
+        response = client.post(
+            "/admin/api/status",
+            json={"degraded": False, "message": None},
+            headers=admin_csrf_headers(client),
+        )
+
+        assert response.status_code == 200
+        assert response.json()["degraded"] is False
+        assert response.json()["message"] is None
+
+    def test_setting_status_requires_admin_auth(self, client: TestClient) -> None:
+        response = client.post("/admin/api/status", json={"degraded": True, "message": "x"})
+        assert response.status_code == 401
+
+    def test_setting_status_requires_csrf(self, client: TestClient) -> None:
+        sign_in_admin(client)
+
+        response = client.post("/admin/api/status", json={"degraded": True, "message": "x"})
+
+        assert response.status_code == 403

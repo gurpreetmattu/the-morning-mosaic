@@ -162,7 +162,7 @@ the whole story, an optional element's failure drops just that element.
 
 | Path | Served by | Notes |
 |---|---|---|
-| `/`, `/signup`, `/archive`, `/preferences`, `/admin` | `web` | React pages. |
+| `/`, `/signup`, `/archive`, `/preferences`, `/admin`, `/status` | `web` | React pages. |
 | `/api/*`, `/admin/api/*` | `api`, via `web`'s proxy | JSON. |
 | `/opt-in/*`, `/unsubscribe/*`, `/feedback/*`, `/pdf/*`, `/login/*`, `/admin/login/*` | `api`, via `web`'s proxy | Emailed links; GET renders, POST acts (link-scanner safety) — RFC 8058 one-click unsubscribe is the one POST-only exception. |
 
@@ -200,7 +200,9 @@ adding the same machinery wasn't worth it.
 - **Operations** — `pipeline_runs` (every job execution, its status and a
   JSON detail blob), `llm_calls` (token usage, latency, failures — never
   personal data, since none is ever sent to a model), `notice_batches`
-  (held / approved / suppressed / expired / sent).
+  (held / approved / suppressed / expired / sent), `site_status` (a
+  singleton row; `GET /api/status` reads it, an admin flips it manually —
+  no automated detection exists yet).
 - Feedback and PDF links use signed stateless tokens instead of stored
   rows, by design — see `app/email/tokens.py`'s module docstring.
 

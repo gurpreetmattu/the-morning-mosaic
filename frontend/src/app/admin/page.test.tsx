@@ -47,6 +47,7 @@ function dashboardRoutes(overrides: Partial<Record<string, unknown>> = {}) {
     "/admin/api/notices": { body: NOTICES },
     "/admin/api/withdrawals": { body: WITHDRAWALS },
     "/admin/api/corrections": { body: CORRECTIONS },
+    "/admin/api/status": { body: { degraded: false, message: null, updated_at: null } },
     ...overrides,
   };
 }
@@ -155,6 +156,61 @@ describe("AdminPage, signed in", () => {
     expect(JSON.parse(String(correctCall![1].body))).toEqual({
       description: "The figure was wrong.",
     });
+  });
+
+  it("submits a degraded status with its message", async () => {
+    const { fetchMock } = mockFetch(dashboardRoutes());
+    render(<AdminPage />);
+    const user = userEvent.setup();
+
+    await screen.findByText("Admin dashboard");
+    await user.click(screen.getByLabelText("The site is currently degraded or down"));
+    await user.type(
+      screen.getByLabelText("Message shown to visitors"),
+      "Emails are delayed; we're on it.",
+    );
+    fetchMock.mockImplementationOnce(async () => ({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          degraded: true,
+          message: "Emails are delayed; we're on it.",
+          updated_at: "2026-10-05T06:00:00Z",
+        }),
+    }));
+    await user.click(screen.getByRole("button", { name: "Update status" }));
+
+    const statusCall = fetchMock.mock.calls.find(
+      ([path, init]) => String(path).includes("/admin/api/status") && init?.method === "POST",
+    );
+    expect(statusCall).toBeDefined();
+    expect(JSON.parse(String(statusCall![1].body))).toEqual({
+      degraded: true,
+      message: "Emails are delayed; we're on it.",
+    });
+    expect(await screen.findByText(/Currently:/)).toBeInTheDocument();
+    expect(screen.getByText("degraded")).toBeInTheDocument();
+  });
+
+  it("shows the current status loaded from the dashboard", async () => {
+    mockFetch(
+      dashboardRoutes({
+        "/admin/api/status": {
+          body: {
+            degraded: true,
+            message: "Down for maintenance.",
+            updated_at: "2026-10-05T06:00:00Z",
+          },
+        },
+      }),
+    );
+    render(<AdminPage />);
+
+    expect(await screen.findByText("degraded")).toBeInTheDocument();
+    expect(
+      (screen.getByLabelText("Message shown to visitors") as HTMLInputElement).value,
+    ).toBe("Down for maintenance.");
   });
 
   it("shows no withdraw/suppress controls once a notice is no longer held", async () => {

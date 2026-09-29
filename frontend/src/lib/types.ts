@@ -155,3 +155,9 @@ export interface CorrectionSummary {
   corrected_at: string;
   announced_on: string | null;
 }
+
+export interface SiteStatus {
+  degraded: boolean;
+  message: string | null;
+  updated_at: string | null;
+}

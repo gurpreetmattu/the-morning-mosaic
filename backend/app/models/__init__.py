@@ -30,7 +30,7 @@ from app.models.editions import (
     EditionSection,
     Feedback,
 )
-from app.models.operations import LlmCall, NoticeBatch, PipelineRun, RateLimitHit
+from app.models.operations import LlmCall, NoticeBatch, PipelineRun, RateLimitHit, SiteStatus
 from app.models.users import (
     City,
     Consent,
@@ -69,6 +69,7 @@ __all__ = [
     "PipelineRun",
     "RateLimitHit",
     "SentenceCitation",
+    "SiteStatus",
     "Source",
     "Story",
     "StoryCluster",

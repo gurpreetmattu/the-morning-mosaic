@@ -6,6 +6,7 @@ import type {
   CorrectionSummary,
   NoticeBatchSummary,
   RunSummary,
+  SiteStatus,
   StatusMessage,
   StuckDelivery,
   WithdrawalSummary,
@@ -91,22 +92,29 @@ function Dashboard() {
   const [reason, setReason] = useState("");
   const [correctionStoryId, setCorrectionStoryId] = useState("");
   const [description, setDescription] = useState("");
+  const [siteStatus, setSiteStatus] = useState<SiteStatus | null>(null);
+  const [statusDegraded, setStatusDegraded] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
   async function refresh() {
     try {
-      const [runsData, stuckData, noticesData, withdrawalsData, correctionsData] =
+      const [runsData, stuckData, noticesData, withdrawalsData, correctionsData, statusData] =
         await Promise.all([
           apiGet<RunSummary[]>("/admin/api/runs"),
           apiGet<StuckDelivery[]>("/admin/api/deliveries/stuck"),
           apiGet<NoticeBatchSummary[]>("/admin/api/notices"),
           apiGet<WithdrawalSummary[]>("/admin/api/withdrawals"),
           apiGet<CorrectionSummary[]>("/admin/api/corrections"),
+          apiGet<SiteStatus>("/admin/api/status"),
         ]);
       setRuns(runsData);
       setStuck(stuckData);
       setNotices(noticesData);
       setWithdrawals(withdrawalsData);
       setCorrections(correctionsData);
+      setSiteStatus(statusData);
+      setStatusDegraded(statusData.degraded);
+      setStatusMessage(statusData.message ?? "");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load the dashboard.");
     }
@@ -166,6 +174,24 @@ function Dashboard() {
     }
   }
 
+  async function saveStatus(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await adminPost<SiteStatus>("/admin/api/status", {
+        degraded: statusDegraded,
+        message: statusDegraded && statusMessage.trim() ? statusMessage.trim() : null,
+      });
+      setSiteStatus(updated);
+      setStatusMessage(updated.message ?? "");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Updating the status failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function signOut() {
     await adminPost("/admin/api/logout").catch(() => undefined);
     window.location.reload();
@@ -181,6 +207,49 @@ function Dashboard() {
       </div>
 
       {error && <Notice kind="error">{error}</Notice>}
+
+      <section className="mb-10">
+        <h2 className="mb-3 text-lg font-semibold">Site status</h2>
+        <p className="mb-3 text-sm text-muted">
+          What <code>/status</code> shows the public. No automated monitoring drives this yet —
+          flip it manually during a real incident, and clear it once it&rsquo;s resolved.
+        </p>
+        {siteStatus && (
+          <p className="mb-3 text-sm">
+            Currently:{" "}
+            {siteStatus.degraded ? (
+              <span className="font-semibold text-red-700">degraded</span>
+            ) : (
+              <span className="font-semibold text-green-700">operational</span>
+            )}
+            {siteStatus.updated_at &&
+              ` (since ${new Date(siteStatus.updated_at).toLocaleString()})`}
+          </p>
+        )}
+        <form onSubmit={saveStatus} className="max-w-md">
+          <label className="mb-3 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={statusDegraded}
+              onChange={(e) => setStatusDegraded(e.target.checked)}
+            />
+            The site is currently degraded or down
+          </label>
+          {statusDegraded && (
+            <Field htmlFor="status-message" label="Message shown to visitors">
+              <input
+                id="status-message"
+                value={statusMessage}
+                onChange={(e) => setStatusMessage(e.target.value)}
+                className={textInputClasses("mt-1")}
+              />
+            </Field>
+          )}
+          <Button type="submit" disabled={busy}>
+            Update status
+          </Button>
+        </form>
+      </section>
 
       <section className="mb-10">
         <h2 className="mb-3 text-lg font-semibold">Recent job runs</h2>

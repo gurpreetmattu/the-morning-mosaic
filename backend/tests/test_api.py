@@ -683,3 +683,36 @@ class TestConfig:
         response = client.get("/api/config")
 
         assert "mumbai" not in {city["id"] for city in response.json()["cities"]}
+
+
+class TestStatus:
+    def test_with_no_incident_ever_recorded_the_site_reports_operational(
+        self, client: TestClient
+    ) -> None:
+        response = client.get("/api/status")
+
+        assert response.status_code == 200
+        assert response.json() == {"degraded": False, "message": None, "updated_at": None}
+
+    def test_a_recorded_incident_is_visible_publicly_with_no_auth(
+        self, client: TestClient, session: Session
+    ) -> None:
+        from app.models.operations import SiteStatus
+
+        session.add(
+            SiteStatus(
+                id=1,
+                degraded=True,
+                message="Emails are delayed; we're on it.",
+                updated_at=datetime.now(UTC),
+            )
+        )
+        session.flush()
+
+        response = client.get("/api/status")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["degraded"] is True
+        assert body["message"] == "Emails are delayed; we're on it."
+        assert body["updated_at"] is not None

@@ -99,11 +99,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       actual challenge flow has never run.
 - [x] ~~The frontend has no component or interaction tests.~~ See the
       component-tests Done entry.
-- [ ] **No website-downtime status message.** CLAUDE.md wants site
-      downtime shown as a status message on the site rather than emailed,
-      unless it stops the newsletter. Low priority: there's no monitoring
-      system detecting downtime to drive it yet either, so this is a page
-      with nothing to trigger it.
 
 ## 3. Provisional values that will cause harm if forgotten
 
@@ -2508,3 +2503,34 @@ finder (6) is the last one closed — see its own Done entry.)
       dropped-response retry happens in seconds, never days), matching the
       `rate_limit_hits`/`user_sessions` precedent. 5 new tests; full suite
       now **787 tests**, `mypy --strict` and `ruff` clean.
+- [x] **A real website-downtime status page exists.** The fourth and last of
+      the four accepted trade-offs the owner asked to actually fix. CLAUDE.md:
+      "Website downtime is shown as a status message on the site, not
+      emailed, unless it stops the newsletter." Scoped exactly to what's
+      actually buildable without a GCP project: manual, not automated — an
+      admin flips it during a real incident, the same way many real status
+      pages work — rather than invent a self-monitoring pipeline the
+      "Monitoring covers two conditions, not the four CLAUDE.md lists" item
+      already tracks separately as its own, GCP-dependent gap.
+      New `site_status` table (migration `d1dc560f47a7`, a singleton row —
+      `id=1`, upserted, never appended to, since only the *current* status
+      is ever read), `GET /api/status` (no auth — this must work precisely
+      when something else might be broken), and `POST /admin/api/status`
+      (auth + CSRF, matching every other admin write). A new `/status` page
+      (linked from the site footer alongside Privacy/Terms/Admin) shows
+      "All systems operational" or the real recorded message; a new "Site
+      status" section on the admin dashboard sets or clears it, with the
+      current state shown before the form.
+      Verified live, end to end, not just in tests: restarted the backend
+      against the real Neon database (ran all four of today's new
+      migrations against it for the first time, not just the local test
+      Postgres), set a real degraded status directly, confirmed
+      `GET /api/status` reflected it, confirmed the real running frontend's
+      `/status` page rendered the real message, then restored the
+      operational default. 13 new tests (7 backend, 6 frontend); full
+      backend suite now **794 tests**, full frontend suite **44 tests**,
+      `mypy --strict`, `ruff`, `eslint`, `tsc`, and `next build` all clean.
+      This closes all four of the trade-offs from this batch — session
+      revocation, server-side CSRF, PATCH idempotency, and this — the only
+      remaining open items are external-account blockers (GCP, Turnstile,
+      a git remote) or things that were never trade-offs to begin with.

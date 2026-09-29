@@ -48,6 +48,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/terms" className="hover:text-accent">
                 Terms
               </Link>
+              <Link href="/status" className="hover:text-accent">
+                Status
+              </Link>
               <Link href="/admin" className="hover:text-accent">
                 Admin
               </Link>

@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin_session import ADMIN_CSRF_HEADER
-from app.api.routes import account, admin, archive, pdf, public
+from app.api.routes import account, admin, archive, pdf, public, status
 from app.api.routes import config as config_routes
 from app.api.security import SecurityHeadersMiddleware
 from app.api.session import CSRF_HEADER
@@ -50,6 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(account.router)
     app.include_router(pdf.router)
     app.include_router(admin.router)
+    app.include_router(status.router)
 
     @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict[str, str]:

@@ -114,4 +114,28 @@ class RateLimitHit(Base):
     __table_args__ = (UniqueConstraint("bucket", "key", "window_start"),)
 
 
-__all__ = ["LlmCall", "NoticeBatch", "PipelineRun", "RateLimitHit"]
+class SiteStatus(Base):
+    """The one row `GET /api/status` reads and `POST /admin/api/status`
+    writes (`app/api/routes/status.py`, `app/api/routes/admin.py`).
+
+    CLAUDE.md: "Website downtime is shown as a status message on the site,
+    not emailed, unless it stops the newsletter." There is no automated
+    detection driving this yet — that needs the GCP monitoring this project
+    doesn't have a project for (see docs/BACKLOG.md) — so this is a manual
+    switch an admin flips during a real incident, the same way many real
+    status pages work. Always exactly one row (`id=1`); the route upserts
+    it rather than appending a history, since only the *current* status is
+    ever read.
+    """
+
+    __tablename__ = "site_status"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    degraded: Mapped[bool] = mapped_column(nullable=False, default=False)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[Instant]
+
+    __table_args__ = (CheckConstraint("id = 1", name="site_status_is_a_singleton"),)
+
+
+__all__ = ["LlmCall", "NoticeBatch", "PipelineRun", "RateLimitHit", "SiteStatus"]

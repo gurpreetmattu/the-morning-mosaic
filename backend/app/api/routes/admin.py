@@ -61,7 +61,7 @@ from app.models.enums import (
     RunStatus,
     StoryStatus,
 )
-from app.models.operations import NoticeBatch, PipelineRun
+from app.models.operations import NoticeBatch, PipelineRun, SiteStatus
 from app.render.email import BRAND
 from app.render.sections import RenderedSection, SectionRenderer
 from app.render.selection import load_candidates
@@ -645,6 +645,73 @@ def list_corrections(
         )
         for correction, story in rows
     ]
+
+
+# -------------------------------------------------------------------- status
+
+
+class StatusRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    degraded: bool
+    message: str | None = Field(default=None, max_length=500)
+
+
+class AdminStatusResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    degraded: bool
+    message: str | None
+    updated_at: datetime
+
+
+@router.get("/api/status", response_model=AdminStatusResponse)
+def read_status_admin(
+    admin_email: Annotated[str, Depends(require_admin)],
+    session: Annotated[Session, Depends(db_session)],
+) -> AdminStatusResponse:
+    """The dashboard's own view of the same row `GET /api/status` serves
+    publicly — a real `updated_at` even when nothing has ever been set, so
+    the form has a sensible starting point rather than guessing."""
+    row = session.get(SiteStatus, 1)
+    if row is None:
+        return AdminStatusResponse(degraded=False, message=None, updated_at=now_utc())
+    return AdminStatusResponse(
+        degraded=row.degraded, message=row.message, updated_at=row.updated_at
+    )
+
+
+@router.post("/api/status", response_model=AdminStatusResponse)
+def set_status(
+    payload: StatusRequest,
+    admin_email: Annotated[str, Depends(require_admin)],
+    session: Annotated[Session, Depends(db_session)],
+    _csrf: Annotated[None, Depends(require_admin_csrf)],
+) -> AdminStatusResponse:
+    """CLAUDE.md: "Website downtime is shown as a status message on the
+    site, not emailed, unless it stops the newsletter." Manual on purpose —
+    see `SiteStatus`'s own docstring for why there's no automated trigger
+    yet. `GET /api/status` (no auth) is what the public status page reads."""
+    moment = now_utc()
+    row = session.get(SiteStatus, 1)
+    if row is None:
+        row = SiteStatus(
+            id=1, degraded=payload.degraded, message=payload.message, updated_at=moment
+        )
+        session.add(row)
+    else:
+        row.degraded = payload.degraded
+        row.message = payload.message
+        row.updated_at = moment
+    session.flush()
+
+    logger.info(
+        "site status changed",
+        extra={"degraded": payload.degraded, "admin_email": admin_email},
+    )
+    return AdminStatusResponse(
+        degraded=row.degraded, message=row.message, updated_at=row.updated_at
+    )
 
 
 # ---------------------------------------------------------------- helpers
