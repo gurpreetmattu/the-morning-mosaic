@@ -39,11 +39,20 @@ rather than `async def`, so Starlette runs them in its threadpool.
 
 ## Notes
 
-Two connection settings are not optional against Neon's pooled endpoint:
+Two connection settings, both verified for real against the actual Neon
+endpoint (2026-09-29 — see `docs/BACKLOG.md`), not just reasoned about:
 
-- `pool_pre_ping=True` — Neon closes idle connections, and without this the
-  first query after an idle period raises instead of reconnecting.
-- `prepare_threshold=None` — the pooled endpoint is PgBouncer in transaction
-  mode, which cannot carry server-side prepared statements across
-  transactions. psycopg 3 prepares automatically after a few executions, so it
-  has to be told not to.
+- `pool_pre_ping=True` — **confirmed load-bearing.** An 8-minute real idle
+  wait on a pooled connection, then a query: without this setting,
+  `OperationalError: SSL connection has been closed unexpectedly`; with it,
+  the same idle period recovers transparently. Neon does close idle
+  connections, exactly as this ADR originally assumed.
+- `prepare_threshold=None` — kept, but the original reasoning for it no
+  longer reproduces. The classic failure ("PgBouncer in transaction mode
+  can't carry a server-side prepared statement across a backend swap") was
+  pushed through 60 rounds past psycopg's auto-prepare threshold, with the
+  override on and off, on the real endpoint: zero errors either way. Neon's
+  current PgBouncer already re-prepares statements itself across backend
+  swaps (its own `PGBOUNCER_N`-named passthrough). Left in place as free,
+  harmless insurance against an older or differently-configured pooler, not
+  because the original bug is still reproducible here.
