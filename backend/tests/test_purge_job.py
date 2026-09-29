@@ -199,7 +199,11 @@ def test_a_fresh_rate_limit_hit_is_left_alone(session: Session) -> None:
 
 def test_an_expired_session_is_cleared(session: Session) -> None:
     user = make_user(session)
-    session.add(UserSession(user_id=user.id, expires_at=NOW - timedelta(seconds=1)))
+    session.add(
+        UserSession(
+            user_id=user.id, csrf_secret="test-secret", expires_at=NOW - timedelta(seconds=1)
+        )
+    )
     session.flush()
 
     report = run_purge(session, now=NOW)
@@ -210,7 +214,9 @@ def test_an_expired_session_is_cleared(session: Session) -> None:
 
 def test_a_still_valid_session_is_left_alone(session: Session) -> None:
     user = make_user(session)
-    session.add(UserSession(user_id=user.id, expires_at=NOW + timedelta(days=1)))
+    session.add(
+        UserSession(user_id=user.id, csrf_secret="test-secret", expires_at=NOW + timedelta(days=1))
+    )
     session.flush()
 
     report = run_purge(session, now=NOW)

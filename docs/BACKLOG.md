@@ -92,12 +92,6 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       secret configured the check is skipped outside prod and raises in prod,
       and the verify call itself is covered only by its own error paths. It
       needs one real token round trip once the account exists.
-- [ ] **CSRF uses double-submit cookies, not a server-side store.** A
-      non-HttpOnly cookie and a request header must match; there is no per-
-      session secret, so an attacker who can set cookies on this origin at
-      all (e.g. through a subdomain takeover) could satisfy both sides. Fine
-      for a single-domain deployment with no subdomains in play; worth
-      revisiting if that ever changes.
 - [ ] **Preferences PATCH has no server-side idempotency key**, unlike
       signup and the delivery claim. Two identical requests both apply
       cleanly (last write wins), so this is a style gap, not a correctness
@@ -2463,3 +2457,29 @@ finder (6) is the last one closed — see its own Done entry.)
       the existing `rate_limit_hits` precedent so the table doesn't grow
       forever. `docs/architecture.md` updated. 6 new tests; full suite now
       **781 tests**, `mypy --strict` and `ruff` clean.
+- [x] **CSRF verification now checks a per-session server-side secret, not
+      just that the cookie matches the header.** The second of four accepted
+      trade-offs the owner asked to actually fix. The `user_sessions` table
+      from the session-revocation fix already gave this a natural home: a
+      new `csrf_secret` column (migration `cd675f150551`), generated once at
+      login and stored on the row. The double-submit *shape* is unchanged —
+      a non-HttpOnly cookie still carries the value so script can echo it as
+      a header, since that's still the only way script learns it — but
+      `require_csrf` now resolves the session through the trusted, HttpOnly
+      session cookie and compares the header against `csrf_secret` on that
+      row, never against the client-supplied CSRF cookie itself. The exact
+      gap this closes: previously, an attacker who could set a cookie on
+      this origin at all (a subdomain takeover) could pick any value, echo
+      it as the header themselves, and pass, because both sides were
+      client-supplied and only checked against each other.
+      Verified with the same rigor as the session-revocation fix: a test
+      sets an attacker-chosen value as both the CSRF cookie and header
+      (simulating exactly that attack) and expects 403; confirmed it
+      genuinely returns 200 against the pre-fix code by reverting both the
+      code and the migration and rerunning it. `docs/architecture.md`'s
+      session doc comment already generalised to cover this. 1 new test
+      (plus 2 existing purge-job fixtures updated for the new required
+      column). A background full-suite run was killed by the host's own
+      memory pressure mid-run, not a test failure; re-ran it clean once
+      that passed — full suite now **782 tests**, `mypy --strict` and
+      `ruff` clean.

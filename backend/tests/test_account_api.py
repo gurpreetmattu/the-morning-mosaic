@@ -200,6 +200,28 @@ class TestSession:
 
         assert response.status_code == 403
 
+    def test_a_forged_matching_cookie_and_header_are_not_enough(
+        self, client: TestClient, session: Session
+    ) -> None:
+        """The actual fix: this used to only check that the CSRF cookie and
+        header matched *each other*, so an attacker who could set a cookie
+        on this origin at all (e.g. a subdomain takeover) could pick any
+        value, echo it as the header themselves, and pass. Verification now
+        checks the header against the secret stored on the session row,
+        which nothing but this server ever hands out — an attacker-chosen
+        value that happens to match itself proves nothing anymore."""
+        user = make_user(session)
+        sign_in(client, session, user)
+        client.cookies.set(CSRF_COOKIE, "attacker-chosen-value")
+
+        response = client.patch(
+            "/api/me",
+            json={"name": "New Name"},
+            headers={CSRF_HEADER: "attacker-chosen-value"},
+        )
+
+        assert response.status_code == 403
+
     def test_logging_out_clears_the_session(self, client: TestClient, session: Session) -> None:
         user = make_user(session)
         sign_in(client, session, user)

@@ -240,6 +240,14 @@ class UserSession(Base):
     signature. Logout, and nothing else yet, sets `revoked_at`; a future
     "sign out everywhere" or a security incident could revoke by `user_id`
     without any change here.
+
+    `csrf_secret` is also here, not just in the double-submit cookie: CSRF
+    verification checks the header against *this* stored value, resolved
+    through the HttpOnly session cookie, rather than against the readable
+    CSRF cookie a subdomain-takeover attacker with document.cookie access
+    could set to match whatever header they also send. The readable cookie
+    still exists — script still needs some way to learn the value to echo
+    it back — it just isn't trusted as the source of truth anymore.
     """
 
     __tablename__ = "user_sessions"
@@ -248,6 +256,7 @@ class UserSession(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
+    csrf_secret: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[CreatedAt]
     expires_at: Mapped[Instant]
     revoked_at: Mapped[OptionalInstant]
