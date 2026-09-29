@@ -119,6 +119,13 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       unless it stops the newsletter. Low priority: there's no monitoring
       system detecting downtime to drive it yet either, so this is a page
       with nothing to trigger it.
+- [ ] **A PDF story can split across a page break, separating its body from
+      its own "Source:" line.** Found rendering a real section through
+      WeasyPrint for real (see the WeasyPrint Done entry) — no
+      `break-inside: avoid` on a story's block in `page_html()`'s CSS.
+      Cosmetic, not incorrect (nothing is lost or mislabeled), and narrow
+      enough to fix in `_PAGE_CSS`/the section HTML's own styling whenever
+      someone next touches PDF layout.
 
 ## 3. Provisional values that will cause harm if forgotten
 
@@ -311,8 +318,27 @@ finder (6) is the last one closed — see its own Done entry.)
       image: `HTML(string=...).write_pdf()` produces genuine PDF bytes.
       Fixed one real bug in the process — the runtime user's `$HOME` wasn't
       writable, so fontconfig couldn't cache, which the image now sets to
-      `/tmp`. Unverified: the actual layout of a real section's HTML
-      (tested with a trivial string, not `page_html()`'s real output).
+      `/tmp`.
+      **The "actual layout of a real section" half, closed separately and
+      later (2026-09-29):** built the real image, pulled a real, already-
+      published, already-rendered `EditionSection.html` straight out of the
+      database (gaming, 2026-10-15 — chosen because it's the one with the
+      most extras: a real hotlinked image plus a real "Deals:" callout),
+      and ran it through the actual `page_html()` + `weasyprint_renderer()`
+      path inside the container — not a trivial string. Real, genuinely
+      viewable result: a 3-page A4 PDF with the correct genre theme color
+      on the heading, the real Pexels image successfully fetched over the
+      network and embedded (confirms hotlinked images actually resolve at
+      PDF-render time, not just in an HTML email client), the real game
+      deals with correct names/discounts/store links, and every story's
+      real headline/summary/source link, all correctly styled. One real,
+      minor thing this caught that a trivial-string test never could: a
+      story's body text and its "Source:" line landed on opposite sides of
+      the page 1/2 break — not broken, just an unpolished pagination
+      choice (no `break-inside: avoid` on a story block), left as a
+      genuine small gap rather than fixed on the spot, since it's cosmetic
+      and this task was about verifying the layout renders, not redesigning
+      it.
 - [ ] **`GcsObjectStorage` has never touched real Cloud Storage.** No GCP
       project exists yet (see Blockers). It mirrors `LocalObjectStorage`'s
       interface exactly, so the PDF route needs no change once a bucket
