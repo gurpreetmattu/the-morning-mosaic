@@ -120,21 +120,39 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       testing no longer needs to touch this file to get past it: see the
       `EDITION_LAUNCH_DATE_OVERRIDE` entry in Done.
 - [ ] **The groundedness gap is partly fixed (malformed-JSON retry, see its
-      own Done entry) but not closed.** Post-fix live re-measurement (15
-      runs) shows the pass rate improved substantially — 10/15 (67%) at or
-      above the 0.90 threshold, versus 1/8 (12.5%) before — but two runs
-      still scored catastrophically (0.00, 0.18), and re-testing further was
-      cut short by hitting a real Groq daily token-quota limit (see the
-      free-tier-fragility entry below, now personally encountered, not just
-      documented) before those two could be root-caused. They may be
-      genuine remaining Writer/Fact-checker quality issues, or they may
-      themselves be quota-exhaustion artifacts from the same investigation
-      that found them — undetermined. What's confirmed, not guessed: the
-      malformed-JSON fix is real and correctly implemented (unit-tested at
-      the client layer), the remaining paraphrase-strictness false positives
-      documented in the eval-run entry are real and unaffected by this fix,
-      and full re-verification needs to wait for quota to reset rather than
-      retry into an already-exhausted provider.
+      own Done entry) but not closed — now root-caused further, not just
+      re-measured (2026-09-30).** Re-ran `uv run python -m evals.run`
+      several times once the calendar day turned over: the very first run
+      scored 0.80 with no quota errors at all (a real, non-catastrophic
+      result), and a follow-up diagnostic script (prints every claim's
+      verdict, not just the pass count) caught the *specific* failure live:
+      "keep inflation within" vs. "maintain inflation inside" and "cleared"
+      vs. "approved" both marked `PARTIAL` — the exact same paraphrase-
+      strictness pattern already on record, reproduced under a clean quota,
+      not a new bug.
+      Then, from repeating that diagnostic several more times back to back,
+      **personally re-exhausted both providers the Fact-checker depends
+      on**, not just Groq this time: Cloudflare's free "10,000 neurons/day"
+      allocation on `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (the pinned
+      secondary) and Groq's `openai/gpt-oss-20b` daily token quota (used up
+      to 199,7xx/200,000 again) both returned HTTP 429 in the same runs —
+      confirmed from the raw `LlmHttpError` text on both, not inferred.
+      With neither route available, `FactChecker.check()` correctly failed
+      closed on every claim (`LlmUnavailableError`), which is why several
+      runs in the same session scored 0.00–0.60: **that is the fail-closed
+      design working exactly as intended, not a Writer/Fact-checker
+      defect** — confirmed this time, not left as an open "undetermined"
+      the way the 2026-09-29 catastrophic scores were. The two previous
+      unattributed 0.00/0.18 scores are now far more likely to have been
+      this same cause, though that specific day's raw error text was never
+      captured to confirm it retroactively.
+      What's still genuinely open: whether the paraphrase-strictness false
+      positive is worth tightening the Fact-checker's prompt or tolerance
+      for, a real product decision with trade-offs, left to the owner (see
+      `evals/README.md`). What's now closed as a question: there is no
+      remaining "is this a real quality regression" mystery — every
+      substantive score has a confirmed cause, either paraphrase-strictness
+      or quota exhaustion.
 - [ ] **Free-tier fragility.** During verification OVH rate-limited into a
       circuit-open state, Pollinations began returning 402, and four ids in the
       gateway's own catalogue 404'd or 401'd. A vanished pinned model stops the
@@ -149,6 +167,17 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       of heavy manual eval/diagnostic runs against live models can burn
       the same quota real subscriber traffic needs — worth keeping in mind
       before running many live evals back-to-back close to a real send.
+      **Happened again the very next day it was possible to (2026-09-30),
+      this time both routes at once:** re-running the groundedness eval
+      several times to root-cause the previous day's catastrophic scores
+      burned through Cloudflare's separate "10,000 neurons/day" free
+      allocation *and* re-hit Groq's daily TPD cap in the same sitting —
+      not a new kind of fragility, but confirmation that recovery from one
+      exhausted provider is not "wait a day," it is "wait a day per
+      provider, and don't spend that day's fresh quota re-running the same
+      diagnostic against both of them." A live groundedness measurement
+      needs to be one deliberate, small batch (2–3 runs), not an open-ended
+      diagnostic loop, until a paid tier or a wider fallback chain exists.
 
 ## 4. Not built yet
 
