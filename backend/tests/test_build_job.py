@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import UTC, date, datetime, time, timedelta
 
@@ -782,6 +783,106 @@ def test_a_deadline_miss_is_recorded_without_losing_the_edition(
     run = this_run(session)
     assert run is not None
     assert run.status is RunStatus.DEADLINE_MISSED
+
+
+def test_a_deadline_miss_logs_the_greppable_alert_message(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """infra/monitoring.tf's log-based metric matches on this literal text."""
+    clock_now = [NOW]
+    calls = [0]
+
+    def slow_verify(pooled: PooledStory, genre: GenreKey) -> VerificationOutcome:
+        calls[0] += 1
+        if calls[0] == 2:
+            clock_now[0] = DEADLINE
+        return verify_all(pooled, genre)
+
+    subject = Orchestrator(
+        collector=FakeCollector(),
+        ranker=FakeRanker(),
+        verify=slow_verify,
+        genres=load_genres(),
+        editions=launch_on(date(2026, 10, 1)),
+        max_workers=1,
+        clock=lambda: clock_now[0],
+    )
+
+    with caplog.at_level(logging.WARNING):
+        build(session, subject=subject)
+
+    assert "build_deadline_missed" in caplog.text
+
+
+def test_no_deadline_miss_logs_nothing(session: Session, caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING):
+        build(session)
+
+    assert "build_deadline_missed" not in caplog.text
+
+
+# --------------------------------------------------------- story-count drop
+
+
+def _pipeline_run_with_story_count(
+    session: Session, *, edition_date: date, count: int, status: RunStatus = RunStatus.SUCCEEDED
+) -> None:
+    session.add(
+        PipelineRun(
+            job=JobName.BUILD,
+            edition_date=edition_date,
+            status=status,
+            started_at=NOW - timedelta(days=1),
+            finished_at=NOW - timedelta(days=1),
+            detail={"stories_persisted": count},
+        )
+    )
+    session.commit()
+
+
+def test_a_sharp_drop_against_a_real_baseline_is_logged(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    # A week of healthy prior builds (20 stories each), then today's default
+    # india-only test build (3 stories, from `build()`'s own fixture data).
+    for days_ago in range(1, 6):
+        _pipeline_run_with_story_count(
+            session, edition_date=EDITION - timedelta(days=days_ago), count=20
+        )
+
+    with caplog.at_level(logging.WARNING):
+        build(session)
+
+    assert "verified_story_count_drop" in caplog.text
+
+
+def test_no_drop_alert_without_enough_history(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Only one prior day on record — below STORY_COUNT_DROP_MIN_HISTORY, so
+    # this is scored as "not enough baseline yet" rather than a false alarm
+    # (this is exactly what would otherwise fire every day of launch week).
+    _pipeline_run_with_story_count(session, edition_date=EDITION - timedelta(days=1), count=20)
+
+    with caplog.at_level(logging.WARNING):
+        build(session)
+
+    assert "verified_story_count_drop" not in caplog.text
+
+
+def test_no_drop_alert_when_todays_count_holds_up(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    # A baseline low enough that today's one story is not a "sharp" drop.
+    for days_ago in range(1, 4):
+        _pipeline_run_with_story_count(
+            session, edition_date=EDITION - timedelta(days=days_ago), count=1
+        )
+
+    with caplog.at_level(logging.WARNING):
+        build(session)
+
+    assert "verified_story_count_drop" not in caplog.text
 
 
 # --------------------------------------------------------------- locking

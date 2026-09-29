@@ -147,6 +147,14 @@ def run_late_update(
         report.new_stories = 0
         report.changed = []
         report.carried_forward = []
+        # Same greppable message convention as app/jobs/build.py's own
+        # deadline-miss log — infra/monitoring.tf's log-based metric matches
+        # either job's log stream on this literal.
+        logger.warning(
+            "build_deadline_missed edition_date=%s deadline=%s",
+            edition_date.isoformat(),
+            deadline.isoformat(),
+        )
         _finish(run, RunStatus.DEADLINE_MISSED, report)
         session.commit()
         return report

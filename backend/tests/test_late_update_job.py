@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
@@ -356,3 +357,16 @@ def test_a_deadline_miss_is_recorded_as_such(session: Session) -> None:
     run = session.scalar(select(PipelineRun).where(PipelineRun.started_at == NOW))
     assert run is not None
     assert run.status is RunStatus.DEADLINE_MISSED
+
+
+def test_a_deadline_miss_logs_the_greppable_alert_message(
+    session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """infra/monitoring.tf's log-based metric matches on this literal text —
+    see app/jobs/build.py's own deadline-miss log for the shared convention."""
+    first_revision(session, "a", "b")
+
+    with caplog.at_level(logging.WARNING):
+        late_update(session, ("a", "b", "c"), clock=lambda: DEADLINE + timedelta(minutes=1))
+
+    assert "build_deadline_missed" in caplog.text

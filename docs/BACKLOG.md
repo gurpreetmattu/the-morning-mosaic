@@ -306,12 +306,11 @@ finder (6) is the last one closed — see its own Done entry.)
       Workload Identity Federation specifically (the `google-github-actions/auth`
       step) can only be exercised against a real GCP project with the pool
       and provider set up — nothing to test it against yet.
-- [ ] **Monitoring covers two conditions, not the four CLAUDE.md lists.**
-      Job-execution failure and api 5xx rate are wired (Cloud Run's own
-      built-in metrics); a build's deadline miss and a sharp drop in
-      verified story counts are not — both need either structured logging
-      or a custom metric exporting something from `pipeline_runs`, neither
-      of which exists yet.
+- [x] ~~Monitoring covers two conditions, not the four CLAUDE.md lists.~~
+      See the monitoring-signals Done entry: all four now have a real alert
+      policy. `terraform apply` still hasn't run against a real project
+      (Blockers), so none of the four has fired for real yet — that's the
+      same open gap the other two already had, not a new one.
 - [ ] **`api` is publicly invokable, not restricted to `web`.** The web
       service's own proxy calls it over the public internet without
       minting an identity token, so IAM can't be tightened to
@@ -2575,3 +2574,41 @@ finder (6) is the last one closed — see its own Done entry.)
       revocation, server-side CSRF, PATCH idempotency, and this — the only
       remaining open items are external-account blockers (GCP, Turnstile,
       a git remote) or things that were never trade-offs to begin with.
+- [x] **The two missing monitoring signals now exist: all four of CLAUDE.md's
+      alert conditions have a real Cloud Monitoring alert policy.** A
+      build's deadline miss and a sharp drop in verified story counts had
+      no Cloud Run metric to attach to — both are properties of a job's own
+      outcome, recorded only in `pipeline_runs` (Postgres/Neon, outside
+      GCP's own metrics). Structured JSON logging already existed
+      (`app/logging_config.py`) but nothing used it for this; a
+      `google_logging_metric` per condition is the bridge, each counting a
+      specific literal in the job's own log stream, wired to an alert
+      policy exactly like the two Cloud-Run-native ones already had.
+      `app/jobs/build.py`: `_check_story_count_drop` compares today's
+      `stories_persisted` against the mean of the last 7 earlier builds
+      that actually ran (`SUCCEEDED` or `DEADLINE_MISSED`), and logs
+      `verified_story_count_drop` when today is under half that baseline —
+      deliberately conservative (a real alert pages someone) and
+      deliberately inert with fewer than 3 days of history, so launch week
+      and a slow news day don't fire it on their own; there is no
+      absolute "too few stories" number that would mean the same thing on
+      both days. Confirmed with fixture `pipeline_runs` rows standing in
+      for a real week's history, not just unit-level logic. Both
+      `app/jobs/build.py` and `app/jobs/late_update.py` log the exact same
+      `build_deadline_missed` message on a missed publish deadline — a
+      shared, greppable literal was the deliberate choice over matching on
+      log level alone, since WARNING covers other things each job logs too.
+      `infra/monitoring.tf` gained two `google_logging_metric` resources and
+      two `google_monitoring_alert_policy` resources; `terraform fmt` and
+      `validate` both pass. Verified the actual log shape live, not just
+      assumed: ran `configure_logging` for real and confirmed both messages
+      render as `{"event": "build_deadline_missed ...", "level": "warning",
+      ...}` — the exact `jsonPayload.event` shape the Terraform filter
+      matches on. Like the two pre-existing alert policies, none of the
+      four has ever fired for real — `terraform apply` still hasn't run
+      against a real project (Blockers) — but that gap is now identical
+      across all four instead of only two. 6 new backend tests (2 for the
+      deadline-miss log line across both jobs, 4 for the drop check: fires
+      against a real baseline, stays silent with too little history, stays
+      silent when today's count doesn't actually drop sharply); full suite
+      now **800 backend tests**, `mypy --strict` and `ruff` clean.

@@ -21,6 +21,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agents.collector import Collector
@@ -59,6 +60,16 @@ logger = logging.getLogger(__name__)
 # delivery run at 06:00 always has a revision to send.
 BUILD_DEADLINE_IST = time(5, 30)
 
+# CLAUDE.md wants an alert on "a sharp drop in verified story counts." There
+# is no absolute number that means "wrong" — launch week and a slow news day
+# both legitimately produce few stories — so this compares today's count
+# against a rolling baseline instead, and only once there is enough baseline
+# to compare against. Deliberately conservative on both counts: a real
+# Cloud Monitoring alert (see infra/monitoring.tf) means someone gets paged,
+# so false positives cost more here than a missed early warning does.
+STORY_COUNT_DROP_MIN_HISTORY = 3
+STORY_COUNT_DROP_THRESHOLD = 0.5
+
 
 @dataclass
 class BuildReport:
@@ -80,6 +91,42 @@ class BuildReport:
 def deadline_for(edition_date: date, at: time = BUILD_DEADLINE_IST) -> datetime:
     """The hard deadline as a UTC instant, from an IST wall-clock time."""
     return datetime.combine(edition_date, at, tzinfo=IST).astimezone(UTC)
+
+
+def _recent_story_counts(session: Session, *, before: date, limit: int = 7) -> list[int]:
+    """`stories_persisted` from the most recent earlier builds that actually
+    ran to completion. Only ever read for the drop check below — never to
+    gate publishing, which CLAUDE.md's own quiet-day and failure-isolation
+    rules already decide."""
+    rows = session.scalars(
+        select(PipelineRun)
+        .where(
+            PipelineRun.job == JobName.BUILD,
+            PipelineRun.edition_date < before,
+            PipelineRun.status.in_((RunStatus.SUCCEEDED, RunStatus.DEADLINE_MISSED)),
+        )
+        .order_by(PipelineRun.edition_date.desc())
+        .limit(limit)
+    ).all()
+    return [
+        row.detail["stories_persisted"]
+        for row in rows
+        if row.detail is not None and isinstance(row.detail.get("stories_persisted"), int)
+    ]
+
+
+def _check_story_count_drop(session: Session, *, edition_date: date, today: int) -> None:
+    history = _recent_story_counts(session, before=edition_date)
+    if len(history) < STORY_COUNT_DROP_MIN_HISTORY:
+        return  # not enough baseline yet (e.g. launch week) to mean anything
+    baseline = sum(history) / len(history)
+    if baseline > 0 and today < STORY_COUNT_DROP_THRESHOLD * baseline:
+        logger.warning(
+            "verified_story_count_drop edition_date=%s today=%d baseline=%.1f",
+            edition_date.isoformat(),
+            today,
+            baseline,
+        )
 
 
 def run_build(
@@ -148,6 +195,15 @@ def run_build(
         edition_date=edition_date, deadline=deadline, genres=genres, now=started
     )
     report.deadline_missed = build.deadline_missed
+    if report.deadline_missed:
+        # Distinct, greppable message text: infra/monitoring.tf's log-based
+        # metric matches on this literal, not on the log level alone (a
+        # deadline miss is a WARNING, but so are other things this job logs).
+        logger.warning(
+            "build_deadline_missed edition_date=%s deadline=%s",
+            edition_date.isoformat(),
+            deadline.isoformat(),
+        )
 
     # One image per genre section, for its top-ranked story only (scope
     # confirmed with the owner — see docs/BACKLOG.md). Computed here, before
@@ -228,6 +284,8 @@ def run_build(
         if image is not None and stories:
             persist_image(session, story_id=stories[0].id, result=image)
             report.images.append(outcome.genre)
+
+    _check_story_count_drop(session, edition_date=edition_date, today=report.stories_persisted)
 
     for feature in persist_weekend_features(session, edition_date=edition_date):
         report.weekend_features.append(feature.kind.value)

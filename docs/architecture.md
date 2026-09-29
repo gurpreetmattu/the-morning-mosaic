@@ -222,11 +222,16 @@ adding the same machinery wasn't worth it.
   value — see `infra/README.md`.
 - **Identity:** four service accounts (`web`, `api`, `jobs`, `scheduler`),
   least-privilege by workload rather than one shared default account.
-- **Monitoring:** two Cloud Monitoring alert policies today (a failed job
-  execution, an api 5xx rate), both real, both against Cloud Run's own
-  built-in metrics — see `docs/BACKLOG.md` for the two CLAUDE.md also asks
-  for (deadline misses, a sharp drop in verified story counts) that need
-  structured logging or a custom metric neither of which exist yet.
+- **Monitoring:** four Cloud Monitoring alert policies now, covering every
+  condition CLAUDE.md names. Two read Cloud Run's own built-in metrics
+  directly (a failed job execution, an api 5xx rate). The other two — a
+  build's deadline miss, a sharp drop in verified story counts — have no
+  Cloud Run metric to read, since both are properties of a job's own
+  outcome recorded in `pipeline_runs` (Postgres/Neon, outside GCP); a
+  `google_logging_metric` bridges this by counting a specific, greppable
+  log line each job emits (`app/jobs/build.py`, `app/jobs/late_update.py`)
+  on that condition, and an alert policy fires on the metric exactly like
+  the two direct ones — see `infra/monitoring.tf`.
 - **Observability:** structured JSON logs (`structlog`, `app/logging_config.py`)
   from every job's `main()` and the API, to stdout, where Cloud Logging
   parses them automatically. Every LLM call's metadata — agent, model,
