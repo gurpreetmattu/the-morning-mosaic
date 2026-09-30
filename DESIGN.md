@@ -878,4 +878,12 @@ Record any deviation or new decision here (date, decision, reason).
 | 2026-09-30 | `animation-delay` is also zeroed under prefers-reduced-motion | Staggered elements would otherwise stay hidden for their delay |
 | 2026-09-30 | §10 #3 section entrances not built | Scroll-triggered hiding would leave content invisible in screenshots and to axe until scrolled |
 | 2026-09-30 | Playwright runs with reduced motion by default; `motion.spec.ts` opts back in | Screenshots and axe scans must not catch a half-played animation |
+| 2026-09-30 | Fonts load through `next/font/local` (from the `@fontsource` files) with `adjustFontFallback`, and `--font-*` tokens are built from its `--nf-*` variables | Lighthouse measured a 0.145 layout shift from font swapping (budget 0.05); metric-matched fallbacks bring it to 0 |
+| 2026-09-30 | No font is preloaded | Preloading five fonts delayed the render-blocking stylesheet (LCP 2.1 s -> 2.8 s on simulated mobile); with matched fallbacks the swap shifts nothing |
+| 2026-09-30 | Below-the-fold landing sections use `content-visibility: auto` | Cut the initial layout cost of the 7,000px page: TBT 410 ms -> 170-300 ms, performance 81 -> 88-95 |
+| 2026-09-30 | Test viewports now include 320x568 | The §11 floor and what 400% zoom reflows to |
+| 2026-09-30 | `experimental.inlineCss: true` in next.config.ts | Removes the render-blocking stylesheet request: mobile LCP 2.3-2.9 s -> 1.7-1.9 s, performance 79-86 -> 92-96. Trade-off: CSS not cached separately (~10 KB compressed). Experimental flag: re-check on Next upgrades |
+| 2026-09-30 | Nameplate is always two lines ("The Morning" / "Mosaic") | A width-dependent break meant the fallback fit on one line and the web font wrapped to two on desktop, shifting the page (CLS 0.22) |
+| 2026-09-30 | `content-visibility: auto` only on landing sections well below the fold | On the sections nearest the fold the guessed placeholder height was visible as layout shift |
+| 2026-09-30 | Performance test scrolls the whole page and runs at desktop and phone sizes | Field CLS includes shifts while scrolling; the earlier check missed the regressions above |
 

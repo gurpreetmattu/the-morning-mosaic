@@ -17,6 +17,8 @@ export const ROUTES: { path: string; status: number }[] = [
 
 /** DESIGN.md section 20 viewports. */
 export const VIEWPORTS = [
+  // 320px is the floor in DESIGN.md section 11, and what 400% browser zoom reflows to.
+  { name: "320x568", width: 320, height: 568 },
   { name: "360x800", width: 360, height: 800 },
   { name: "390x844", width: 390, height: 844 },
   { name: "768x1024", width: 768, height: 1024 },

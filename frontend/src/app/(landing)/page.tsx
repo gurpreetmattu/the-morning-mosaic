@@ -142,7 +142,7 @@ export default function HomePage() {
       </section>
 
       {/* Anatomy of an edition */}
-      <section id="inside" className="border-y border-ink bg-paper-sunk">
+      <section id="inside" className="defer-render border-y border-ink bg-paper-sunk">
         <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6">
           <SectionHeading kicker="What's inside">One email, everything in it</SectionHeading>
           <ol className="font-gothic grid gap-x-10 gap-y-3 sm:grid-cols-2">
@@ -162,7 +162,7 @@ export default function HomePage() {
       </section>
 
       {/* Trust */}
-      <section id="trust" className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6">
+      <section id="trust" className="defer-render mx-auto max-w-[1200px] px-4 py-16 sm:px-6">
         <SectionHeading kicker="How we report">Grounded, not invented</SectionHeading>
         <div className="grid gap-6 md:grid-cols-3">
           <article className="border-2 border-ink bg-paper-raised p-5 shadow-[var(--block-1)]">
@@ -201,7 +201,7 @@ export default function HomePage() {
       </section>
 
       {/* Weekend and PDF */}
-      <section className="mx-auto max-w-[1200px] px-4 pb-16 sm:px-6">
+      <section className="defer-render mx-auto max-w-[1200px] px-4 pb-16 sm:px-6">
         <div className="grid gap-6 md:grid-cols-2">
           <article className="relative border-2 border-ink bg-paper-raised p-6 shadow-[var(--block-1)]">
             <div className="absolute -top-3 end-4">
@@ -223,7 +223,7 @@ export default function HomePage() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="border-t border-ink bg-paper-sunk">
+      <section id="faq" className="defer-render border-t border-ink bg-paper-sunk">
         <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
           <SectionHeading kicker="Questions">Before you subscribe</SectionHeading>
           <div className="border-t border-dotted border-ink">
@@ -252,7 +252,7 @@ export default function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="border-y-4 border-ink">
+      <section className="defer-render border-y-4 border-ink">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-6 px-4 py-12 sm:px-6">
           <h2 className="font-mast text-[length:var(--fs-h2)] leading-tight">
             Your first edition is one confirmation away.

@@ -422,3 +422,19 @@ html[data-reveal] .preview-unfold {
     transform: scaleY(0.96);
   }
 }
+
+/* Landing sections well below the fold: the browser skips their style and layout until they
+   are near the viewport (Lighthouse showed one ~1 s initial layout task on a 7,000px page).
+   Not used on the sections nearest the fold: their placeholder height is a guess, and on a
+   desktop-height viewport a wrong guess is visible as layout shift (measured: CLS 0.23).
+   `auto` in contain-intrinsic-size remembers the real height once rendered, so scrolling
+   back does not jump. Content stays searchable, focusable and in the accessibility tree. */
+.defer-render {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 640px;
+}
+@media print {
+  .defer-render {
+    content-visibility: visible;
+  }
+}

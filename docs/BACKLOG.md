@@ -409,17 +409,31 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       unthrottled). What it caught and fixed: no h1 on /subscribe, faded stamp
       numerals failing contrast, fonts 246 KB over budget (Special Elite
       dropped). Still open on step 7:
-      - **Lighthouse on throttled 4G** was not run (LCP/INP above are
-        unthrottled Playwright numbers); needs `lighthouse` or PageSpeed.
+      - **Lighthouse (mobile, simulated 4G, `npx lighthouse`) was run by hand**
+        on the landing page against a local production build. Final state, 4
+        runs on an idle machine: LCP 1.7-1.9 s, CLS 0, TBT 200-310 ms,
+        performance 92-96. Getting there: it first found a 0.145 layout shift
+        (font swap), which `next/font/local` metric-matched fallbacks fixed;
+        preloading fonts then hurt LCP (removed); `content-visibility: auto`
+        on far sections cut layout cost; a fixed two-line nameplate removed a
+        desktop-only 0.22 shift; and `experimental.inlineCss` (see below)
+        removed the render-blocking CSS round trip. Results are noisy when
+        the machine is busy (TBT 350-1,990 ms in runs taken right after the
+        test suite) - measure on an idle machine. INP is not measured by
+        Lighthouse. Not automated: add `@lhci/cli` or a scheduled job if the
+        budgets should be enforced in CI. `experimental.inlineCss` is an
+        experimental Next flag: re-check it on every Next upgrade. Its cost:
+        the HTML document grew from 12.5 KB to 44 KB compressed (the CSS is
+        embedded twice, in the HTML and in Next's client payload); total page
+        weight is 442 KiB including 172 KiB of fonts, inside the budget.
       - **No committed screenshot baselines** (Windows/Linux font rendering
         differs); screenshots are written to `test-results/` and uploaded by CI.
-      - **Not covered:** the admin page, screen-reader (NVDA/VoiceOver) pass,
-        keyboard-only pass of every page, 400% zoom, the per-genre motif art,
+      - **Not covered:** the admin page, a screen-reader (NVDA/VoiceOver) pass,
         the archive page against a real (non-mock) section HTML, and the
-        signup form typed-before-hydration case.
-      - `next start` warns that `output: "standalone"` is not supported by
-        `next start`; the suite works but should move to
-        `node .next/standalone/server.js` (needs static assets copied).
+        signup form typed-before-hydration case. (Now covered: a 320px viewport
+        on every route, which is what 400% zoom reflows to, and a keyboard-only
+        pass that checks every tab stop on 7 pages has a visible focus
+        indicator; the suite runs the standalone server the Docker image uses.)
 - [ ] Politics motif: DESIGN.md's "stars and stripes" is US-flag imagery; use a
       neutral campaign-button/ballot motif instead.
 - [x] Genre period motifs (§6.2) - ten CSS-mask SVG strips (each under 400 bytes) on

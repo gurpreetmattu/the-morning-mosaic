@@ -4,26 +4,35 @@ const MOTTO = "Every line cited. Nothing invented.";
 const NAME = "The Morning Mosaic";
 
 /**
- * The nameplate, one span per letter so the first visit can "press in" letter by
- * letter (DESIGN.md 10 #2). Words stay unbreakable; the h1 carries the text via
- * aria-label, so assistive tech reads the name, not 18 fragments.
+ * The nameplate, one span per letter so the first visit can "press in" letter by letter
+ * (DESIGN.md 10 #2). The h1 carries the text via aria-label, so assistive tech reads the
+ * name, not 16 fragments.
+ *
+ * The two lines are fixed ("The Morning" / "Mosaic"): if the break depended on the width of
+ * the font, the fallback face could fit on one line and the web font wrap to two, shifting the
+ * whole page when it arrives (measured: CLS 0.22 on a 1280px viewport).
  */
+const NAME_LINES = ["The Morning", "Mosaic"];
+
 function NameplateLetters() {
   let index = 0;
   return (
     <>
-      {NAME.split(" ").map((word, w) => (
-        <span key={word} aria-hidden className="inline-block whitespace-nowrap">
-          {[...word].map((letter) => (
-            <span
-              key={index}
-              className="plate-letter"
-              style={{ "--i": index++ } as React.CSSProperties}
-            >
-              {letter}
-            </span>
-          ))}
-          {w < 2 ? " " : ""}
+      {NAME_LINES.map((line) => (
+        <span key={line} aria-hidden className="block whitespace-nowrap">
+          {[...line].map((letter, i) =>
+            letter === " " ? (
+              <span key={`sp${i}`}>{" "}</span>
+            ) : (
+              <span
+                key={index}
+                className="plate-letter"
+                style={{ "--i": index++ } as React.CSSProperties}
+              >
+                {letter}
+              </span>
+            ),
+          )}
         </span>
       ))}
     </>

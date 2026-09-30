@@ -37,11 +37,13 @@ export default defineConfig({
       env: { MOCK_API_PORT: String(API_PORT) },
     },
     {
-      command: dev ? `npx next dev -p ${PORT}` : `npm run build && npx next start -p ${PORT}`,
+      command: dev
+        ? `npx next dev -p ${PORT}`
+        : "npm run build && node tests/e2e/start-standalone.mjs",
       url: `http://localhost:${PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 300_000,
-      env: { BACKEND_ORIGIN: `http://127.0.0.1:${API_PORT}` },
+      env: { BACKEND_ORIGIN: `http://127.0.0.1:${API_PORT}`, PORT: String(PORT) },
     },
   ],
 });

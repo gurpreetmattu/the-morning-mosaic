@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import "../styles/fonts";
 import "./globals.css";
 import { ThemeToggle } from "@/components/editorial/ThemeToggle";
 import { BRAND, TAGLINE } from "@/content/brand";
+import { fontVariables } from "../styles/fonts";
 
 export const metadata: Metadata = {
   title: BRAND,
@@ -17,7 +17,7 @@ const HEAD_INIT = `try{var d=document.documentElement,t=localStorage.getItem("mm
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-IN" className="h-full antialiased" suppressHydrationWarning>
+    <html lang="en-IN" className={`${fontVariables} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: HEAD_INIT }} />
       </head>

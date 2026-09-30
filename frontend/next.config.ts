@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
   // A self-contained `server.js` plus only the dependencies actually used,
   // for a minimal production image (see Dockerfile).
   output: "standalone",
+  // Experimental. Inlines the (small, Tailwind) stylesheet into the HTML, removing the render-
+  // blocking CSS request. On simulated mobile 4G that request was a full round trip before first
+  // paint; trade-off: CSS is no longer cached separately (about 10 KB compressed per page).
+  experimental: { inlineCss: true },
   // /signup was the pre-redesign URL; the query string (?genres=) is preserved.
   async redirects() {
     return [
