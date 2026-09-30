@@ -420,8 +420,10 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
         removed the render-blocking CSS round trip. Results are noisy when
         the machine is busy (TBT 350-1,990 ms in runs taken right after the
         test suite) - measure on an idle machine. INP is not measured by
-        Lighthouse. Not automated: add `@lhci/cli` or a scheduled job if the
-        budgets should be enforced in CI. `experimental.inlineCss` is an
+        Lighthouse. Now automated: `npm run perf:lighthouse` (median of 3, fails on
+        LCP > 2.5 s, CLS > 0.05, TBT > 600 ms or score < 80) and a `lighthouse`
+        CI job - which is `continue-on-error` until it has run on GitHub and
+        its numbers are known to be stable; then make it blocking. `experimental.inlineCss` is an
         experimental Next flag: re-check it on every Next upgrade. Its cost:
         the HTML document grew from 12.5 KB to 44 KB compressed (the CSS is
         embedded twice, in the HTML and in Next's client payload); total page

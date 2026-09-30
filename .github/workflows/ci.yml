@@ -118,6 +118,32 @@ jobs:
           if-no-files-found: ignore
 
 
+  lighthouse:
+    name: performance budgets (Lighthouse)
+    runs-on: ubuntu-latest
+    # Not blocking yet: Lighthouse timings depend on the runner's CPU, and this job has not run
+    # on GitHub before. Once a few runs show stable numbers (the median-of-3 limits are set in
+    # frontend/tests/perf/lighthouse.mjs, overridable with LH_* env vars), remove this line.
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - name: build the site
+        run: npm run build
+      - name: Lighthouse (mobile, simulated 4G), median of 3
+        run: npm run perf:lighthouse
+
+
   terraform:
     runs-on: ubuntu-latest
     defaults:

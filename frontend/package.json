@@ -16,7 +16,8 @@
     "prebuild": "npm run tokens",
     "predev": "npm run tokens",
     "tokens:backend": "node design/scripts/sync-backend.mjs",
-    "tokens:backend:check": "node design/scripts/sync-backend.mjs --check"
+    "tokens:backend:check": "node design/scripts/sync-backend.mjs --check",
+    "perf:lighthouse": "node tests/perf/lighthouse.mjs"
   },
   "dependencies": {
     "@fontsource/abril-fatface": "^5.3.0",
@@ -45,6 +46,7 @@
     "eslint-config-next": "16.3.5",
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^30.1.0",
+    "lighthouse": "^13.5.0",
     "prettier": "^3.9.7",
     "tailwindcss": "^4",
     "typescript": "^5",
