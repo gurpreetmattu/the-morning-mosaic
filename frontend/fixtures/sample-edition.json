@@ -1,11 +1,28 @@
 {
   "label": "Sample edition. Not today's news.",
-  "weather": { "city": "Pune", "temperature": 31, "condition": "Partly cloudy" },
-  "market": { "label": "USD/INR", "value": "₹00.00", "note": "Sample figure" },
+  "weather": {
+    "city": "Pune",
+    "temperature": 31,
+    "condition": "Partly cloudy"
+  },
+  "market": {
+    "label": "USD/INR",
+    "value": "₹00.00",
+    "note": "Sample figure"
+  },
   "summary": [
-    { "text": "A city council approves a dedicated bus corridor.", "cite": 1 },
-    { "text": "A regional cricket final is decided in the last over.", "cite": 2 },
-    { "text": "A new open-source language model is released for research.", "cite": 3 }
+    {
+      "text": "A city council approves a dedicated bus corridor.",
+      "cite": 1
+    },
+    {
+      "text": "A regional cricket final is decided in the last over.",
+      "cite": 2
+    },
+    {
+      "text": "A new open-source language model is released for research.",
+      "cite": 3
+    }
   ],
   "stories": [
     {
@@ -24,8 +41,70 @@
     }
   ],
   "sources": [
-    { "n": 1, "name": "Example City Gazette", "time": "6:12 AM IST" },
-    { "n": 2, "name": "Example Sports Desk", "time": "5:40 AM IST" },
-    { "n": 3, "name": "Example Research Blog", "time": "4:55 AM IST" }
+    {
+      "n": 1,
+      "name": "Example City Gazette",
+      "time": "6:12 AM IST"
+    },
+    {
+      "n": 2,
+      "name": "Example Sports Desk",
+      "time": "5:40 AM IST"
+    },
+    {
+      "n": 3,
+      "name": "Example Research Blog",
+      "time": "4:55 AM IST"
+    }
+  ],
+  "sections": [
+    {
+      "genre": "technology",
+      "title": "Technology",
+      "stories": [
+        {
+          "headline": "A sample headline sits here, set in Old Standard",
+          "body": "Each sentence in a real story is written from the source text and lists the passage it came from. This paragraph only shows the layout.",
+          "cite": 3
+        },
+        {
+          "headline": "A second technology headline, kept short",
+          "body": "Real sections carry up to six stories. This sample shows two of them so the page stays easy to scan.",
+          "cite": 3
+        }
+      ]
+    },
+    {
+      "genre": "sports",
+      "title": "Sport",
+      "stories": [
+        {
+          "headline": "Another sample headline, in a different spot ink",
+          "body": "Every genre section brings its own colour to the same paper. Nothing on this page is reported news.",
+          "cite": 2
+        },
+        {
+          "headline": "Scores and fixtures sit alongside the stories",
+          "body": "Sports sections also carry structured extras such as fixtures, taken from a data source rather than written by the model.",
+          "cite": 2
+        }
+      ]
+    },
+    {
+      "genre": "india",
+      "title": "Across India",
+      "stories": [
+        {
+          "headline": "A city council approves a dedicated bus corridor",
+          "body": "Stories on national and civic news need two independent sources, or one official source, before they are published.",
+          "cite": 1
+        },
+        {
+          "headline": "When the sources disagree, the edition says so",
+          "body": "If key facts conflict between sources, the story states that reports differ, or it is dropped.",
+          "cite": 1
+        }
+      ]
+    }
   ]
 }

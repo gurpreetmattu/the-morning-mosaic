@@ -264,3 +264,32 @@ a {
 .stamp-check:checked::before {
   transform: scale(1);
 }
+
+/* Printing the sample edition (and any archive page): A4, no site chrome,
+   one genre per page, no textures. Colours stay; backgrounds are dropped. */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+@media print {
+  header,
+  footer,
+  nav,
+  .no-print,
+  .skip-link {
+    display: none !important;
+  }
+  body::before {
+    display: none;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .print-page {
+    break-before: page;
+  }
+  a {
+    color: inherit;
+  }
+}

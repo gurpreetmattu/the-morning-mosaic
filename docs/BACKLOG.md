@@ -348,11 +348,28 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       `?step=` in the URL is not used (Back/refresh keep entries via
       sessionStorage but always restart at step 1); Playwright check of the
       sticky mobile Next bar at 360px.
-- [ ] **5. Remaining pages**: rename `/archive` → `/editions` (redirect), preferences
-      (frequency replaces DESIGN.md's "weekend recap" toggle), unsubscribe,
-      sample, how-we-report, status, feedback, privacy, terms, 404/error.
-      `admin`, `privacy`, `terms`, `status` still use the bridge tokens and old
-      markup.
+- [~] **5. Remaining pages** built: `/editions` (was `/archive`, redirects for both
+      routes, month-grouped), `/sample` (printable), `/how-we-report`,
+      404 and error pages, preferences restyled with the shared subscribe
+      controls, and the backend's emailed-link pages (`backend/app/api/pages.py`:
+      opt-in, unsubscribe, feedback, login, admin login) restyled in the same
+      paper-and-ink look. DESIGN.md's Next `/confirm/[token]` and
+      `/unsubscribe/[token]` were deliberately NOT built: those links are
+      served by the backend so GET stays state-free and the CSP stays
+      `default-src 'none'`. Still open on step 5:
+      - `pages.py` colours are copied from tokens.json; generate them instead.
+      - The DB-backed API tests (41 skipped locally: no `TEST_DATABASE_URL`)
+        were NOT run against the restyled pages; the two HTML assertions in
+        `test_api.py` (`method="post"`, no `<script`) were verified by hand.
+      - `/feedback` general feedback form (DESIGN.md 9.11) - needs a new
+        backend endpoint; not built. Not in CLAUDE.md's product decisions.
+      - `/status` still shows only degraded/ok (DESIGN.md wants scheduled /
+        sending / sent / delayed / not sent; the API has no such state).
+      - Admin, privacy, terms and status pages keep their old markup and are
+        not prettier-clean at HEAD; they use the bridge tokens.
+      - The archive edition page renders the email section HTML as-is, so
+        story blocks there keep the old email styling until step 6.
+      - Sources are not listed by name on How we report (no API for them).
 - [ ] **6. Email + PDF parity**: `config/genres.yaml` `theme:` blocks still hold the
       OLD accents/fonts; generate them from `frontend/design/tokens.json`
       (single source) and restyle `backend/app/render/templates/*` (600px).

@@ -42,7 +42,12 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // /signup was the pre-redesign URL; the query string (?genres=) is preserved.
   async redirects() {
-    return [{ source: "/signup", destination: "/subscribe", permanent: true }];
+    return [
+      { source: "/signup", destination: "/subscribe", permanent: true },
+      // The archive moved to /editions; old links keep working.
+      { source: "/archive", destination: "/editions", permanent: true },
+      { source: "/archive/:date", destination: "/editions/:date", permanent: true },
+    ];
   },
   async headers() {
     return [

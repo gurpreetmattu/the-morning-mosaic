@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { serverGet } from "@/lib/server-api";
 import type { ArchivedEdition } from "@/lib/types";
+import { formatLongDate } from "@/components/editorial/format";
 import { Notice, PageTitle } from "@/components/ui";
 
 export default async function ArchiveEditionPage({
@@ -17,8 +18,8 @@ export default async function ArchiveEditionPage({
 
   return (
     <div>
-      <PageTitle>{edition.edition_date}</PageTitle>
-      <p className="mb-8 text-sm text-muted">
+      <PageTitle>{formatLongDate(new Date(`${edition.edition_date}T12:00:00+05:30`))}</PageTitle>
+      <p className="font-typewriter mb-8 text-sm text-ink-soft">
         Edition No. {edition.edition_number} · revision {edition.revision}
         {edition.is_weekend && " · weekend edition"}
       </p>

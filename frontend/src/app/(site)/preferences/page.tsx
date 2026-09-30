@@ -3,9 +3,23 @@
 import { useEffect, useState } from "react";
 import { ApiError, apiGet, publicPost, readerPatch, readerPost } from "@/lib/api";
 import type { MeResponse, PreferencesUpdate, SiteConfig, StatusMessage } from "@/lib/types";
+import { GenreCard } from "@/components/editorial/GenreCard";
+import { ChoiceGroup } from "@/components/flow/ChoiceGroup";
+import { CityCombobox } from "@/components/flow/CityCombobox";
 import { Button, Field, Lede, Notice, PageTitle, textInputClasses } from "@/components/ui";
+import { GENRES } from "@/content/genres";
 
 const MAX_KEYWORDS = 10;
+
+const EDITION_OPTIONS = [
+  { value: "india", label: "India-focused" },
+  { value: "mixed", label: "Mixed" },
+  { value: "global", label: "Global" },
+];
+const FREQUENCY_OPTIONS = [
+  { value: "daily", label: "Every day" },
+  { value: "weekdays", label: "Weekdays only" },
+];
 
 function slotLabel(slot: string): string {
   return slot.slice(0, 5);
@@ -170,76 +184,64 @@ function Dashboard({
 
       {status && <Notice kind={status.kind}>{status.text}</Notice>}
 
-      <fieldset className="mb-4">
-        <legend className="mb-2 text-sm font-semibold">Genres</legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {config?.genres.map((genre) => (
-            <label key={genre.key} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={me.genres.includes(genre.key)}
-                onChange={() => toggleGenre(genre.key)}
-              />
-              {genre.display_name}
-            </label>
+      <fieldset className="mb-8">
+        <legend className="kicker mb-3 text-ink">Genres</legend>
+        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
+          {config?.genres.map((genre, i) => (
+            <GenreCard
+              key={genre.key}
+              genre={genre.key}
+              name={genre.display_name}
+              blurb={genre.blurb || GENRES.find((g) => g.slug === genre.key)?.blurb || ""}
+              numeral={i + 1}
+              checked={me.genres.includes(genre.key)}
+              onChange={() => toggleGenre(genre.key)}
+            />
           ))}
         </div>
       </fieldset>
 
-      <Field htmlFor="pref-slot" label="Delivery time (IST)">
-        <select
-          id="pref-slot"
-          value={`${slotLabel(me.delivery_slot)}:00`}
-          onChange={(e) => setMe({ ...me, delivery_slot: e.target.value })}
-          className={textInputClasses("mt-1")}
-        >
-          {config?.delivery_slots.map((slot) => (
-            <option key={slot} value={slot}>
-              {slotLabel(slot)}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {config && (
+        <>
+          <div className="mb-6">
+            <label htmlFor="pref-city" className="kicker mb-1 block text-ink">
+              City
+            </label>
+            <CityCombobox
+              cities={config.cities}
+              value={me.city_id ?? ""}
+              onChange={(id) => setMe({ ...me, city_id: id })}
+              inputId="pref-city"
+            />
+          </div>
 
-      <Field htmlFor="pref-city" label="City">
-        <select
-          id="pref-city"
-          value={me.city_id ?? ""}
-          onChange={(e) => setMe({ ...me, city_id: e.target.value })}
-          className={textInputClasses("mt-1")}
-        >
-          {config?.cities.map((city) => (
-            <option key={city.id} value={city.id}>
-              {city.name}, {city.state}
-            </option>
-          ))}
-        </select>
-      </Field>
+          <ChoiceGroup
+            legend="Delivery time (IST)"
+            variant="stub"
+            options={config.delivery_slots.map((s) => ({
+              value: slotLabel(s),
+              label: slotLabel(s),
+            }))}
+            value={slotLabel(me.delivery_slot)}
+            onChange={(v) => setMe({ ...me, delivery_slot: `${v}:00` })}
+          />
+        </>
+      )}
 
-      <Field htmlFor="pref-frequency" label="Frequency">
-        <select
-          id="pref-frequency"
-          value={me.frequency}
-          onChange={(e) => setMe({ ...me, frequency: e.target.value })}
-          className={textInputClasses("mt-1")}
-        >
-          <option value="daily">Every day</option>
-          <option value="weekdays">Weekdays only</option>
-        </select>
-      </Field>
+      <ChoiceGroup
+        legend="Frequency"
+        helper="Weekdays only skips the weekend editions too."
+        options={FREQUENCY_OPTIONS}
+        value={me.frequency}
+        onChange={(v) => setMe({ ...me, frequency: v })}
+      />
 
-      <Field htmlFor="pref-edition-preference" label="Edition preference">
-        <select
-          id="pref-edition-preference"
-          value={me.edition_preference}
-          onChange={(e) => setMe({ ...me, edition_preference: e.target.value })}
-          className={textInputClasses("mt-1")}
-        >
-          <option value="india">India-focused</option>
-          <option value="mixed">Mixed</option>
-          <option value="global">Global</option>
-        </select>
-      </Field>
+      <ChoiceGroup
+        legend="Edition preference"
+        options={EDITION_OPTIONS}
+        value={me.edition_preference}
+        onChange={(v) => setMe({ ...me, edition_preference: v })}
+      />
 
       <Field
         htmlFor="pref-keywords"
@@ -250,7 +252,7 @@ function Dashboard({
           value={keywordInput}
           onChange={(e) => setKeywordInput(e.target.value)}
           placeholder="cricket, isro"
-          className={textInputClasses("mt-1")}
+          className={textInputClasses()}
         />
       </Field>
 
@@ -278,10 +280,10 @@ function Dashboard({
         </Button>
       </div>
 
-      <div className="border-t border-rule pt-6">
-        <h2 className="mb-2 text-sm font-semibold">Your data</h2>
+      <div className="border-t-4 border-double border-ink pt-6">
+        <h2 className="font-head mb-2 text-xl">Your data</h2>
         <div className="flex flex-wrap items-center gap-3">
-          <a href="/api/me/export" className="text-sm text-accent underline">
+          <a href="/api/me/export" className="font-gothic text-sm underline">
             Download a copy of your data
           </a>
         </div>

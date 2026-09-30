@@ -101,9 +101,9 @@ export default function HomePage() {
               <Link href="/subscribe" className={primaryCta}>
                 Start my edition
               </Link>
-              <a href="#inside" className={secondaryCta}>
-                See what&rsquo;s inside
-              </a>
+              <Link href="/sample" className={secondaryCta}>
+                See a sample edition
+              </Link>
             </div>
             <p className="font-typewriter mt-4 text-sm text-ink-soft">
               Free. 6&ndash;9 AM IST. Unsubscribe in one click.

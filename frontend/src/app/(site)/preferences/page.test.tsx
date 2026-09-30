@@ -71,8 +71,12 @@ describe("PreferencesPage, signed in", () => {
     render(<PreferencesPage />);
 
     expect(await screen.findByText(/Signed in as asha@example.com/)).toBeInTheDocument();
-    expect((screen.getByLabelText("India") as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByLabelText("Sports") as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole("checkbox", { name: /India/ }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+    expect((screen.getByRole("checkbox", { name: /Sports/ }) as HTMLInputElement).checked).toBe(
+      false,
+    );
   });
 
   it("saves the edited genres and keywords", async () => {
@@ -84,7 +88,7 @@ describe("PreferencesPage, signed in", () => {
     const user = userEvent.setup();
 
     await screen.findByText(/Signed in as/);
-    await user.click(screen.getByLabelText("Sports"));
+    await user.click(screen.getByRole("checkbox", { name: /Sports/ }));
 
     // The PATCH response feeds straight back into the form.
     fetchMock.mockImplementationOnce(async () => ({

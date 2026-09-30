@@ -1,8 +1,9 @@
 import Link from "next/link";
 
-// Only routes that exist. Sample and How we report join when those pages are built.
 const NAV_LINKS = [
-  { href: "/archive", label: "Archive" },
+  { href: "/sample", label: "Sample" },
+  { href: "/how-we-report", label: "How we report" },
+  { href: "/editions", label: "Archive" },
   { href: "/preferences", label: "Manage subscription" },
 ];
 

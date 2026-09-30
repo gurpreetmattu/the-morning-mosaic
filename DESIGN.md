@@ -862,4 +862,7 @@ Record any deviation or new decision here (date, decision, reason).
 | 2026-09-30 | Subscribe result renders in place ("Check your inbox") instead of a separate `/subscribe/check-email` route; no Resend link yet | No resend endpoint exists; avoids passing the email through the URL |
 | 2026-09-30 | Explicit consent checkbox added to step 4 using the §4 sentence, alongside the existing 18+ box | DPDP consent at signup; §8.5 |
 | 2026-09-30 | Route group `(flow)` (wide, no Subscribe button in nav) for `/subscribe`; `(site)` narrow for other pages; `(landing)` full width | Different width needs per page type |
+| 2026-09-30 | `/confirm/[token]` and `/unsubscribe/[token]` stay backend-rendered (restyled in `backend/app/api/pages.py`) instead of Next pages | Link-scanner safety (GET never changes state) and the strict `default-src 'none'` CSP require script-free pages on the same origin |
+| 2026-09-30 | Route is `/editions` for the archive index; `/archive` and `/archive/:date` redirect permanently | §5.1 sitemap |
+| 2026-09-30 | Genre-card postmark moved into a reserved footer row (numeral left, postmark right) | It covered blurb text at top-right and bottom-right |
 

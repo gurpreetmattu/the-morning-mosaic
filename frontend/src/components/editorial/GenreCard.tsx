@@ -40,11 +40,11 @@ export function GenreCard({
           {numeral}
         </span>
         <span className="kicker font-slab mb-2 block text-genre">{name}</span>
-        <span className="block pb-8 text-sm leading-snug text-ink">{blurb}</span>
+        <span className="block pb-12 text-sm leading-snug text-ink">{blurb}</span>
         {checked && (
           <span
             aria-hidden
-            className="postmark font-slab absolute right-3 bottom-3 grid size-12 place-items-center rounded-full border-2 border-genre bg-paper-raised text-xs text-genre"
+            className="postmark font-slab absolute right-3 bottom-3 grid size-11 place-items-center rounded-full border-2 border-genre bg-paper-raised text-xs text-genre"
           >
             IN
           </span>
