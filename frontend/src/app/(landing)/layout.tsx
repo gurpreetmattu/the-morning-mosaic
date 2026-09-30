@@ -8,7 +8,7 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
   return (
     <>
       <header>
-        <Dateline />
+        <Dateline animate />
         <Masthead tagline={TAGLINE} />
         <SiteNav width="max-w-[1200px]" />
       </header>

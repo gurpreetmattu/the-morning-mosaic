@@ -23,6 +23,9 @@ export default defineConfig({
   outputDir: "test-results",
   use: {
     baseURL: `http://localhost:${PORT}`,
+    // Animations are checked by dedicated tests that opt back in; everything else runs with
+    // reduced motion so screenshots and axe scans never catch a half-played reveal.
+    reducedMotion: "reduce",
     ...(channel ? { channel } : {}),
     trace: "off",
   },

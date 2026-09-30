@@ -146,6 +146,7 @@ a {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
@@ -291,5 +292,133 @@ a {
   }
   a {
     color: inherit;
+  }
+}
+
+/* Genre period motifs (DESIGN.md 6.2): decorative 10px strips, drawn in the genre's
+   spot ink through a mask so they follow the theme. aria-hidden in markup. */
+.motif {
+  display: block;
+  height: 10px;
+}
+.motif-india {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='10'%20viewBox='0%200%2016%2010'%3E%3Cpath%20d='M8%201%20L15%205%20L8%209%20L1%205%20Z'%20fill='none'%20stroke='%23000'%20stroke-width='1.5'/%3E%3Ccircle%20cx='8'%20cy='5'%20r='1'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='10'%20viewBox='0%200%2016%2010'%3E%3Cpath%20d='M8%201%20L15%205%20L8%209%20L1%205%20Z'%20fill='none'%20stroke='%23000'%20stroke-width='1.5'/%3E%3Ccircle%20cx='8'%20cy='5'%20r='1'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+.motif-politics {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='14'%20height='10'%20viewBox='0%200%2014%2010'%3E%3Ccircle%20cx='7'%20cy='5'%20r='4'%20fill='none'%20stroke='%23000'%20stroke-width='1.5'/%3E%3Ccircle%20cx='7'%20cy='5'%20r='1.4'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='14'%20height='10'%20viewBox='0%200%2014%2010'%3E%3Ccircle%20cx='7'%20cy='5'%20r='4'%20fill='none'%20stroke='%23000'%20stroke-width='1.5'/%3E%3Ccircle%20cx='7'%20cy='5'%20r='1.4'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+.motif-business {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='10'%20viewBox='0%200%2016%2010'%3E%3Cpath%20d='M0%205%20Q4%200%208%205%20T16%205'%20fill='none'%20stroke='%23000'%20stroke-width='1.2'/%3E%3Cpath%20d='M0%205%20Q4%2010%208%205%20T16%205'%20fill='none'%20stroke='%23000'%20stroke-width='1.2'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='10'%20viewBox='0%200%2016%2010'%3E%3Cpath%20d='M0%205%20Q4%200%208%205%20T16%205'%20fill='none'%20stroke='%23000'%20stroke-width='1.2'/%3E%3Cpath%20d='M0%205%20Q4%2010%208%205%20T16%205'%20fill='none'%20stroke='%23000'%20stroke-width='1.2'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+.motif-technology {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='8'%20height='10'%20viewBox='0%200%208%2010'%3E%3Cpath%20d='M0%200%20H8%20V10%20H0%20Z'%20fill='none'%20stroke='%23000'%20stroke-width='1'/%3E%3Cpath%20d='M4%203%20V7%20M2%205%20H6'%20fill='none'%20stroke='%23000'%20stroke-width='0.8'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='8'%20height='10'%20viewBox='0%200%208%2010'%3E%3Cpath%20d='M0%200%20H8%20V10%20H0%20Z'%20fill='none'%20stroke='%23000'%20stroke-width='1'/%3E%3Cpath%20d='M4%203%20V7%20M2%205%20H6'%20fill='none'%20stroke='%23000'%20stroke-width='0.8'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+.motif-ai {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='12'%20height='10'%20viewBox='0%200%2012%2010'%3E%3Ccircle%20cx='3'%20cy='5'%20r='2'%20fill='%23000'/%3E%3Ccircle%20cx='9'%20cy='5'%20r='2'%20fill='%23000'/%3E%3Ccircle%20cx='6'%20cy='5'%20r='0.9'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='12'%20height='10'%20viewBox='0%200%2012%2010'%3E%3Ccircle%20cx='3'%20cy='5'%20r='2'%20fill='%23000'/%3E%3Ccircle%20cx='9'%20cy='5'%20r='2'%20fill='%23000'/%3E%3Ccircle%20cx='6'%20cy='5'%20r='0.9'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+.motif-sports {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='10'%20viewBox='0%200%2016%2010'%3E%3Cpath%20d='M1%200%20H15%20L8%2010%20Z'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='10'%20viewBox='0%200%2016%2010'%3E%3Cpath%20d='M1%200%20H15%20L8%2010%20Z'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+.motif-gaming {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='10'%20viewBox='0%200%2016%2010'%3E%3Cpath%20d='M0%2010%20H4%20V6%20H8%20V2%20H12%20V6%20H16%20V10%20Z'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='16'%20height='10'%20viewBox='0%200%2016%2010'%3E%3Cpath%20d='M0%2010%20H4%20V6%20H8%20V2%20H12%20V6%20H16%20V10%20Z'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+.motif-bollywood {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='8'%20height='10'%20viewBox='0%200%208%2010'%3E%3Cpath%20d='M0%2010%20A4%208%200%200%201%208%2010'%20fill='none'%20stroke='%23000'%20stroke-width='1.8'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='8'%20height='10'%20viewBox='0%200%208%2010'%3E%3Cpath%20d='M0%2010%20A4%208%200%200%201%208%2010'%20fill='none'%20stroke='%23000'%20stroke-width='1.8'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+.motif-hollywood {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='12'%20height='10'%20viewBox='0%200%2012%2010'%3E%3Crect%20x='2'%20y='2'%20width='8'%20height='6'%20rx='1.2'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='12'%20height='10'%20viewBox='0%200%2012%2010'%3E%3Crect%20x='2'%20y='2'%20width='8'%20height='6'%20rx='1.2'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+.motif-music {
+  background-color: var(--g-accent, currentColor);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='12'%20height='10'%20viewBox='0%200%2012%2010'%3E%3Ccircle%20cx='6'%20cy='5'%20r='4.2'%20fill='none'%20stroke='%23000'%20stroke-width='1'/%3E%3Ccircle%20cx='6'%20cy='5'%20r='2.2'%20fill='none'%20stroke='%23000'%20stroke-width='1'/%3E%3Ccircle%20cx='6'%20cy='5'%20r='0.7'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='12'%20height='10'%20viewBox='0%200%2012%2010'%3E%3Ccircle%20cx='6'%20cy='5'%20r='4.2'%20fill='none'%20stroke='%23000'%20stroke-width='1'/%3E%3Ccircle%20cx='6'%20cy='5'%20r='2.2'%20fill='none'%20stroke='%23000'%20stroke-width='1'/%3E%3Ccircle%20cx='6'%20cy='5'%20r='0.7'%20fill='%23000'/%3E%3C/svg%3E")
+    repeat-x left center / auto 100%;
+}
+
+/* First landing visit of a session only: <html data-reveal> is set before first paint by the
+   script in layout.tsx. Only transform, opacity and clip-path animate (DESIGN.md 10). Under
+   prefers-reduced-motion the global rule above collapses every one of these to its end state. */
+html[data-reveal] .reveal-type {
+  animation: type-in 600ms steps(30, end) both;
+}
+@keyframes type-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+html[data-reveal] .plate-letter {
+  animation: press-in 260ms var(--ease-press) both;
+  animation-delay: calc(var(--i) * 30ms);
+}
+@keyframes press-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04) translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html[data-reveal] .plate-rule {
+  transform-origin: left center;
+  animation: draw-rule var(--dur-draw) var(--ease-inout) 300ms both;
+}
+@keyframes draw-rule {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+html[data-reveal] .preview-unfold {
+  transform-origin: top center;
+  animation: unfold var(--dur-draw) var(--ease-press) 200ms both;
+}
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: scaleY(0.96);
   }
 }

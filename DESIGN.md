@@ -874,4 +874,8 @@ Record any deviation or new decision here (date, decision, reason).
 | 2026-09-30 | Genre-card numeral drawn at full opacity | The faded numeral failed axe colour-contrast in both themes |
 | 2026-09-30 | Subscribe page has a visible h1 "Start my edition" | §11 requires one h1 per page; the page had none |
 | 2026-09-30 | Screenshot baselines are not committed; screenshots are saved per run (and uploaded from CI) for review | Font rendering differs between Windows and Linux, so pixel diffs would be noisy |
+| 2026-09-30 | Reveal motion is CSS-only (no GSAP), triggered by `<html data-reveal>` set by the pre-paint script only on the first landing-page visit of a session | §10 #1, #2, #5; keeps the animation budget at 0 KB and avoids a flash |
+| 2026-09-30 | `animation-delay` is also zeroed under prefers-reduced-motion | Staggered elements would otherwise stay hidden for their delay |
+| 2026-09-30 | §10 #3 section entrances not built | Scroll-triggered hiding would leave content invisible in screenshots and to axe until scrolled |
+| 2026-09-30 | Playwright runs with reduced motion by default; `motion.spec.ts` opts back in | Screenshots and axe scans must not catch a half-played animation |
 

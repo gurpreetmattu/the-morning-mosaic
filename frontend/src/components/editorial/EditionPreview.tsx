@@ -12,7 +12,7 @@ const source = (n: number) => sample.sources.find((s) => s.n === n)!;
 export function EditionPreview() {
   return (
     <figure
-      className="relative mx-auto w-full max-w-[720px] lg:rotate-[-1deg] lg:transition-transform lg:hover:rotate-0"
+      className="preview-unfold relative mx-auto w-full max-w-[720px] lg:rotate-[-1deg] lg:transition-transform lg:hover:rotate-0"
       aria-label={sample.label}
     >
       <div className="relative border-2 border-ink bg-paper-raised p-5 shadow-[var(--block-2)] sm:p-6">

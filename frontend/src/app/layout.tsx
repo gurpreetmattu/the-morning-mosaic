@@ -10,15 +10,16 @@ export const metadata: Metadata = {
   description: TAGLINE,
 };
 
-// Applies the reader's saved Morning/Late choice before first paint (no flash).
-// With no saved choice the CSS follows prefers-color-scheme.
-const THEME_INIT = `try{var t=localStorage.getItem("mm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+// Runs before first paint. (1) Applies the reader's saved Morning/Late choice, so there is
+// no flash; with no saved choice the CSS follows prefers-color-scheme. (2) Marks the first
+// landing-page visit of a session, which plays the one-off masthead reveal (DESIGN.md 10).
+const HEAD_INIT = `try{var d=document.documentElement,t=localStorage.getItem("mm-theme");if(t==="light"||t==="dark")d.dataset.theme=t}catch(e){}try{if(location.pathname==="/"&&!sessionStorage.getItem("mm-seen")){sessionStorage.setItem("mm-seen","1");document.documentElement.dataset.reveal="1"}}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en-IN" className="h-full antialiased" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+        <script dangerouslySetInnerHTML={{ __html: HEAD_INIT }} />
       </head>
       <body
         className="flex min-h-full flex-col bg-background text-foreground"

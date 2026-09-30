@@ -39,6 +39,7 @@ export function GenreCard({
         >
           {numeral}
         </span>
+        <span aria-hidden className={`motif motif-${genre} mb-3`} />
         <span className="kicker font-slab mb-2 block text-genre">{name}</span>
         <span className="block pb-12 text-sm leading-snug text-ink">{blurb}</span>
         {checked && (

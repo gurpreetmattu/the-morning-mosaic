@@ -65,6 +65,7 @@ export default function SamplePage() {
           data-genre={section.genre}
           className="print-page mb-10 border-t-4 border-genre pt-4"
         >
+          <span aria-hidden className={`motif motif-${section.genre} mb-3`} />
           <h3 className="kicker font-slab mb-4 text-genre">{section.title}</h3>
           <div className="space-y-6">
             {section.stories.map((story) => (

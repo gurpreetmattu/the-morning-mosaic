@@ -15,13 +15,17 @@ test.describe("user preferences and modes", () => {
     await context.close();
   });
 
-  test("normal motion keeps the stamp animation", async ({ page }) => {
-    await page.goto("/subscribe?genres=ai");
-    const seconds = await page
-      .locator(".postmark")
-      .first()
-      .evaluate((el) => parseFloat(getComputedStyle(el).animationDuration));
-    expect(seconds).toBeGreaterThan(0.1);
+  test.describe("with motion allowed", () => {
+    test.use({ reducedMotion: "no-preference" });
+
+    test("normal motion keeps the stamp animation", async ({ page }) => {
+      await page.goto("/subscribe?genres=ai");
+      const seconds = await page
+        .locator(".postmark")
+        .first()
+        .evaluate((el) => parseFloat(getComputedStyle(el).animationDuration));
+      expect(seconds).toBeGreaterThan(0.1);
+    });
   });
 
   test("forced colours (high contrast) still show a usable page", async ({ page }) => {

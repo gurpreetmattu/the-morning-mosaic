@@ -420,14 +420,21 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       - `next start` warns that `output: "standalone"` is not supported by
         `next start`; the suite works but should move to
         `node .next/standalone/server.js` (needs static assets copied).
-- [ ] Genre period motifs (§6.2, ten ≤2 KB SVGs) — stamp cards have no motif yet.
 - [ ] Politics motif: DESIGN.md's "stars and stripes" is US-flag imagery; use a
       neutral campaign-button/ballot motif instead.
+- [x] Genre period motifs (§6.2) - ten CSS-mask SVG strips (each under 400 bytes) on
+      the stamp cards and the `/sample` section titles; and the first-visit
+      masthead reveal (§10 #1 typewriter dateline, #2 letter-by-letter
+      nameplate + drawn rule, #5 preview unfold) as pure CSS - no GSAP added -
+      gated to the first landing visit per session and collapsed under
+      reduced motion. Not built from §10: #3 section entrances (would hide
+      content from screenshots/axe until scrolled), #6 market "tape prints
+      in", #7 split-flap time readout, #10 step-change slide, #11 confirm
+      stamp, #13 theme cross-fade. Also: the Politics motif is campaign
+      buttons, not the "stars and stripes" DESIGN.md suggested.
 - [ ] Legacy Tailwind bridge names in `globals.css` (`surface`, `muted`, `rule`,
       `accent`, `accent-soft`, `background`, `foreground`) — remove as pages
       are rebuilt.
-- [ ] Masthead reveal animation, split-flap time readout, stepped motion
-      (§10) not built. GSAP not added; only add if the reveal needs it.
 - [ ] `npm run tokens` runs on predev/prebuild; add it to CI before `tsc`
       (generated `src/styles/tokens.css` is committed so CI works without it).
 - [ ] Dev note: the site must be opened at `localhost`, not `127.0.0.1`
