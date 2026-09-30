@@ -380,10 +380,15 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       extras; archive sections, the two system notices and the PDF cover/pages
       share it. Tagline in email + PDF is now "The morning paper, set to your
       interests." Still open on step 6:
-      - **Not tested in real mail clients.** Needs a Gmail (web + mobile) and
-        Outlook check of the new markup (text-shadow on the nameplate, dashed
-        borders and border-top bands should degrade gracefully, but that is
-        unverified). Only a browser render was checked.
+      - **Real-client check, partly done.** A test edition (synthetic content, subject
+        prefixed `[TEST - sample content]`) was sent through the real `Sender` to the
+        allowlisted inbox and viewed in **Gmail web (desktop Chrome)** on 2026-09-30:
+        paper background, 600px card, dateline, boxed Curated-for/weather, quote frame,
+        market strip, spot-ink section bands, hedged-story note, Why-this-matters rule,
+        dotted separators, weekend recap/quiz, correction note and footer links all
+        rendered as designed. Gmail **strips the nameplate's red text-shadow** (it shows
+        plain black ink - acceptable). Not yet seen: the "Stop press" 60-second box in
+        Gmail, **Gmail mobile, Outlook (desktop/web), and Gmail's automatic dark mode.**
       - **PDF not rendered.** WeasyPrint's system libraries aren't on this
         machine, so `pdf.py`'s new `@page` margin boxes (running header/footer)
         and cover layout were checked as HTML only.
