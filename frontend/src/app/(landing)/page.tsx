@@ -98,7 +98,7 @@ export default function HomePage() {
             </h2>
             <p className="mt-4 max-w-[52ch] text-lg text-ink-soft">{SUPPORTING_LINE}</p>
             <div className="mt-6 flex flex-wrap gap-4">
-              <Link href="/signup" className={primaryCta}>
+              <Link href="/subscribe" className={primaryCta}>
                 Start my edition
               </Link>
               <a href="#inside" className={secondaryCta}>
@@ -257,7 +257,7 @@ export default function HomePage() {
           <h2 className="font-mast text-[length:var(--fs-h2)] leading-tight">
             Your first edition is one confirmation away.
           </h2>
-          <Link href="/signup" className={primaryCta}>
+          <Link href="/subscribe" className={primaryCta}>
             Start my edition
           </Link>
         </div>

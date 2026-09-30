@@ -859,3 +859,7 @@ Record any deviation or new decision here (date, decision, reason).
 | 2026-09-30 | Theme toggle label names the target ("Switch to Late edition") | A bare "Morning edition" label was ambiguous next to the current theme |
 | 2026-09-30 | Stamp perforation is a scalloped mask band around a solid interior; hard shadow via `filter: drop-shadow` because `box-shadow` is clipped by masks | Rendering constraint of the postage-stamp card |
 | 2026-09-30 | Email/PDF width 600px (was 640px) and email/PDF theme generated from `tokens.json` | §17 parity |
+| 2026-09-30 | Subscribe result renders in place ("Check your inbox") instead of a separate `/subscribe/check-email` route; no Resend link yet | No resend endpoint exists; avoids passing the email through the URL |
+| 2026-09-30 | Explicit consent checkbox added to step 4 using the §4 sentence, alongside the existing 18+ box | DPDP consent at signup; §8.5 |
+| 2026-09-30 | Route group `(flow)` (wide, no Subscribe button in nav) for `/subscribe`; `(site)` narrow for other pages; `(landing)` full width | Different width needs per page type |
+

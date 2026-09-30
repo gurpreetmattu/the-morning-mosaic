@@ -12,7 +12,7 @@ describe("StampSheet", () => {
 
     expect(screen.getByRole("link", { name: "Start my edition" })).toHaveAttribute(
       "href",
-      "/signup",
+      "/subscribe",
     );
 
     await user.click(screen.getByRole("checkbox", { name: /AI/ }));
@@ -20,7 +20,7 @@ describe("StampSheet", () => {
 
     expect(screen.getByRole("link", { name: "Start my edition" })).toHaveAttribute(
       "href",
-      "/signup?genres=ai,music",
+      "/subscribe?genres=ai,music",
     );
     expect(screen.getByText("2 genres chosen.")).toBeInTheDocument();
   });

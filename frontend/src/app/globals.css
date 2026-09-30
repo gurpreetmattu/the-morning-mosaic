@@ -233,3 +233,34 @@ a {
   hyphens: none;
   letter-spacing: 0.1em;
 }
+
+/* Headings that only take focus from script (step changes) are not controls:
+   no ring on them. Interactive elements keep the full focus ring. */
+[tabindex="-1"]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Consent/age checkbox: 24px ink box with a stamped mark (DESIGN.md 8.5).
+   Still a native input, so keyboard and screen readers are unchanged. */
+.stamp-check {
+  appearance: none;
+  display: grid;
+  flex-shrink: 0;
+  place-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--ink);
+  background: var(--paper-raised);
+  cursor: pointer;
+}
+.stamp-check::before {
+  content: "\2715";
+  font: 700 1rem/1 var(--font-slab);
+  color: var(--ink);
+  transform: scale(0);
+  transition: transform var(--dur-fast) var(--ease-step-4);
+}
+.stamp-check:checked::before {
+  transform: scale(1);
+}

@@ -6,7 +6,13 @@ const NAV_LINKS = [
   { href: "/preferences", label: "Manage subscription" },
 ];
 
-export function SiteNav({ width = "max-w-3xl" }: { width?: string }) {
+export function SiteNav({
+  width = "max-w-3xl",
+  showSubscribe = true,
+}: {
+  width?: string;
+  showSubscribe?: boolean;
+}) {
   return (
     <nav aria-label="Main" className="font-gothic border-b border-rule-soft text-sm font-semibold">
       <div
@@ -17,12 +23,14 @@ export function SiteNav({ width = "max-w-3xl" }: { width?: string }) {
             {link.label}
           </Link>
         ))}
-        <Link
-          href="/signup"
-          className="font-gothic ms-auto border-2 border-ink bg-ink px-3 py-1 text-paper uppercase hover:opacity-90"
-        >
-          Subscribe
-        </Link>
+        {showSubscribe && (
+          <Link
+            href="/subscribe"
+            className="font-gothic ms-auto border-2 border-ink bg-ink px-3 py-1 text-paper uppercase hover:opacity-90"
+          >
+            Subscribe
+          </Link>
+        )}
       </div>
     </nav>
   );

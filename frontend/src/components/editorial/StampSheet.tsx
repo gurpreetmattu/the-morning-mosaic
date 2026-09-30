@@ -39,7 +39,7 @@ export function StampSheet() {
           : `${selected.length} genre${selected.length === 1 ? "" : "s"} chosen.`}
       </p>
       <Link
-        href={`/signup${query}`}
+        href={`/subscribe${query}`}
         className="font-gothic mt-3 inline-block min-h-12 border-2 border-ink bg-ink px-5 py-3 text-base font-bold tracking-[0.06em] text-paper uppercase shadow-[var(--block-1)] hover:opacity-90"
       >
         Start my edition

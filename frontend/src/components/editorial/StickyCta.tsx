@@ -22,7 +22,7 @@ export function StickyCta({ targetId }: { targetId: string }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t-4 border-ink bg-paper-raised p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
       <Link
-        href="/signup"
+        href="/subscribe"
         className="font-gothic block min-h-12 border-2 border-ink bg-ink px-5 py-3 text-center text-base font-bold tracking-[0.06em] text-paper uppercase"
       >
         Start my edition

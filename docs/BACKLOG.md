@@ -335,12 +335,19 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       cards' art, Playwright screenshots at 360/390px (the browser tool cannot
       shrink below ~1280px, so phone width is unverified), and `?genres=` is
       written by the stamp sheet but not yet read by `/signup`.
-- [ ] **4. Subscribe flow** at `/subscribe` (redirect from `/signup`), 4 steps
-      per DESIGN.md **plus the fields CLAUDE.md requires that DESIGN.md omits**:
-      first name, frequency (daily/weekdays), optional followed keywords,
-      edition preference, 18+ confirmation, consent record. Time selector uses
-      **30-minute** slots (DESIGN.md says 15). Turnstile is the one allowed
-      third-party script.
+- [~] **4. Subscribe flow** built at `/subscribe` (`/signup` 308-redirects, query kept):
+      4 ticket steps, ARIA city combobox, 30-minute time stubs, frequency,
+      edition preference, keywords, name/email, 18+ and an explicit consent
+      checkbox, live "Your edition" panel, stamped checkboxes, check-your-inbox
+      screen. Only non-personal choices go to sessionStorage. Still open:
+      the explicit consent checkbox is UI-only (the payload/API is unchanged,
+      the backend records consent at signup as before) - confirm with the
+      owner whether the API should also require it; no resend-link or
+      `/subscribe/check-email` route (result renders in place; no resend
+      endpoint exists); the time readout has no split-flap animation;
+      `?step=` in the URL is not used (Back/refresh keep entries via
+      sessionStorage but always restart at step 1); Playwright check of the
+      sticky mobile Next bar at 360px.
 - [ ] **5. Remaining pages**: rename `/archive` → `/editions` (redirect), preferences
       (frequency replaces DESIGN.md's "weekend recap" toggle), unsubscribe,
       sample, how-we-report, status, feedback, privacy, terms, 404/error.

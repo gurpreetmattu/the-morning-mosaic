@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
   // A self-contained `server.js` plus only the dependencies actually used,
   // for a minimal production image (see Dockerfile).
   output: "standalone",
+  // /signup was the pre-redesign URL; the query string (?genres=) is preserved.
+  async redirects() {
+    return [{ source: "/signup", destination: "/subscribe", permanent: true }];
+  },
   async headers() {
     return [
       {
