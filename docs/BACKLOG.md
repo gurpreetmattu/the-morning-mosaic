@@ -448,11 +448,16 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       masthead reveal (§10 #1 typewriter dateline, #2 letter-by-letter
       nameplate + drawn rule, #5 preview unfold) as pure CSS - no GSAP added -
       gated to the first landing visit per session and collapsed under
-      reduced motion. Not built from §10: #3 section entrances (would hide
-      content from screenshots/axe until scrolled), #6 market "tape prints
-      in", #7 split-flap time readout, #10 step-change slide, #11 confirm
-      stamp, #13 theme cross-fade. Also: the Politics motif is campaign
-      buttons, not the "stars and stripes" DESIGN.md suggested.
+      reduced motion. Later also built: §10 #7 split-flap time readout (only
+      changed characters flip; the sentence for assistive tech is separate) and
+      #10 step-change slide. Not built from §10: #3 section entrances (would
+      hide content from screenshots/axe until scrolled), #6 market "tape
+      prints in" (the only market strip is in the email/sample), #11 confirm
+      stamp (deliberately: the check-your-inbox screen appears BEFORE the
+      reader confirms, so a "subscribed" stamp there would be untrue; belongs on
+      the backend's opt-in success page if wanted), and #13 theme cross-fade
+      is only the 200 ms body background transition. Also: the Politics motif
+      is campaign buttons, not the "stars and stripes" DESIGN.md suggested.
 - [ ] Legacy Tailwind bridge names in `globals.css` (`surface`, `muted`, `rule`,
       `accent`, `accent-soft`, `background`, `foreground`) — remove as pages
       are rebuilt.

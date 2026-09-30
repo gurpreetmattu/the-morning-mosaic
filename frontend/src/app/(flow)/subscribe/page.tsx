@@ -8,6 +8,7 @@ import { TurnstileWidget } from "@/components/TurnstileWidget";
 import { ChoiceGroup } from "@/components/flow/ChoiceGroup";
 import { CityCombobox } from "@/components/flow/CityCombobox";
 import { EditionSummary } from "@/components/flow/EditionSummary";
+import { SplitFlap } from "@/components/flow/SplitFlap";
 import { StepTicket } from "@/components/flow/StepTicket";
 import { Button, Field, Notice, PageTitle, textInputClasses } from "@/components/ui";
 import { GENRES } from "@/content/genres";
@@ -294,170 +295,173 @@ export default function SubscribePage() {
 
         {error && <Notice kind="error">{error}</Notice>}
 
-        {step === 1 && (
-          <div>
-            <p className="font-gothic mb-4 text-ink-soft">
-              Pick at least one. Each genre brings 4&ndash;6 stories.
-            </p>
-            <fieldset>
-              <legend className="sr-only">Genres</legend>
-              <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
-                {config?.genres.map((genre, i) => (
-                  <GenreCard
-                    key={genre.key}
-                    genre={genre.key}
-                    name={genre.display_name}
-                    blurb={genre.blurb || GENRES.find((g) => g.slug === genre.key)?.blurb || ""}
-                    numeral={i + 1}
-                    checked={genres.includes(genre.key)}
-                    onChange={(on) => toggleGenre(genre.key, on)}
-                  />
-                ))}
-              </div>
-            </fieldset>
-            <p aria-live="polite" className="font-gothic mt-4 text-sm">
-              {genres.length === 0
-                ? "No genres chosen yet."
-                : `${genres.length} genre${genres.length === 1 ? "" : "s"} chosen.`}
-            </p>
+        {/* Keyed by step so each step slides in (DESIGN.md 10 #10). */}
+        <div key={step} className="step-enter">
+          {step === 1 && (
+            <div>
+              <p className="font-gothic mb-4 text-ink-soft">
+                Pick at least one. Each genre brings 4&ndash;6 stories.
+              </p>
+              <fieldset>
+                <legend className="sr-only">Genres</legend>
+                <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
+                  {config?.genres.map((genre, i) => (
+                    <GenreCard
+                      key={genre.key}
+                      genre={genre.key}
+                      name={genre.display_name}
+                      blurb={genre.blurb || GENRES.find((g) => g.slug === genre.key)?.blurb || ""}
+                      numeral={i + 1}
+                      checked={genres.includes(genre.key)}
+                      onChange={(on) => toggleGenre(genre.key, on)}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+              <p aria-live="polite" className="font-gothic mt-4 text-sm">
+                {genres.length === 0
+                  ? "No genres chosen yet."
+                  : `${genres.length} genre${genres.length === 1 ? "" : "s"} chosen.`}
+              </p>
 
-            <div className="mt-8 border-t-2 border-dotted border-ink pt-6">
-              <p className="kicker mb-4 text-ink-soft">Make it yours (optional)</p>
-              <ChoiceGroup
-                legend="Edition preference"
-                helper="How strongly should India-relevant stories rank?"
-                options={EDITION_OPTIONS}
-                value={editionPreference}
-                onChange={setEditionPreference}
+              <div className="mt-8 border-t-2 border-dotted border-ink pt-6">
+                <p className="kicker mb-4 text-ink-soft">Make it yours (optional)</p>
+                <ChoiceGroup
+                  legend="Edition preference"
+                  helper="How strongly should India-relevant stories rank?"
+                  options={EDITION_OPTIONS}
+                  value={editionPreference}
+                  onChange={setEditionPreference}
+                />
+                <Field
+                  htmlFor="keywords"
+                  label={`Followed keywords (comma-separated, up to ${MAX_KEYWORDS})`}
+                >
+                  <input
+                    id="keywords"
+                    value={keywordInput}
+                    onChange={(e) => setKeywordInput(e.target.value)}
+                    placeholder="cricket, isro"
+                    className={textInputClasses()}
+                  />
+                </Field>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && config && (
+            <div>
+              <p id="city-help" className="font-gothic mb-2 text-ink-soft">
+                Weather for your city appears in your edition.
+              </p>
+              <label htmlFor="city-search" className="kicker mb-1 block">
+                City
+              </label>
+              <CityCombobox
+                cities={config.cities}
+                value={cityId}
+                onChange={(id) => {
+                  setCityId(id);
+                  if (id) setCityInvalid(false);
+                }}
+                inputId="city-search"
+                invalid={cityInvalid}
+                describedBy="city-help"
               />
-              <Field
-                htmlFor="keywords"
-                label={`Followed keywords (comma-separated, up to ${MAX_KEYWORDS})`}
-              >
+            </div>
+          )}
+
+          {step === 3 && config && (
+            <div>
+              <p className="font-gothic mb-2 text-ink-soft">
+                Choose any time from 6:00 to 9:00 AM IST.
+              </p>
+              <p className="font-figures mb-4 text-4xl font-bold" aria-live="polite">
+                <span className="sr-only">Arrives around {formatSlot(slot)}</span>
+                <SplitFlap text={formatSlot(slot)} />
+              </p>
+              <ChoiceGroup
+                legend="Delivery time"
+                variant="stub"
+                options={config.delivery_slots.map((s) => ({
+                  value: slotLabel(s),
+                  label: slotLabel(s),
+                }))}
+                value={slot}
+                onChange={setSlot}
+              />
+              <ChoiceGroup
+                legend="How often"
+                helper="Weekdays only skips the weekend editions too."
+                options={FREQUENCY_OPTIONS}
+                value={frequency}
+                onChange={setFrequency}
+              />
+            </div>
+          )}
+
+          {step === 4 && (
+            <div>
+              <div className="mb-4">
+                <label htmlFor="name" className="kicker mb-1 block text-ink">
+                  Name
+                </label>
                 <input
-                  id="keywords"
-                  value={keywordInput}
-                  onChange={(e) => setKeywordInput(e.target.value)}
-                  placeholder="cricket, isro"
+                  id="name"
+                  autoComplete="given-name"
+                  aria-describedby="name-help"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={textInputClasses()}
+                />
+                <p id="name-help" className="font-gothic mt-1 text-sm text-ink-soft">
+                  Your first name appears in the masthead: &ldquo;Curated for &hellip;&rdquo;.
+                </p>
+              </div>
+              <Field htmlFor="email" label="Email">
+                <input
+                  id="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className={textInputClasses()}
                 />
               </Field>
-            </div>
-          </div>
-        )}
 
-        {step === 2 && config && (
-          <div>
-            <p id="city-help" className="font-gothic mb-2 text-ink-soft">
-              Weather for your city appears in your edition.
-            </p>
-            <label htmlFor="city-search" className="kicker mb-1 block">
-              City
-            </label>
-            <CityCombobox
-              cities={config.cities}
-              value={cityId}
-              onChange={(id) => {
-                setCityId(id);
-                if (id) setCityInvalid(false);
-              }}
-              inputId="city-search"
-              invalid={cityInvalid}
-              describedBy="city-help"
-            />
-          </div>
-        )}
-
-        {step === 3 && config && (
-          <div>
-            <p className="font-gothic mb-2 text-ink-soft">
-              Choose any time from 6:00 to 9:00 AM IST.
-            </p>
-            <p className="font-figures mb-4 text-4xl font-bold" aria-live="polite">
-              <span className="sr-only">Arrives around </span>
-              {formatSlot(slot)}
-            </p>
-            <ChoiceGroup
-              legend="Delivery time"
-              variant="stub"
-              options={config.delivery_slots.map((s) => ({
-                value: slotLabel(s),
-                label: slotLabel(s),
-              }))}
-              value={slot}
-              onChange={setSlot}
-            />
-            <ChoiceGroup
-              legend="How often"
-              helper="Weekdays only skips the weekend editions too."
-              options={FREQUENCY_OPTIONS}
-              value={frequency}
-              onChange={setFrequency}
-            />
-          </div>
-        )}
-
-        {step === 4 && (
-          <div>
-            <div className="mb-4">
-              <label htmlFor="name" className="kicker mb-1 block text-ink">
-                Name
+              <label className="font-gothic mb-3 flex min-h-11 items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={ageConfirmed}
+                  onChange={(e) => setAgeConfirmed(e.target.checked)}
+                  className="stamp-check mt-1"
+                />
+                <span>I confirm I am 18 years of age or older.</span>
               </label>
-              <input
-                id="name"
-                autoComplete="given-name"
-                aria-describedby="name-help"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={textInputClasses()}
-              />
-              <p id="name-help" className="font-gothic mt-1 text-sm text-ink-soft">
-                Your first name appears in the masthead: &ldquo;Curated for &hellip;&rdquo;.
-              </p>
+              <label className="font-gothic mb-4 flex min-h-11 items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={consented}
+                  onChange={(e) => setConsented(e.target.checked)}
+                  className="stamp-check mt-1"
+                />
+                <span>
+                  Email me The Morning Mosaic every morning at my chosen time. I can change or stop
+                  this any time. See the{" "}
+                  <Link href="/privacy" className="underline">
+                    privacy notice
+                  </Link>
+                  .
+                </span>
+              </label>
+
+              <TurnstileWidget onToken={setTurnstileToken} />
             </div>
-            <Field htmlFor="email" label="Email">
-              <input
-                id="email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                autoCapitalize="none"
-                spellCheck={false}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={textInputClasses()}
-              />
-            </Field>
-
-            <label className="font-gothic mb-3 flex min-h-11 items-start gap-3">
-              <input
-                type="checkbox"
-                checked={ageConfirmed}
-                onChange={(e) => setAgeConfirmed(e.target.checked)}
-                className="stamp-check mt-1"
-              />
-              <span>I confirm I am 18 years of age or older.</span>
-            </label>
-            <label className="font-gothic mb-4 flex min-h-11 items-start gap-3">
-              <input
-                type="checkbox"
-                checked={consented}
-                onChange={(e) => setConsented(e.target.checked)}
-                className="stamp-check mt-1"
-              />
-              <span>
-                Email me The Morning Mosaic every morning at my chosen time. I can change or stop
-                this any time. See the{" "}
-                <Link href="/privacy" className="underline">
-                  privacy notice
-                </Link>
-                .
-              </span>
-            </label>
-
-            <TurnstileWidget onToken={setTurnstileToken} />
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="sticky bottom-0 z-10 mt-8 flex gap-3 border-t-4 border-ink bg-paper p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:border-0 lg:bg-transparent lg:p-0">
           {step > 1 && (

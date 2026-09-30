@@ -438,3 +438,38 @@ html[data-reveal] .preview-unfold {
     content-visibility: visible;
   }
 }
+
+/* Subscribe flow motion (DESIGN.md 10 #7 and #10). Transform and opacity only; the global
+   prefers-reduced-motion rule collapses both to their end state. */
+.step-enter {
+  animation: step-in var(--dur-slow) var(--ease-press) both;
+}
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+.flap {
+  display: inline-block;
+  padding: 0 0.35rem;
+  background:
+    linear-gradient(
+      transparent calc(50% - 1px),
+      color-mix(in oklab, var(--paper) 35%, transparent) 50%,
+      transparent calc(50% + 1px)
+    ),
+    var(--ink);
+  color: var(--paper);
+  border: 2px solid var(--ink);
+}
+.flap-anim {
+  animation: flap-flip 180ms steps(3, end) both;
+}
+@keyframes flap-flip {
+  from {
+    opacity: 0.3;
+    transform: perspective(160px) rotateX(-90deg);
+  }
+}

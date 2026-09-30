@@ -49,7 +49,8 @@ test.describe("user preferences and modes", () => {
 
     // The choice is applied before first paint on the next visit (no flash).
     await page.goto("/how-we-report", { waitUntil: "commit" });
-    await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+    // At "commit" the document may not exist yet, so the check must tolerate a null root.
+    await page.waitForFunction(() => document.documentElement?.dataset.theme === "dark");
     await page.getByRole("button", { name: "Switch to Morning edition" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   });

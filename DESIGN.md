@@ -886,4 +886,6 @@ Record any deviation or new decision here (date, decision, reason).
 | 2026-09-30 | Nameplate is always two lines ("The Morning" / "Mosaic") | A width-dependent break meant the fallback fit on one line and the web font wrapped to two on desktop, shifting the page (CLS 0.22) |
 | 2026-09-30 | `content-visibility: auto` only on landing sections well below the fold | On the sections nearest the fold the guessed placeholder height was visible as layout shift |
 | 2026-09-30 | Performance test scrolls the whole page and runs at desktop and phone sizes | Field CLS includes shifts while scrolling; the earlier check missed the regressions above |
+| 2026-09-30 | Built §10 #7 (split-flap time readout) and #10 (step slide), CSS-only; the readout is aria-hidden beside a real "Arrives around ..." sentence | Motion inventory; flip only on changed characters keeps it meaningful |
+| 2026-09-30 | §10 #11 (confirm stamp) not put on the check-your-inbox screen | That screen shows before the reader confirms; a "subscribed" stamp would state something untrue (§8.13: stamps carry true information only) |
 
