@@ -18,7 +18,7 @@
   --font-body: "Libre Caslon Text", Georgia, "Times New Roman", serif;
   --font-flag: "Alfa Slab One", Rockwell, "Courier New", serif;
   --font-ui: "Libre Franklin", "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
-  --font-type: "Special Elite", "Courier New", monospace;
+  --font-type: "Courier Prime", ui-monospace, "Courier New", monospace;
   --font-data: "Courier Prime", ui-monospace, Menlo, monospace;
   --fs-masthead: clamp(2.5rem, 8.5vw, 7rem);
   --fs-display: clamp(2rem, 5vw, 3.75rem);

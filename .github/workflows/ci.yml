@@ -86,6 +86,38 @@ jobs:
       - name: next build
         run: npm run build
 
+  e2e:
+    name: browser tests (Playwright + axe)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      # CI uses Playwright's own Chromium; locally the tests drive installed Chrome.
+      E2E_BROWSER_CHANNEL: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: playwright (production build + mock API)
+        run: npx playwright test
+      - name: keep screenshots for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: frontend/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+
   terraform:
     runs-on: ubuntu-latest
     defaults:

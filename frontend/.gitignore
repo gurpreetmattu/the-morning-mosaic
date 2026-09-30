@@ -45,3 +45,7 @@ next-env.d.ts
 # repo root is the single source of truth.
 CLAUDE.md
 AGENTS.md
+
+# playwright
+/test-results/
+/playwright-report/

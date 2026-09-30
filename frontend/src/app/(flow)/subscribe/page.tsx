@@ -205,7 +205,12 @@ export default function SubscribePage() {
   }
 
   if (configError) {
-    return <Notice kind="error">{configError}</Notice>;
+    return (
+      <div>
+        <PageTitle>Start my edition</PageTitle>
+        <Notice kind="error">{configError}</Notice>
+      </div>
+    );
   }
 
   if (result) {
@@ -250,6 +255,9 @@ export default function SubscribePage() {
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,640px)_1fr]">
       <form onSubmit={handleSubmit} noValidate aria-label="Subscribe">
+        <h1 className="font-mast mb-4 text-[length:var(--fs-h2)] leading-tight font-normal">
+          Start my edition
+        </h1>
         <ol className="font-gothic mb-4 flex flex-wrap gap-2 text-sm">
           {STEPS.map((s, i) => {
             const n = i + 1;

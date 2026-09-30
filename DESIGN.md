@@ -209,7 +209,7 @@ Fonts are self-hosted from npm (`@fontsource` / `@fontsource-variable` packages)
 | Body / story text | Libre Caslon Text (400, 700, italic 400) | `Georgia, "Times New Roman", serif` | Warm, readable, period-correct |
 | Section flags and stamps | Alfa Slab One (400) | `Rockwell, "Courier New", serif` | Very short strings only (≤ 3 words) |
 | UI, labels, kickers, buttons | Libre Franklin (400/600/700) | `"Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif` | Classic news gothic; kickers uppercase, tracked |
-| Typewriter details | Special Elite (400) | `"Courier New", monospace` | Datelines, ticket labels, stamp sub-lines; ≥ 14px, never body |
+| Typewriter details | Courier Prime (400) | `"Courier New", monospace` | Datelines, ticket labels, stamp sub-lines; ≥ 14px, never body. (Special Elite dropped: 53 KB against the §13 font budget; see Decision Log) |
 | Numerals and data | Courier Prime (400/700) | `ui-monospace, Menlo, monospace` | Market strip, times, scores, tabular figures |
 | Devanagari (reserved, v2) | Noto Serif Devanagari | `serif` | Not loaded in v1 |
 
@@ -870,4 +870,8 @@ Record any deviation or new decision here (date, decision, reason).
 | 2026-09-30 | PDF pages are white (not newsprint) with ink rules and the genre spot ink | Print-safe: no full-bleed tint, no textures (§17) |
 | 2026-09-30 | Backend tagline changed to "The morning paper, set to your interests." (was "India's morning, in the pieces that matter.") | Matches the tagline in DESIGN.md §4, already used on the site |
 | 2026-09-30 | Genres' `theme.rule` is now the hairline colour (`rule-soft`); heavy rules are ink from the shared palette | Ink rules are the print look; genre theme keeps only accent, tint and hairline |
+| 2026-09-30 | Typewriter face is Courier Prime (already loaded for figures); Special Elite and the Libre Franklin 600 file are no longer loaded | Landing fonts were 246 KB against the 200 KB budget in §13; now 172 KB |
+| 2026-09-30 | Genre-card numeral drawn at full opacity | The faded numeral failed axe colour-contrast in both themes |
+| 2026-09-30 | Subscribe page has a visible h1 "Start my edition" | §11 requires one h1 per page; the page had none |
+| 2026-09-30 | Screenshot baselines are not committed; screenshots are saved per run (and uploaded from CI) for review | Font rendering differs between Windows and Linux, so pixel diffs would be noisy |
 

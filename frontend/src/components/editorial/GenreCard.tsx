@@ -34,7 +34,7 @@ export function GenreCard({
       />
       <span className="stamp-face relative block h-full min-h-32">
         <span
-          className="font-figures absolute bottom-3 left-4 text-2xl font-bold text-genre opacity-60"
+          className="font-figures absolute bottom-3 left-4 text-2xl font-bold text-genre"
           aria-hidden
         >
           {numeral}

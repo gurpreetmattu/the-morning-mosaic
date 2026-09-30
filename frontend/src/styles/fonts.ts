@@ -7,8 +7,6 @@ import "@fontsource/libre-caslon-text/latin-400-italic.css";
 import "@fontsource/libre-caslon-text/latin-700.css";
 import "@fontsource/alfa-slab-one/latin-400.css";
 import "@fontsource/libre-franklin/latin-400.css";
-import "@fontsource/libre-franklin/latin-600.css";
 import "@fontsource/libre-franklin/latin-700.css";
-import "@fontsource/special-elite/latin-400.css";
 import "@fontsource/courier-prime/latin-400.css";
 import "@fontsource/courier-prime/latin-700.css";

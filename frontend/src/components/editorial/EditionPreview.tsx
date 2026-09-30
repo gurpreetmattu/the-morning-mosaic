@@ -17,7 +17,7 @@ export function EditionPreview() {
     >
       <div className="relative border-2 border-ink bg-paper-raised p-5 shadow-[var(--block-2)] sm:p-6">
         <div className="border-b-4 border-double border-ink pb-3 text-center">
-          <p className="font-typewriter text-xs text-ink-soft">Morning Edition &middot; Sample</p>
+          <p className="font-typewriter text-xs text-ink-soft">Morning Edition</p>
           <p className="font-mast text-3xl leading-none sm:text-4xl">The Morning Mosaic</p>
         </div>
 

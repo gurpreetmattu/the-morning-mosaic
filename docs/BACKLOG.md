@@ -395,8 +395,31 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
         hosted images.
       - `pages.py` (emailed-link pages) still copies its colours by hand.
       - Weekend/longer-read block headings use ink, not a genre ink.
-- [ ] **7. QA**: Playwright screenshots (5 viewports x Morning/Late x reduced
-      motion), `@axe-core/playwright`, Lighthouse budgets (§13).
+- [~] **7. QA** built (`frontend/tests/e2e`, `npx playwright test`; runs a production
+      build against a mock API, drives installed Chrome locally and Playwright
+      Chromium in CI - new `e2e` job in `ci.yml`, first CI run not yet seen).
+      168 tests: every route x 5 viewports (360/390/768/1280/1536) x Morning +
+      Late (loads, no horizontal overflow, clean console, no request to another
+      origin, no unexpected HTTP error); axe (WCAG 2.2 AA tags, zero
+      serious/critical) on every route, phone + desktop, both themes; the
+      subscribe flow end to end and its validation, refresh and sticky mobile
+      bar at 360px; reduced motion, forced colours, theme toggle persistence,
+      skip link, one h1 per page, signed-in preferences; landing budgets
+      (JS 151 KB gz of 180, fonts 172 KB of 200, CLS 0.02 of 0.05, LCP 0.3 s
+      unthrottled). What it caught and fixed: no h1 on /subscribe, faded stamp
+      numerals failing contrast, fonts 246 KB over budget (Special Elite
+      dropped). Still open on step 7:
+      - **Lighthouse on throttled 4G** was not run (LCP/INP above are
+        unthrottled Playwright numbers); needs `lighthouse` or PageSpeed.
+      - **No committed screenshot baselines** (Windows/Linux font rendering
+        differs); screenshots are written to `test-results/` and uploaded by CI.
+      - **Not covered:** the admin page, screen-reader (NVDA/VoiceOver) pass,
+        keyboard-only pass of every page, 400% zoom, the per-genre motif art,
+        the archive page against a real (non-mock) section HTML, and the
+        signup form typed-before-hydration case.
+      - `next start` warns that `output: "standalone"` is not supported by
+        `next start`; the suite works but should move to
+        `node .next/standalone/server.js` (needs static assets copied).
 - [ ] Genre period motifs (§6.2, ten ≤2 KB SVGs) — stamp cards have no motif yet.
 - [ ] Politics motif: DESIGN.md's "stars and stripes" is US-flag imagery; use a
       neutral campaign-button/ballot motif instead.
