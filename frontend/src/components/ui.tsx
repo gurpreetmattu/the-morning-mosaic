@@ -2,18 +2,22 @@ import type { ButtonHTMLAttributes, LabelHTMLAttributes, ReactNode } from "react
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded border border-rule bg-surface p-6 shadow-sm ${className}`}>
+    <div className={`border-2 border-ink bg-paper-raised p-6 shadow-[var(--block-1)] ${className}`}>
       {children}
     </div>
   );
 }
 
 export function PageTitle({ children }: { children: ReactNode }) {
-  return <h1 className="mb-2 text-3xl font-bold tracking-tight">{children}</h1>;
+  return (
+    <h1 className="font-mast mb-2 text-[length:var(--fs-display)] leading-[1.05] font-normal tracking-[-0.01em]">
+      {children}
+    </h1>
+  );
 }
 
 export function Lede({ children }: { children: ReactNode }) {
-  return <p className="mb-8 text-muted">{children}</p>;
+  return <p className="mb-8 max-w-[65ch] text-ink-soft">{children}</p>;
 }
 
 export function Field({
@@ -22,15 +26,15 @@ export function Field({
   ...props
 }: LabelHTMLAttributes<HTMLLabelElement> & { label: ReactNode; children: ReactNode }) {
   return (
-    <label {...props} className="mb-4 block text-sm">
-      <span className="mb-1 block font-semibold text-foreground">{label}</span>
+    <label {...props} className="mb-4 block">
+      <span className="kicker mb-1 block text-ink">{label}</span>
       {children}
     </label>
   );
 }
 
 const inputClasses =
-  "w-full rounded border border-rule bg-surface px-3 py-2 text-base text-foreground outline-none focus:border-accent";
+  "font-gothic min-h-12 w-full rounded-none border-2 border-ink bg-paper-raised px-3 py-2 text-base text-ink focus:shadow-[var(--block-genre)]";
 
 export function textInputClasses(extra = ""): string {
   return `${inputClasses} ${extra}`.trim();
@@ -42,15 +46,20 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" }) {
   const base =
-    "rounded px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
+    "font-gothic min-h-12 rounded-none border-2 px-5 py-2 text-base font-bold tracking-[0.06em] uppercase " +
+    "transition-[transform,box-shadow] duration-[var(--dur-fast)] ease-[var(--ease-press)] " +
+    "enabled:hover:-translate-x-px enabled:hover:-translate-y-px enabled:hover:shadow-[4px_4px_0_var(--ink)] " +
+    "enabled:active:translate-x-[3px] enabled:active:translate-y-[3px] enabled:active:shadow-none " +
+    "disabled:cursor-not-allowed disabled:border-dashed disabled:opacity-45";
   const variants: Record<string, string> = {
-    primary: "bg-accent text-white hover:opacity-90",
-    secondary: "border border-rule bg-surface text-foreground hover:border-accent",
-    danger: "border border-accent text-accent hover:bg-accent-soft",
+    primary: "border-ink bg-ink text-paper shadow-[var(--block-genre)]",
+    secondary: "border-ink bg-paper-raised text-ink shadow-[var(--block-1)]",
+    danger: "border-press-red bg-paper-raised text-press-red shadow-[3px_3px_0_var(--press-red)]",
   };
   return <button {...props} className={`${base} ${variants[variant]} ${className}`} />;
 }
 
+/** Telegram slip: dashed top and bottom, with a text label so kind is never colour-only. */
 export function Notice({
   kind,
   children,
@@ -59,13 +68,18 @@ export function Notice({
   children: ReactNode;
 }) {
   const styles: Record<string, string> = {
-    error: "border-accent bg-accent-soft text-accent",
-    success: "border-rule bg-accent-soft text-foreground",
-    info: "border-rule bg-background text-muted",
+    error: "text-danger",
+    success: "text-success",
+    info: "text-ink-soft",
   };
+  const labels: Record<string, string> = { error: "Problem", success: "Done", info: "Note" };
   return (
-    <div role="status" className={`mb-6 rounded border px-4 py-3 text-sm ${styles[kind]}`}>
-      {children}
+    <div
+      role={kind === "error" ? "alert" : "status"}
+      className="font-gothic mb-6 border-y-2 border-dashed border-ink bg-paper-raised px-4 py-3 text-sm"
+    >
+      <span className={`kicker mr-2 ${styles[kind]}`}>{labels[kind]}</span>
+      <span className="text-ink">{children}</span>
     </div>
   );
 }

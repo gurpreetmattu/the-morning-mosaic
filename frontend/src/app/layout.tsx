@@ -1,59 +1,55 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "../styles/fonts";
 import "./globals.css";
-
-export const BRAND = "The Morning Mosaic";
-export const TAGLINE = "India's morning, in the pieces that matter.";
+import { ThemeToggle } from "@/components/editorial/ThemeToggle";
+import { BRAND, TAGLINE } from "@/content/brand";
 
 export const metadata: Metadata = {
   title: BRAND,
   description: TAGLINE,
 };
 
-const NAV_LINKS = [
-  { href: "/archive", label: "Archive" },
-  { href: "/preferences", label: "Manage subscription" },
-];
+// Applies the reader's saved Morning/Late choice before first paint (no flash).
+// With no saved choice the CSS follows prefers-color-scheme.
+const THEME_INIT = `try{var t=localStorage.getItem("mm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col bg-background text-foreground">
-        <header className="border-b border-rule bg-surface">
-          <div className="mx-auto flex max-w-3xl flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-4 py-5 sm:px-6">
-            <Link href="/" className="text-2xl font-bold tracking-tight text-foreground">
-              {BRAND}
-            </Link>
-            <nav className="flex gap-5 text-sm">
-              {NAV_LINKS.map((link) => (
-                <Link key={link.href} href={link.href} className="text-muted hover:text-accent">
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        </header>
+    <html lang="en-IN" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
+      <body
+        className="flex min-h-full flex-col bg-background text-foreground"
+        suppressHydrationWarning
+      >
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
 
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">{children}</main>
+        {children}
 
-        <footer className="border-t border-rule bg-surface">
-          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4 px-4 py-6 text-xs text-muted sm:px-6">
-            <p>
-              &copy; {new Date().getFullYear()} {BRAND}
+        <footer className="border-t-4 border-ink bg-paper-sunk">
+          <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-4 px-4 py-6 text-sm text-ink-soft sm:px-6">
+            <p className="max-w-[60ch]">
+              &copy; {new Date().getFullYear()} {BRAND}. Set in Abril Fatface, Old Standard TT and
+              Libre Caslon. Delivered every morning.
             </p>
-            <nav className="flex gap-4">
-              <Link href="/privacy" className="hover:text-accent">
+            <nav aria-label="Footer" className="font-gothic flex flex-wrap items-center gap-4">
+              <Link href="/privacy" className="hover:underline">
                 Privacy
               </Link>
-              <Link href="/terms" className="hover:text-accent">
+              <Link href="/terms" className="hover:underline">
                 Terms
               </Link>
-              <Link href="/status" className="hover:text-accent">
+              <Link href="/status" className="hover:underline">
                 Status
               </Link>
-              <Link href="/admin" className="hover:text-accent">
+              <Link href="/admin" className="hover:underline">
                 Admin
               </Link>
+              <ThemeToggle />
             </nav>
           </div>
         </footer>

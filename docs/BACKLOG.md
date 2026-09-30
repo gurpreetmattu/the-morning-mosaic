@@ -323,6 +323,47 @@ finder (6) is the last one closed — see its own Done entry.)
       automatic second attempt either. The admin dashboard's manual rerun
       path is the intended recovery, per CLAUDE.md's build-job description.
 
+### Website redesign — DESIGN.md "Retro Broadsheet"
+
+Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
+- [~] **3. Landing page** built (route groups `(landing)` / `(site)`; sections per
+      §9.1). Still open on it: the annotated anatomy diagram (currently a
+      numbered list), the "Sample edition" CTA and nav link (`/sample` does not
+      exist, so the secondary CTA is "See what's inside" and the nav omits
+      Sample / How we report), masthead reveal + section entrance motion (§10),
+      market strip "print in", the PDF tab on the preview, the weekend/PDF
+      cards' art, Playwright screenshots at 360/390px (the browser tool cannot
+      shrink below ~1280px, so phone width is unverified), and `?genres=` is
+      written by the stamp sheet but not yet read by `/signup`.
+- [ ] **4. Subscribe flow** at `/subscribe` (redirect from `/signup`), 4 steps
+      per DESIGN.md **plus the fields CLAUDE.md requires that DESIGN.md omits**:
+      first name, frequency (daily/weekdays), optional followed keywords,
+      edition preference, 18+ confirmation, consent record. Time selector uses
+      **30-minute** slots (DESIGN.md says 15). Turnstile is the one allowed
+      third-party script.
+- [ ] **5. Remaining pages**: rename `/archive` → `/editions` (redirect), preferences
+      (frequency replaces DESIGN.md's "weekend recap" toggle), unsubscribe,
+      sample, how-we-report, status, feedback, privacy, terms, 404/error.
+      `admin`, `privacy`, `terms`, `status` still use the bridge tokens and old
+      markup.
+- [ ] **6. Email + PDF parity**: `config/genres.yaml` `theme:` blocks still hold the
+      OLD accents/fonts; generate them from `frontend/design/tokens.json`
+      (single source) and restyle `backend/app/render/templates/*` (600px).
+- [ ] **7. QA**: Playwright screenshots (5 viewports x Morning/Late x reduced
+      motion), `@axe-core/playwright`, Lighthouse budgets (§13).
+- [ ] Genre period motifs (§6.2, ten ≤2 KB SVGs) — stamp cards have no motif yet.
+- [ ] Politics motif: DESIGN.md's "stars and stripes" is US-flag imagery; use a
+      neutral campaign-button/ballot motif instead.
+- [ ] Legacy Tailwind bridge names in `globals.css` (`surface`, `muted`, `rule`,
+      `accent`, `accent-soft`, `background`, `foreground`) — remove as pages
+      are rebuilt.
+- [ ] Masthead reveal animation, split-flap time readout, stepped motion
+      (§10) not built. GSAP not added; only add if the reveal needs it.
+- [ ] `npm run tokens` runs on predev/prebuild; add it to CI before `tsc`
+      (generated `src/styles/tokens.css` is committed so CI works without it).
+- [ ] Dev note: the site must be opened at `localhost`, not `127.0.0.1`
+      (Next dev blocks client scripts from other origins; `allowedDevOrigins`).
+
 ## 5. Environment
 
 - [x] ~~WeasyPrint cannot run on this machine~~ It can't, but
@@ -377,6 +418,12 @@ finder (6) is the last one closed — see its own Done entry.)
 ---
 
 ## Done
+
+- [x] Website redesign steps 1–2: token pipeline (`frontend/design/tokens.json`
+      → `src/styles/tokens.css`, contrast check over 102 pairs), self-hosted
+      fonts, Morning/Late themes with pre-paint script, paper grain, halftone
+      and misregistration utilities, restyled `ui.tsx` primitives, Dateline,
+      Masthead, ThemeToggle, postage-stamp GenreCard — this commit
 
 - [x] Repo scaffold, `uv` project, config layer with validated YAML — `8aacda4`
 - [x] 32-table schema and initial migration — `8aacda4`

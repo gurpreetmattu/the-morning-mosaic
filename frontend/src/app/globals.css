@@ -1,28 +1,235 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
-:root {
-  --background: #f4f2ee;
-  --surface: #ffffff;
-  --foreground: #141414;
-  --muted: #5a5a5a;
-  --rule: #d8d3c8;
-  --accent: #8a2c1d;
-  --accent-soft: #f4e4df;
+/* Tailwind names -> design tokens. Legacy names (surface, muted, rule, accent,
+   accent-soft, background, foreground) are bridges so pages not yet rebuilt
+   pick up the new palette; remove them as those pages are rebuilt. */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-rule-soft: var(--rule-soft);
+  --color-highlight: var(--highlight);
+  --color-press-red: var(--press-red);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-genre: var(--g-accent, var(--ink));
+  --color-genre-tint: var(--g-tint, var(--paper-sunk));
+
+  --color-background: var(--paper);
+  --color-surface: var(--paper-raised);
+  --color-foreground: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-rule: var(--rule-soft);
+  --color-accent: var(--g-accent, var(--ink));
+  --color-accent-soft: var(--g-tint, var(--paper-sunk));
+
+  --font-mast: var(--font-masthead);
+  --font-head: var(--font-headline);
+  --font-serif: var(--font-body);
+  --font-slab: var(--font-flag);
+  --font-gothic: var(--font-ui);
+  --font-typewriter: var(--font-type);
+  --font-figures: var(--font-data);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-rule: var(--rule);
-  --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
-  --font-serif: Georgia, "Times New Roman", serif;
+html {
+  background: var(--paper);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Georgia, "Times New Roman", serif;
+  position: relative;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.65;
+  text-wrap: pretty;
+  transition: background-color var(--dur-base) var(--ease-inout);
+}
+
+/* Paper grain: one tiny tiled texture, decorative, never above content. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("/textures/grain.svg") 0 0 / 160px 160px;
+  opacity: 0.05;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+a {
+  text-underline-offset: 0.2em;
+}
+
+::selection {
+  background: var(--highlight);
+  color: var(--ink);
+}
+
+/* Focus: 3px ink outline plus 2px paper gap, visible on any background. */
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--paper);
+}
+
+/* Kicker: uppercase tracked UI label. */
+.kicker {
+  font-family: var(--font-ui);
+  font-size: var(--fs-kicker);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Device 4: halftone. Keep the dot layer <= 6% wherever text sits on it. */
+.halftone {
+  background:
+    radial-gradient(circle at center, var(--g-accent, var(--ink)) 0 1.2px, transparent 1.6px) 0 0 /
+      6px 6px,
+    var(--g-tint, var(--paper-sunk));
+}
+.halftone--text-safe {
+  background:
+    radial-gradient(
+        circle at center,
+        color-mix(in oklab, var(--g-accent, var(--ink)) 25%, transparent) 0 1.2px,
+        transparent 1.6px
+      )
+      0 0 / 6px 6px,
+    var(--g-tint, var(--paper-sunk));
+}
+
+/* Device 7: misregistration, display sizes (>= 40px) on md+ only. */
+.display-misreg {
+  text-shadow: 2px 2px 0 var(--g-accent, var(--press-red));
+}
+@media (max-width: 767px), (prefers-contrast: more) {
+  .display-misreg {
+    text-shadow: none;
+  }
+}
+
+/* Skip link: first focusable element on every page. */
+.skip-link {
+  position: absolute;
+  inset-inline-start: var(--space-4);
+  top: -100px;
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-weight: 700;
+}
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+  :root {
+    --rule-soft: var(--ink-muted);
+  }
+  body::before {
+    display: none;
+  }
+  .halftone,
+  .halftone--text-safe {
+    background: var(--g-tint, var(--paper-sunk));
+  }
+}
+
+/* Device 6: perforated postage-stamp edge. drop-shadow keeps the hard block
+   shadow visible (box-shadow would be clipped by the mask). */
+.stamp-card {
+  filter: drop-shadow(3px 3px 0 var(--ink));
+  transition: filter var(--dur-fast) var(--ease-press);
+}
+.stamp-card:hover {
+  filter: drop-shadow(4px 4px 0 var(--ink));
+}
+.stamp-face {
+  --perf: 4px;
+  padding: 16px;
+  background-color: var(--paper-raised);
+  border: var(--perf) solid transparent;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  /* Solid interior (padding-box) plus a scalloped band along the border-box edge. */
+  mask:
+    linear-gradient(#000 0 0) padding-box,
+    radial-gradient(circle at 50% 50%, #0000 var(--perf), #000 calc(var(--perf) + 0.5px)) border-box
+      calc(var(--perf) * -1.5) calc(var(--perf) * -1.5) / calc(var(--perf) * 3)
+      calc(var(--perf) * 3) round;
+  mask-composite: add;
+}
+.stamp-face::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 2px solid var(--g-accent, var(--ink));
+  pointer-events: none;
+}
+.postmark {
+  transform: rotate(-8deg);
+  outline: 2px solid var(--g-accent, var(--ink));
+  outline-offset: 2px;
+  animation: thunk 280ms steps(4, end) both;
+}
+@keyframes thunk {
+  from {
+    transform: rotate(-8deg) scale(1.3);
+  }
+  to {
+    transform: rotate(-8deg) scale(1);
+  }
+}
+
+/* Selected: genre tint with a text-safe halftone. Unlayered CSS beats
+   Tailwind utilities, so state styling lives here. */
+.stamp-card input:checked + .stamp-face {
+  background:
+    radial-gradient(
+        circle at center,
+        color-mix(in oklab, var(--g-accent) 25%, transparent) 0 1.2px,
+        transparent 1.6px
+      )
+      0 0 / 6px 6px,
+    var(--g-tint);
+}
+.stamp-card input:focus-visible + .stamp-face {
+  outline: 3px solid var(--ink);
+  outline-offset: 4px;
+}
+
+.stamp-face .kicker {
+  overflow-wrap: normal;
+  hyphens: none;
+  letter-spacing: 0.1em;
 }

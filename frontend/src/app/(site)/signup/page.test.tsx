@@ -42,7 +42,7 @@ describe("SignupPage", () => {
     mockFetch({ "/api/config": { status: 500, body: { message: "boom" } } });
     render(<SignupPage />);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
+    expect(await screen.findByRole("alert")).toHaveTextContent(
       "We couldn't load the signup form.",
     );
   });
@@ -62,7 +62,7 @@ describe("SignupPage", () => {
 
       await user.click(screen.getByRole("button", { name: "Sign up" }));
 
-      expect(await screen.findByRole("status")).toHaveTextContent("Choose at least one genre.");
+      expect(await screen.findByRole("alert")).toHaveTextContent("Choose at least one genre.");
     });
 
     it("refuses to submit without confirming age", async () => {
@@ -73,7 +73,7 @@ describe("SignupPage", () => {
 
       await user.click(screen.getByRole("button", { name: "Sign up" }));
 
-      expect(await screen.findByRole("status")).toHaveTextContent(
+      expect(await screen.findByRole("alert")).toHaveTextContent(
         "This service is for readers aged 18 and over.",
       );
     });
@@ -149,7 +149,7 @@ describe("SignupPage", () => {
       await user.click(screen.getByLabelText(/confirm I am 18/));
       await user.click(screen.getByRole("button", { name: "Sign up" }));
 
-      expect(await screen.findByRole("status")).toHaveTextContent("Choose a city from the list.");
+      expect(await screen.findByRole("alert")).toHaveTextContent("Choose a city from the list.");
     });
   });
 });
