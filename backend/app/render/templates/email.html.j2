@@ -4,92 +4,113 @@
   words.
 
   Table-based layout on purpose: Outlook renders with Word, which has no
-  reliable support for max-width on a div.
+  reliable support for max-width on a div. 600px wide, all styles inline.
+  Colours and font stacks come from the shared palette (`pal`), generated from
+  the website's design tokens. Web fonts do not load reliably in mail clients,
+  so type is Georgia / Arial / Courier New throughout.
 #}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f2ee;margin:0;padding:0;">
+{% set kicker = "font-family:" ~ pal.sans ~ ";font-size:11px;font-weight:bold;letter-spacing:0.14em;text-transform:uppercase;" %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ pal.paper }};margin:0;padding:0;">
 <tr><td align="center" style="padding:20px 10px;">
-<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:640px;max-width:100%;background:#ffffff;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background:{{ pal.paper_raised }};border:2px solid {{ pal.ink }};">
 
-  {# ----------------------------------------------------------- masthead #}
-  <tr><td style="padding:26px 28px 16px 28px;border-bottom:3px double #141414;">
-    <h1 style="margin:0;font-family:'Playfair Display', Georgia, serif;font-size:32px;line-height:1.1;letter-spacing:-0.5px;color:#141414;">
+  {# ------------------------------------------------------------ dateline #}
+  <tr><td style="padding:8px 20px;border-bottom:1px solid {{ pal.ink }};font-family:{{ pal.mono }};font-size:12px;line-height:1.4;color:{{ pal.ink_soft }};">
+    {{ date_label }} &nbsp;&middot;&nbsp; Edition {{ edition_number }}
+    {% if special_edition %}&nbsp;&middot;&nbsp; {{ special_edition }}{% endif %}
+  </td></tr>
+
+  {# ----------------------------------------------------------- nameplate #}
+  <tr><td align="center" style="padding:22px 20px 10px 20px;">
+    <h1 style="margin:0;font-family:{{ pal.serif }};font-size:40px;line-height:1.05;font-weight:bold;letter-spacing:-0.5px;color:{{ pal.ink }};text-shadow:2px 2px 0 {{ pal.press_red }};">
       {{ brand }}
     </h1>
-    <p style="margin:6px 0 0 0;font-family:Georgia, serif;font-size:13px;font-style:italic;color:#5a5a5a;">
-      {{ tagline }}
-    </p>
-    <p style="margin:12px 0 0 0;font-family:Georgia, serif;font-size:12px;color:#5a5a5a;">
-      {{ date_label }} &nbsp;·&nbsp; Edition {{ edition_number }}
-      {% if special_edition %}&nbsp;·&nbsp; {{ special_edition }}{% endif %}
-      <br />Curated for {{ first_name }}
-    </p>
-    {% if special_edition_note %}
-    <p style="margin:10px 0 0 0;padding:8px 12px;background:#f4f2ee;border-left:4px solid {{ special_edition_accent or '#141414' }};font-family:Georgia, serif;font-size:12px;color:#3a3a3a;">
+  </td></tr>
+  <tr><td align="center" style="padding:0 20px 12px 20px;border-bottom:4px double {{ pal.ink }};font-family:{{ pal.serif }};font-size:14px;font-style:italic;color:{{ pal.ink_soft }};">
+    {{ tagline }}
+  </td></tr>
+
+  {# ------------------------------------------- curated for / weather ears #}
+  <tr><td style="padding:12px 20px 0 20px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td valign="top" style="{{ kicker }}color:{{ pal.ink }};">
+        <span style="display:inline-block;padding:6px 10px;border:2px solid {{ pal.ink }};">Curated for {{ first_name }}</span>
+      </td>
+      {% if weather %}
+      <td valign="top" align="right" style="font-family:{{ pal.sans }};font-size:12px;line-height:1.4;color:{{ pal.ink }};">
+        <span style="display:inline-block;padding:6px 10px;border:2px solid {{ pal.ink }};">{{ weather.city }}: {{ weather.summary }}, {{ weather.low }}&ndash;{{ weather.high }}&deg;C</span>
+      </td>
+      {% endif %}
+    </tr></table>
+  </td></tr>
+
+  {% if special_edition_note %}
+  <tr><td style="padding:12px 20px 0 20px;">
+    <p style="margin:0;padding:8px 12px;background:{{ pal.paper_sunk }};border-left:4px solid {{ special_edition_accent or pal.ink }};font-family:{{ pal.serif }};font-size:13px;line-height:1.5;color:{{ pal.ink }};">
       {{ special_edition_note }}
     </p>
-    {% endif %}
-    {% if weather %}
-    <p style="margin:10px 0 0 0;padding:8px 12px;background:#f4f2ee;font-family:Georgia, serif;font-size:12px;color:#3a3a3a;">
-      {{ weather.city }}: {{ weather.summary }}, {{ weather.low }}&ndash;{{ weather.high }}&deg;C
-    </p>
-    {% endif %}
-    {% if market %}
-    <p style="margin:6px 0 0 0;padding:8px 12px;background:#f4f2ee;font-family:Georgia, serif;font-size:12px;color:#3a3a3a;">
-      {{ market.label }}: &#8377;{{ "%.2f"|format(market.rate) }} <span style="color:#9a9a9a;font-size:10px;">(as of {{ market.as_of }}, ECB &middot; not investment advice)</span>
-    </p>
-    {% endif %}
   </td></tr>
+  {% endif %}
+
+  {% if market %}
+  <tr><td style="padding:12px 20px 0 20px;">
+    <p style="margin:0;padding:6px 10px;background:{{ pal.paper_sunk }};border-top:1px dotted {{ pal.ink }};border-bottom:1px dotted {{ pal.ink }};font-family:{{ pal.mono }};font-size:12px;line-height:1.5;color:{{ pal.ink }};">
+      {{ market.label }}: &#8377;{{ "%.2f"|format(market.rate) }}
+      <span style="color:{{ pal.ink_muted }};font-size:11px;">(as of {{ market.as_of }}, ECB &middot; not investment advice)</span>
+    </p>
+  </td></tr>
+  {% endif %}
 
   {# --------------------------------------- quote / on this day #}
   {% if quote %}
-  <tr><td style="padding:14px 28px 0 28px;">
-    <p style="margin:0;padding:10px 14px;background:#faf8f4;border-left:3px solid #141414;font-family:Georgia, serif;font-size:13px;font-style:italic;color:#3a3a3a;">
+  <tr><td style="padding:16px 20px 0 20px;">
+    <p style="margin:0;padding:10px 4px;border-top:4px double {{ pal.ink }};border-bottom:4px double {{ pal.ink }};font-family:{{ pal.serif }};font-size:17px;font-style:italic;line-height:1.5;color:{{ pal.ink }};">
       &ldquo;{{ quote.text }}&rdquo; &mdash; {{ quote.author }}
     </p>
-    <p style="margin:2px 0 0 0;font-family:Georgia, serif;font-size:10px;color:#9a9a9a;">
-      Quote of the day via <a href="{{ quote.source_url }}" style="color:#9a9a9a;">Wikiquote</a> (CC BY-SA)
+    <p style="margin:3px 0 0 0;font-family:{{ pal.sans }};font-size:11px;color:{{ pal.ink_muted }};">
+      Quote of the day via <a href="{{ quote.source_url }}" style="color:{{ pal.ink_muted }};">Wikiquote</a> (CC BY-SA)
     </p>
   </td></tr>
   {% endif %}
   {% if on_this_day %}
-  <tr><td style="padding:8px 28px 0 28px;">
-    <p style="margin:0;font-family:Georgia, serif;font-size:12px;color:#3a3a3a;">
+  <tr><td style="padding:10px 20px 0 20px;">
+    <p style="margin:0;font-family:{{ pal.serif }};font-size:14px;line-height:1.5;color:{{ pal.ink }};">
       <strong>On this day, {{ on_this_day.year }}:</strong> {{ on_this_day.text }}
     </p>
-    <p style="margin:2px 0 0 0;font-family:Georgia, serif;font-size:10px;color:#9a9a9a;">
-      Via <a href="{{ on_this_day.source_url }}" style="color:#9a9a9a;">Wikipedia</a> (CC BY-SA)
+    <p style="margin:3px 0 0 0;font-family:{{ pal.sans }};font-size:11px;color:{{ pal.ink_muted }};">
+      Via <a href="{{ on_this_day.source_url }}" style="color:{{ pal.ink_muted }};">Wikipedia</a> (CC BY-SA)
     </p>
   </td></tr>
   {% endif %}
 
   {# -------------------------------------------- today in 60 seconds #}
   {% if sixty_seconds %}
-  <tr><td style="padding:18px 28px 4px 28px;">
-    <h2 style="margin:0 0 8px 0;font-family:'Playfair Display', Georgia, serif;font-size:16px;color:#141414;">
-      Today in 60 seconds
-    </h2>
-    <ul style="margin:0;padding:0 0 0 18px;font-family:Georgia, serif;font-size:13px;line-height:1.6;color:#3a3a3a;">
-      {% for line in sixty_seconds %}
-      <li style="margin:0 0 4px 0;">{{ line }}</li>
-      {% endfor %}
-    </ul>
-    <p style="margin:10px 0 0 0;font-family:Georgia, serif;font-size:12px;color:#6a6a6a;">
-      About {{ reading_minutes }} minute{{ '' if reading_minutes == 1 else 's' }} to read.
-    </p>
+  <tr><td style="padding:18px 20px 4px 20px;">
+    <div style="padding:12px 14px;border:2px solid {{ pal.ink }};background:{{ pal.paper }};">
+      <p style="margin:0 0 4px 0;{{ kicker }}color:{{ pal.press_red }};">Stop press</p>
+      <h2 style="margin:0 0 8px 0;font-family:{{ pal.serif }};font-size:19px;line-height:1.2;font-weight:bold;color:{{ pal.ink }};">
+        Today in 60 seconds
+      </h2>
+      <ul style="margin:0;padding:0 0 0 18px;font-family:{{ pal.serif }};font-size:15px;line-height:1.55;color:{{ pal.ink }};">
+        {% for line in sixty_seconds %}
+        <li style="margin:0 0 5px 0;">{{ line }}</li>
+        {% endfor %}
+      </ul>
+      <p style="margin:10px 0 0 0;font-family:{{ pal.mono }};font-size:12px;color:{{ pal.ink_muted }};">
+        About {{ reading_minutes }} minute{{ '' if reading_minutes == 1 else 's' }} to read.
+      </p>
+    </div>
   </td></tr>
   {% endif %}
 
   {# ------------------------------------------------------------ sections #}
-  <tr><td style="padding:22px 28px 0 28px;">
+  <tr><td style="padding:22px 8px 0 8px;">
     {% for section in sections %}
     <section style="margin:0 0 32px 0;">
-      <h2 style="margin:0 0 4px 0;padding:0 0 6px 0;font-family:{{ section.theme.heading_font }};font-size:22px;line-height:1.25;color:{{ section.theme.accent }};border-bottom:2px solid {{ section.theme.rule }};">
-        {{ section.title }}
-      </h2>
-      <p style="margin:0 0 18px 0;font-family:{{ section.theme.body_font }};font-size:13px;line-height:1.4;color:#5a5a5a;">
-        {{ section.blurb }}
-      </p>
       {% set theme = section.theme %}
+      {% set section_title = section.title %}
+      {% set blurb = section.blurb %}
+      {% include "_section_header.html.j2" %}
       {% set image = section.image %}
       {% set ai_tool = section.ai_tool %}
       {% set movie_releases = section.movie_releases %}
@@ -107,12 +128,11 @@
 
   {# ------------------------------------------------------- weekend content #}
   {% if weekend %}
-  <tr><td style="padding:0 28px;">
+  {% set wk_h2 = "margin:0 0 12px 0;padding:8px 12px;border-top:4px solid " ~ pal.ink ~ ";border-bottom:1px solid " ~ pal.ink ~ ";font-family:" ~ pal.sans ~ ";font-size:14px;font-weight:bold;letter-spacing:0.14em;text-transform:uppercase;color:" ~ pal.ink ~ ";" %}
+  <tr><td style="padding:0 8px;">
     {% if weekend.longer_reads %}
     <section style="margin:0 0 32px 0;">
-      <h2 style="margin:0 0 4px 0;padding:0 0 6px 0;font-family:'Playfair Display', Georgia, serif;font-size:22px;line-height:1.25;color:#141414;border-bottom:2px solid #141414;">
-        This week's longer reads
-      </h2>
+      <h2 style="{{ wk_h2 }}">This week's longer reads</h2>
       {% for story in weekend.longer_reads %}
         {% set theme = genre_themes[story.genre] %}
         {% include "_story.html.j2" %}
@@ -122,15 +142,13 @@
 
     {% if weekend.weekly_recap %}
     <section style="margin:0 0 32px 0;">
-      <h2 style="margin:0 0 12px 0;padding:0 0 6px 0;font-family:'Playfair Display', Georgia, serif;font-size:22px;line-height:1.25;color:#141414;border-bottom:2px solid #141414;">
-        The week, recapped
-      </h2>
-      <ul style="margin:0;padding:0 0 0 18px;font-family:Georgia, serif;font-size:13px;line-height:1.6;color:#3a3a3a;">
+      <h2 style="{{ wk_h2 }}">The week, recapped</h2>
+      <ul style="margin:0;padding:0 12px 0 32px;font-family:{{ pal.serif }};font-size:15px;line-height:1.6;color:{{ pal.ink }};">
         {% for item in weekend.weekly_recap %}
         <li style="margin:0 0 8px 0;">
           <strong>{{ item.headline }}</strong>{% if item.one_liner %} — {{ item.one_liner }}{% endif %}
           {% if item.sources %}
-          (<a href="{{ item.sources[0].url }}" style="color:#141414;">{{ item.sources[0].name }}</a>)
+          (<a href="{{ item.sources[0].url }}" style="color:{{ pal.ink }};">{{ item.sources[0].name }}</a>)
           {% endif %}
         </li>
         {% endfor %}
@@ -140,44 +158,44 @@
 
     {% if weekend.quiz %}
     <section style="margin:0 0 32px 0;">
-      <h2 style="margin:0 0 12px 0;padding:0 0 6px 0;font-family:'Playfair Display', Georgia, serif;font-size:22px;line-height:1.25;color:#141414;border-bottom:2px solid #141414;">
-        Weekend quiz
-      </h2>
+      <h2 style="{{ wk_h2 }}">Weekend quiz</h2>
+      <div style="padding:0 12px;">
       {% for question in weekend.quiz %}
-      <p style="margin:0 0 6px 0;font-family:Georgia, serif;font-size:14px;color:#242424;">
+      <p style="margin:0 0 6px 0;font-family:{{ pal.serif }};font-size:15px;color:{{ pal.ink }};">
         <strong>{{ loop.index }}.</strong> {{ question.question }}
       </p>
-      <ol type="A" style="margin:0 0 6px 0;padding:0 0 0 22px;font-family:Georgia, serif;font-size:13px;color:#3a3a3a;">
+      <ol type="A" style="margin:0 0 6px 0;padding:0 0 0 24px;font-family:{{ pal.serif }};font-size:14px;color:{{ pal.ink_soft }};">
         {% for option in question.options %}
         <li style="margin:0 0 2px 0;">{{ option }}</li>
         {% endfor %}
       </ol>
-      <p style="margin:0 0 18px 0;font-family:Georgia, serif;font-size:12px;color:#6a6a6a;">
+      <p style="margin:0 0 18px 0;font-family:{{ pal.sans }};font-size:12px;color:{{ pal.ink_muted }};">
         Answer: {{ ["A", "B", "C", "D"][question.correct_index] }}
-        {% if question.source_url %} — <a href="{{ question.source_url }}" style="color:#141414;">{{ question.source_name }}</a>{% endif %}
+        {% if question.source_url %} — <a href="{{ question.source_url }}" style="color:{{ pal.ink }};">{{ question.source_name }}</a>{% endif %}
       </p>
       {% endfor %}
+      </div>
     </section>
     {% endif %}
   </td></tr>
   {% endif %}
 
   {# -------------------------------------------------------------- footer #}
-  <tr><td style="padding:8px 28px 26px 28px;border-top:1px solid #d8d4cc;">
+  <tr><td style="padding:14px 20px 22px 20px;background:{{ pal.paper_sunk }};border-top:4px solid {{ pal.ink }};">
     {% if corrections %}
-    <p style="margin:0 0 12px 0;padding:10px 12px;background:#fbf0e7;font-family:Georgia, serif;font-size:12px;line-height:1.5;color:#3a3a3a;">
+    <p style="margin:0 0 12px 0;padding:10px 12px;background:{{ pal.paper_raised }};border-left:4px solid {{ pal.press_red }};font-family:{{ pal.serif }};font-size:13px;line-height:1.5;color:{{ pal.ink }};">
       <strong>Correction.</strong> {{ corrections }}
     </p>
     {% endif %}
-    <p style="margin:0 0 8px 0;font-family:Georgia, serif;font-size:12px;line-height:1.5;color:#6a6a6a;">
-      <a href="{{ pdf_url }}" style="color:#141414;">Download today's edition as a PDF</a>
-      &nbsp;·&nbsp;
-      <a href="{{ preferences_url }}" style="color:#141414;">Manage your preferences</a>
+    <p style="margin:0 0 8px 0;font-family:{{ pal.sans }};font-size:13px;line-height:1.5;color:{{ pal.ink }};">
+      <a href="{{ pdf_url }}" style="color:{{ pal.ink }};font-weight:bold;">Download today's edition as a PDF</a>
+      &nbsp;&middot;&nbsp;
+      <a href="{{ preferences_url }}" style="color:{{ pal.ink }};">Manage your preferences</a>
     </p>
-    <p style="margin:0;font-family:Georgia, serif;font-size:11px;line-height:1.5;color:#8a8a8a;">
+    <p style="margin:0;font-family:{{ pal.sans }};font-size:12px;line-height:1.5;color:{{ pal.ink_muted }};">
       Every fact above comes from the sources linked beneath each story.
       <br />
-      <a href="{{ unsubscribe_url }}" style="color:#8a8a8a;">Unsubscribe</a> at any time.
+      <a href="{{ unsubscribe_url }}" style="color:{{ pal.ink_muted }};">Unsubscribe</a> at any time.
     </p>
   </td></tr>
 

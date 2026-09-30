@@ -12,7 +12,9 @@ from app.agents.schemas import (
     VerifiedStory,
     WrittenStory,
 )
+from app.config.loader import load_genres
 from app.models.enums import ImageProvider, SectionStatus
+from app.render import PALETTE
 from app.render.sections import SectionRenderer
 from app.render.selection import Candidate, SourceLink
 from app.sources.schemas import CollectedArticle, Passage
@@ -123,7 +125,17 @@ def test_the_genre_title_and_theme_are_applied() -> None:
 
     assert "Across India" in html  # genres.yaml section_title
     assert "ACROSS INDIA" in text
-    assert "#c4571b" in html  # the india accent colour
+    india = load_genres().by_key()["india"].theme
+    assert india.accent.lower() in html.lower()  # the genre's spot ink
+    assert PALETTE["ink"].lower() in html.lower()  # the shared newsprint palette
+
+
+def test_section_html_carries_no_leftover_pre_redesign_colours() -> None:
+    html, _ = render(outcome(SectionStatus.OK, verified()))
+
+    # Every colour in the section comes from the palette or the genre theme.
+    for stale in ("#141414", "#5a5a5a", "#242424", "Playfair"):
+        assert stale not in html
 
 
 def test_every_story_links_to_its_sources() -> None:

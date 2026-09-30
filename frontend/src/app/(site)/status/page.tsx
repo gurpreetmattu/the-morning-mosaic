@@ -14,8 +14,8 @@ export default async function StatusPage() {
 
       {status === null && (
         <Notice kind="error">
-          We couldn&rsquo;t load the current status. That doesn&rsquo;t necessarily mean anything
-          is wrong — try reloading.
+          We couldn&rsquo;t load the current status. That doesn&rsquo;t necessarily mean anything is
+          wrong — try reloading.
         </Notice>
       )}
 

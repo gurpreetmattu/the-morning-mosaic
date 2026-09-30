@@ -22,7 +22,7 @@ from app.agents.schemas import GenreOutcome, VerifiedStory
 from app.config.loader import load_genres, load_sources
 from app.config.schemas import GenreKey, GenresConfig, SourcesConfig
 from app.models.enums import SectionStatus
-from app.render import TEMPLATE_DIR
+from app.render import PALETTE, TEMPLATE_DIR
 from app.render.selection import (
     MUSIC_RELEASE_TAGS,
     MUSIC_RELEASES_LIMIT,
@@ -44,7 +44,7 @@ class RenderedSection(BaseModel):
 
 def build_environment() -> Environment:
     """Escaping environment for HTML templates."""
-    return Environment(
+    environment = Environment(
         loader=FileSystemLoader(TEMPLATE_DIR),
         autoescape=select_autoescape(enabled_extensions=("j2",), default_for_string=False),
         # A missing variable must fail the render, not publish a blank.
@@ -52,6 +52,10 @@ def build_environment() -> Environment:
         trim_blocks=True,
         lstrip_blocks=True,
     )
+    # `pal` = the shared palette (paper, ink, fonts). Global, so every template
+    # and include sees the same colours without threading them through contexts.
+    environment.globals["pal"] = PALETTE
+    return environment
 
 
 def text_environment() -> Environment:

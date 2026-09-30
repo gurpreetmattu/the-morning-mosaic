@@ -28,32 +28,61 @@ from datetime import date
 from html import escape
 from io import BytesIO
 
+from app.render import PALETTE
+
 BRAND = "The Morning Mosaic"
-TAGLINE = "India's morning, in the pieces that matter."
+TAGLINE = "The morning paper, set to your interests."
 
 PdfRenderer = Callable[[str], bytes]
 
-_PAGE_CSS = """
-  @page { size: A4; margin: 22mm 18mm 26mm 18mm; }
-  html, body { margin: 0; padding: 0; height: 100%; }
-  body { font-family: Georgia, 'Times New Roman', serif; color: #141414; }
+# The page is white, not newsprint: print-safe (no full-bleed tint, no
+# textures). Ink, rules and each genre's spot colour carry the identity.
+# Section fragments are also given a paper background for the archive page;
+# it is switched off here so the printed page stays white.
+_PAGE_CSS = (
+    """
+  @page {{
+    size: A4; margin: 22mm 18mm 26mm 18mm;
+    @top-left {{ content: "{brand}"; font: 8pt {mono}; color: {ink_muted}; }}
+    @bottom-center {{
+      content: "Every fact comes from the sources linked beneath each story.";
+      font: 8pt {sans}; color: {ink_muted};
+    }}
+  }}
+  html, body {{ margin: 0; padding: 0; height: 100%; }}
+  body {{ font-family: {serif}; color: {ink}; background: #ffffff; }}
+  section {{ background: #ffffff !important; }}
 """
+).format(
+    brand=BRAND,
+    mono=PALETTE["mono"].replace("'", ""),
+    sans=PALETTE["sans"],
+    serif=PALETTE["serif"],
+    ink=PALETTE["ink"],
+    ink_muted=PALETTE["ink_muted"],
+)
 
 _SHELL = """<!doctype html>
-<html><head><meta charset="utf-8"><style>{css}</style></head>
+<html lang="en-IN"><head><meta charset="utf-8"><style>{css}</style></head>
 <body>{body}</body></html>"""
 
 _COVER = """<!doctype html>
-<html><head><meta charset="utf-8"><style>{css}
+<html lang="en-IN"><head><meta charset="utf-8"><style>{css}
   .cover {{ display: flex; flex-direction: column; justify-content: center;
             align-items: center; height: 100%; text-align: center; }}
+  .plate {{ border-top: 4px solid {ink}; border-bottom: 4px solid {ink};
+            padding: 14px 0 12px; width: 100%; }}
+  .plate .rule {{ border-top: 1px solid {ink}; margin-top: 10px; }}
 </style></head>
 <body><div class="cover">
-  <h1 style="font-size:40px;margin:0 0 8px;">{brand}</h1>
-  <p style="font-size:16px;color:#5a5a5a;margin:0 0 48px;">{tagline}</p>
-  <p style="font-size:20px;margin:0 0 6px;">Curated for {first_name}</p>
-  <p style="font-size:15px;color:#5a5a5a;margin:0 0 4px;">{date_label}</p>
-  <p style="font-size:13px;color:#8a8a8a;">Edition No. {edition_number}</p>
+  <div class="plate">
+    <h1 style="font-size:46px;line-height:1;margin:0;font-weight:bold;">{brand}</h1>
+    <div class="rule"></div>
+    <p style="font-size:15px;font-style:italic;color:{ink_soft};margin:8px 0 0;">{tagline}</p>
+  </div>
+  <p style="font-size:22px;margin:56px 0 6px;">Curated for {first_name}</p>
+  <p style="font-size:15px;color:{ink_soft};margin:0 0 4px;">{date_label}</p>
+  <p style="font-size:13px;color:{ink_muted};margin:0;">Edition No. {edition_number}</p>
 </div></body></html>"""
 
 
@@ -72,6 +101,9 @@ def date_label(edition_date: date) -> str:
 def cover_html(*, first_name: str, edition_date: date, edition_number: int) -> str:
     return _COVER.format(
         css=_PAGE_CSS,
+        ink=PALETTE["ink"],
+        ink_soft=PALETTE["ink_soft"],
+        ink_muted=PALETTE["ink_muted"],
         brand=escape(BRAND),
         tagline=escape(TAGLINE),
         first_name=escape(first_name),

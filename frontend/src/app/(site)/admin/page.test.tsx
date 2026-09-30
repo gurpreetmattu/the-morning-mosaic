@@ -208,9 +208,9 @@ describe("AdminPage, signed in", () => {
     render(<AdminPage />);
 
     expect(await screen.findByText("degraded")).toBeInTheDocument();
-    expect(
-      (screen.getByLabelText("Message shown to visitors") as HTMLInputElement).value,
-    ).toBe("Down for maintenance.");
+    expect((screen.getByLabelText("Message shown to visitors") as HTMLInputElement).value).toBe(
+      "Down for maintenance.",
+    );
   });
 
   it("shows no withdraw/suppress controls once a notice is no longer held", async () => {

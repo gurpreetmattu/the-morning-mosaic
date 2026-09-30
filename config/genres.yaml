@@ -14,10 +14,10 @@ genres:
     blurb: The day's most consequential national news.
     corroboration: strict
     theme:
-      accent: "#c4571b"
-      accent_soft: "#fbf0e7"
-      rule: "#e2c9b4"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#A63F08"
+      accent_soft: "#F6DCC3"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - national-policy
@@ -41,10 +41,10 @@ genres:
     blurb: Parliament, parties, and policy — reported without a side.
     corroboration: strict
     theme:
-      accent: "#2f4858"
-      accent_soft: "#eef2f4"
-      rule: "#c3d0d6"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#7A1F3D"
+      accent_soft: "#EBD0D3"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - parliament
@@ -66,10 +66,10 @@ genres:
     blurb: Companies, markets, and the economy.
     corroboration: strict
     theme:
-      accent: "#1f5f4a"
-      accent_soft: "#ecf4f1"
-      rule: "#bcd7cd"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#1E5B3A"
+      accent_soft: "#D6E4CF"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - markets
@@ -93,10 +93,10 @@ genres:
     blurb: Products, platforms, and the policy around them.
     corroboration: standard
     theme:
-      accent: "#2b4c9b"
-      accent_soft: "#eef1f9"
-      rule: "#c2cde8"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#0E6B78"
+      accent_soft: "#CFE3DF"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - consumer-electronics
@@ -120,10 +120,10 @@ genres:
     extras:
       - ai_tool_of_the_day
     theme:
-      accent: "#5b3fa8"
-      accent_soft: "#f1eefa"
-      rule: "#cec2ea"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#5B3FA6"
+      accent_soft: "#DDD5E9"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - model-releases
@@ -147,10 +147,10 @@ genres:
     extras:
       - scores_fixtures
     theme:
-      accent: "#1b7a3e"
-      accent_soft: "#ecf6f0"
-      rule: "#bcdcc8"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#1D4ED8"
+      accent_soft: "#D2DDEE"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - cricket
@@ -174,10 +174,10 @@ genres:
     extras:
       - game_deals
     theme:
-      accent: "#8a2749"
-      accent_soft: "#f9ecf0"
-      rule: "#e3c0cc"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#A11A6B"
+      accent_soft: "#EFD1E0"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - game-releases
@@ -198,10 +198,10 @@ genres:
     extras:
       - movie_releases
     theme:
-      accent: "#b3123f"
-      accent_soft: "#fbeaef"
-      rule: "#eabcca"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#7F5600"
+      accent_soft: "#F3E0A8"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - film-releases
@@ -223,10 +223,10 @@ genres:
     extras:
       - movie_releases
     theme:
-      accent: "#6b4e16"
-      accent_soft: "#f7f2e6"
-      rule: "#dfd0ab"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#3D4A5C"
+      accent_soft: "#D9DCDD"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - film-releases
@@ -247,10 +247,10 @@ genres:
     extras:
       - music_releases
     theme:
-      accent: "#0f6e73"
-      accent_soft: "#e9f4f4"
-      rule: "#b6d8da"
-      heading_font: "'Playfair Display', Georgia, 'Times New Roman', serif"
+      accent: "#556308"
+      accent_soft: "#E1E6BC"
+      rule: "#C9B98F"
+      heading_font: "Georgia, 'Times New Roman', serif"
       body_font: "Georgia, 'Times New Roman', serif"
     topic_tags:
       - album-releases

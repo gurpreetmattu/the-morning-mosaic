@@ -4,30 +4,30 @@
 
   `story` needs: headline, summary, why_this_matters, hedged, sources.
 #}
-<article style="margin:0 0 22px 0;padding:0 0 18px 0;border-bottom:1px solid {{ theme.rule }};page-break-inside:avoid;break-inside:avoid;">
-  <h3 style="margin:0 0 8px 0;font-family:{{ theme.heading_font }};font-size:17px;line-height:1.3;color:#141414;">
+<article style="margin:0 12px 24px 12px;padding:0 0 20px 0;border-bottom:1px dotted {{ pal.ink }};page-break-inside:avoid;break-inside:avoid;">
+  <h3 style="margin:0 0 8px 0;font-family:{{ theme.heading_font }};font-size:21px;line-height:1.25;font-weight:bold;color:{{ pal.ink }};">
     {{ story.headline }}
   </h3>
 
   {% if story.hedged %}
-  <p style="margin:0 0 8px 0;padding:6px 10px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:12px;line-height:1.4;color:#5a5a5a;">
+  <p style="margin:0 0 8px 0;padding:6px 10px;background:{{ theme.accent_soft }};border-left:3px solid {{ theme.accent }};font-family:{{ pal.sans }};font-size:12px;line-height:1.4;color:{{ pal.ink_soft }};">
     Reported by entertainment sources only. Treat as unconfirmed.
   </p>
   {% endif %}
 
-  <p style="margin:0 0 10px 0;font-family:{{ theme.body_font }};font-size:15px;line-height:1.55;color:#242424;">
+  <p style="margin:0 0 10px 0;font-family:{{ theme.body_font }};font-size:16px;line-height:1.6;color:{{ pal.ink }};">
     {{ story.summary }}
   </p>
 
   {% if story.why_this_matters %}
-  <p style="margin:0 0 10px 0;font-family:{{ theme.body_font }};font-size:14px;line-height:1.5;color:#3a3a3a;">
-    <strong style="color:{{ theme.accent }};">Why this matters</strong>
+  <p style="margin:0 0 10px 0;padding:2px 0 2px 12px;border-left:3px solid {{ theme.accent }};font-family:{{ theme.body_font }};font-size:15px;line-height:1.5;color:{{ pal.ink_soft }};">
+    <strong style="font-family:{{ pal.sans }};font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:{{ theme.accent }};">Why this matters</strong>
     {{ story.why_this_matters }}
   </p>
   {% endif %}
 
   {# Every story links to its sources: the reader can always check us. #}
-  <p style="margin:0;font-family:{{ theme.body_font }};font-size:12px;line-height:1.4;color:#6a6a6a;">
+  <p style="margin:0;font-family:{{ pal.sans }};font-size:12px;line-height:1.5;color:{{ pal.ink_muted }};">
     {{ 'Sources' if story.sources | length > 1 else 'Source' }}:
     {% for source in story.sources %}<a href="{{ source.url }}" style="color:{{ theme.accent }};text-decoration:underline;">{{ source.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
   </p>

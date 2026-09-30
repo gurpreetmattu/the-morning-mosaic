@@ -865,4 +865,9 @@ Record any deviation or new decision here (date, decision, reason).
 | 2026-09-30 | `/confirm/[token]` and `/unsubscribe/[token]` stay backend-rendered (restyled in `backend/app/api/pages.py`) instead of Next pages | Link-scanner safety (GET never changes state) and the strict `default-src 'none'` CSP require script-free pages on the same origin |
 | 2026-09-30 | Route is `/editions` for the archive index; `/archive` and `/archive/:date` redirect permanently | §5.1 sitemap |
 | 2026-09-30 | Genre-card postmark moved into a reserved footer row (numeral left, postmark right) | It covered blurb text at top-right and bottom-right |
+| 2026-09-30 | Email/PDF/archive theme is generated from `tokens.json` by `npm run tokens:backend` (palette.json + genres.yaml `theme:`), guarded by CI and `test_design_sync.py` | §17 parity without a second source of truth |
+| 2026-09-30 | Email type is Georgia / Arial / Courier New; no web fonts | Mail clients don't load them reliably; §17 fallbacks |
+| 2026-09-30 | PDF pages are white (not newsprint) with ink rules and the genre spot ink | Print-safe: no full-bleed tint, no textures (§17) |
+| 2026-09-30 | Backend tagline changed to "The morning paper, set to your interests." (was "India's morning, in the pieces that matter.") | Matches the tagline in DESIGN.md §4, already used on the site |
+| 2026-09-30 | Genres' `theme.rule` is now the hairline colour (`rule-soft`); heavy rules are ink from the shared palette | Ink rules are the print look; genre theme keeps only accent, tint and hairline |
 

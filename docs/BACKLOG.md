@@ -370,9 +370,31 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       - The archive edition page renders the email section HTML as-is, so
         story blocks there keep the old email styling until step 6.
       - Sources are not listed by name on How we report (no API for them).
-- [ ] **6. Email + PDF parity**: `config/genres.yaml` `theme:` blocks still hold the
-      OLD accents/fonts; generate them from `frontend/design/tokens.json`
-      (single source) and restyle `backend/app/render/templates/*` (600px).
+- [~] **6. Email + PDF parity** built. `frontend/design/tokens.json` is now the
+      single source for the site AND the backend: `npm run tokens:backend`
+      writes `backend/app/render/palette.json` and the `theme:` blocks in
+      `config/genres.yaml`; CI runs `tokens:backend:check` and a
+      `test_design_sync.py` guard fails if the two drift. The email is 600px
+      with a dateline strip, nameplate (Georgia; web fonts don't load in mail),
+      "Curated for" and weather boxes, spot-ink section bands, slip-style
+      extras; archive sections, the two system notices and the PDF cover/pages
+      share it. Tagline in email + PDF is now "The morning paper, set to your
+      interests." Still open on step 6:
+      - **Not tested in real mail clients.** Needs a Gmail (web + mobile) and
+        Outlook check of the new markup (text-shadow on the nameplate, dashed
+        borders and border-top bands should degrade gracefully, but that is
+        unverified). Only a browser render was checked.
+      - **PDF not rendered.** WeasyPrint's system libraries aren't on this
+        machine, so `pdf.py`'s new `@page` margin boxes (running header/footer)
+        and cover layout were checked as HTML only.
+      - No dark-mode variant for email (would need a `<style>` block; the
+        section HTML forbids one) - clients that auto-invert get explicit
+        backgrounds on every container.
+      - No stamp / halftone PNGs in email (DESIGN.md 17): the masthead has no
+        SAMPLE-style stamp images and sections have no halftone band; both need
+        hosted images.
+      - `pages.py` (emailed-link pages) still copies its colours by hand.
+      - Weekend/longer-read block headings use ink, not a genre ink.
 - [ ] **7. QA**: Playwright screenshots (5 viewports x Morning/Late x reduced
       motion), `@axe-core/playwright`, Lighthouse budgets (§13).
 - [ ] Genre period motifs (§6.2, ten ≤2 KB SVGs) — stamp cards have no motif yet.

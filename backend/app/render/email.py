@@ -26,7 +26,7 @@ from app.render.selection import Candidate, ai_tool_from_candidates, music_relea
 from app.render.weekend import WeekendContent
 
 BRAND = "The Morning Mosaic"
-TAGLINE = "India's morning, in the pieces that matter."
+TAGLINE = "The morning paper, set to your interests."
 
 # Ordinary adult reading speed for news prose.
 WORDS_PER_MINUTE = 220

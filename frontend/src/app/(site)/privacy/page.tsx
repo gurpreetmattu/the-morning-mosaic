@@ -16,9 +16,8 @@ export default async function PrivacyPage() {
     <article className="prose-sm max-w-none">
       <PageTitle>Privacy Policy</PageTitle>
       <Notice kind="info">
-        Draft — this wording has not yet had legal review. The facts on this
-        page (who operates this service, the version date, and the contact
-        address) are real; the phrasing is not final.
+        Draft — this wording has not yet had legal review. The facts on this page (who operates this
+        service, the version date, and the contact address) are real; the phrasing is not final.
       </Notice>
 
       <p className="mb-4 text-sm text-muted">

@@ -70,6 +70,11 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
+      - name: design tokens are in sync (site CSS and backend email/PDF theme)
+        run: |
+          npm run tokens
+          git diff --exit-code -- src/styles/tokens.css
+          npm run tokens:backend:check
       - name: eslint
         run: npm run lint
       - name: prettier --check

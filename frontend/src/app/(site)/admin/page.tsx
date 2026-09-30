@@ -211,8 +211,8 @@ function Dashboard() {
       <section className="mb-10">
         <h2 className="mb-3 text-lg font-semibold">Site status</h2>
         <p className="mb-3 text-sm text-muted">
-          What <code>/status</code> shows the public. No automated monitoring drives this yet —
-          flip it manually during a real incident, and clear it once it&rsquo;s resolved.
+          What <code>/status</code> shows the public. No automated monitoring drives this yet — flip
+          it manually during a real incident, and clear it once it&rsquo;s resolved.
         </p>
         {siteStatus && (
           <p className="mb-3 text-sm">
@@ -361,8 +361,8 @@ function Dashboard() {
       <section className="mb-10">
         <h2 className="mb-3 text-lg font-semibold">Correct a story</h2>
         <p className="mb-3 text-sm text-muted">
-          Shown alongside the story in the archive, and in the next edition for readers who
-          received it — never edits the story itself.
+          Shown alongside the story in the archive, and in the next edition for readers who received
+          it — never edits the story itself.
         </p>
         <form onSubmit={correctStory} className="max-w-md">
           <Field htmlFor="correction-story-id" label="Story ID">

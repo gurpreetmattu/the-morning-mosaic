@@ -16,9 +16,8 @@ export default async function TermsPage() {
     <article className="prose-sm max-w-none">
       <PageTitle>Terms of Service</PageTitle>
       <Notice kind="info">
-        Draft — this wording has not yet had legal review. The facts on this
-        page (who operates this service, the version date, and the contact
-        address) are real; the phrasing is not final.
+        Draft — this wording has not yet had legal review. The facts on this page (who operates this
+        service, the version date, and the contact address) are real; the phrasing is not final.
       </Notice>
 
       <p className="mb-4 text-sm text-muted">

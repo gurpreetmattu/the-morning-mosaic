@@ -1,0 +1,13 @@
+{#
+  Genre section header, shared by section.html.j2 (archive, pre-rendered once
+  per revision) and email.html.j2 (per-reader) so the two cannot drift.
+
+  Expects `theme`, `section_title` and `blurb` in scope. The genre's spot ink
+  is the only accent colour inside a section (DESIGN.md: one ink per section).
+#}
+<h2 style="margin:0;padding:10px 12px 8px 12px;background:{{ theme.accent_soft }};border-top:4px solid {{ theme.accent }};font-family:{{ pal.sans }};font-size:14px;line-height:1.2;font-weight:bold;letter-spacing:0.14em;text-transform:uppercase;color:{{ theme.accent }};">
+  {{ section_title }}
+</h2>
+<p style="margin:0 0 18px 0;padding:6px 12px 8px 12px;border-bottom:1px solid {{ pal.ink }};font-family:{{ theme.body_font }};font-size:14px;font-style:italic;line-height:1.4;color:{{ pal.ink_soft }};">
+  {{ blurb }}
+</p>

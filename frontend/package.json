@@ -14,7 +14,9 @@
     "tokens": "node design/scripts/build-tokens.mjs",
     "tokens:check": "node design/scripts/check-contrast.mjs",
     "prebuild": "npm run tokens",
-    "predev": "npm run tokens"
+    "predev": "npm run tokens",
+    "tokens:backend": "node design/scripts/sync-backend.mjs",
+    "tokens:backend:check": "node design/scripts/sync-backend.mjs --check"
   },
   "dependencies": {
     "@fontsource/abril-fatface": "^5.3.0",

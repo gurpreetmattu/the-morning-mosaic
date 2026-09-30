@@ -7,50 +7,56 @@
 
   Expects `theme`, `image`, `ai_tool`, `movie_releases`, `music_releases`,
   `scores`, `fixtures`, and `game_deals` in the including template's scope.
+
+  Each extra is a "telegram slip": tinted, dashed top and bottom, with a
+  small caps label so its kind never rests on colour alone.
 #}
+{% set box = "margin:0 12px 18px 12px;padding:10px 12px;background:" ~ theme.accent_soft ~ ";border-top:1px dashed " ~ pal.ink ~ ";border-bottom:1px dashed " ~ pal.ink ~ ";font-family:" ~ theme.body_font ~ ";font-size:14px;line-height:1.5;color:" ~ pal.ink ~ ";" %}
+{% set label = "font-family:" ~ pal.sans ~ ";font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:" ~ theme.accent ~ ";" %}
+{% set link = "color:" ~ theme.accent ~ ";text-decoration:underline;" %}
 {% if image %}
-<p style="margin:0 0 14px 0;">
-  <img src="{{ image.display_url }}" alt="" width="600" style="max-width:100%;height:auto;display:block;border:0;" />
-  <span style="display:block;margin-top:4px;font-family:{{ theme.body_font }};font-size:10px;color:#9a9a9a;">{{ image.credit }}</span>
+<p style="margin:0 12px 14px 12px;">
+  <img src="{{ image.display_url }}" alt="" width="576" style="max-width:100%;height:auto;display:block;border:2px solid {{ pal.ink }};" />
+  <span style="display:block;margin-top:4px;font-family:{{ pal.sans }};font-size:11px;color:{{ pal.ink_muted }};">{{ image.credit }}</span>
 </p>
 {% endif %}
 {% if ai_tool %}
-<p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-  <strong style="color:{{ theme.accent }};">AI tool of the day:</strong>
+<p style="{{ box }}">
+  <strong style="{{ label }}">AI tool of the day:</strong>
   {{ ai_tool.headline }} — {{ ai_tool.blurb }}
-  (<a href="{{ ai_tool.source.url }}" style="color:{{ theme.accent }};text-decoration:underline;">{{ ai_tool.source.name }}</a>)
+  (<a href="{{ ai_tool.source.url }}" style="{{ link }}">{{ ai_tool.source.name }}</a>)
 </p>
 {% endif %}
 {% if movie_releases %}
-<div style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-  <strong style="color:{{ theme.accent }};">Coming soon:</strong>
+<div style="{{ box }}">
+  <strong style="{{ label }}">Coming soon:</strong>
   {% for release in movie_releases %}{{ release.title }} ({{ release.release_date }}){% if not loop.last %}, {% endif %}{% endfor %}
-  <div style="margin-top:4px;font-size:10px;color:#9a9a9a;">
+  <div style="margin-top:4px;font-family:{{ pal.sans }};font-size:11px;color:{{ pal.ink_muted }};">
     This newsletter uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
   </div>
 </div>
 {% endif %}
 {% if music_releases %}
-<p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-  <strong style="color:{{ theme.accent }};">New releases:</strong>
-  {% for release in music_releases %}{{ release.headline }} (<a href="{{ release.source.url }}" style="color:{{ theme.accent }};text-decoration:underline;">{{ release.source.name }}</a>){% if not loop.last %}, {% endif %}{% endfor %}
+<p style="{{ box }}">
+  <strong style="{{ label }}">New releases:</strong>
+  {% for release in music_releases %}{{ release.headline }} (<a href="{{ release.source.url }}" style="{{ link }}">{{ release.source.name }}</a>){% if not loop.last %}, {% endif %}{% endfor %}
 </p>
 {% endif %}
 {% if scores %}
-<p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-  <strong style="color:{{ theme.accent }};">Scores:</strong>
+<p style="{{ box }}">
+  <strong style="{{ label }}">Scores:</strong>
   {% for score in scores %}{{ score.team1 }} v {{ score.team2 }}: {{ score.status }}{% if not loop.last %}; {% endif %}{% endfor %}
 </p>
 {% endif %}
 {% if fixtures %}
-<p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-  <strong style="color:{{ theme.accent }};">Fixtures:</strong>
+<p style="{{ box }}">
+  <strong style="{{ label }}">Fixtures:</strong>
   {% for fixture in fixtures %}{{ fixture.team1 }} v {{ fixture.team2 }} ({{ fixture.when }}){% if not loop.last %}, {% endif %}{% endfor %}
 </p>
 {% endif %}
 {% if game_deals %}
-<p style="margin:0 0 18px 0;padding:10px 12px;background:{{ theme.accent_soft }};font-family:{{ theme.body_font }};font-size:13px;line-height:1.5;color:#3a3a3a;">
-  <strong style="color:{{ theme.accent }};">Deals:</strong>
-  {% for deal in game_deals %}<a href="{{ deal.url }}" style="color:{{ theme.accent }};text-decoration:underline;">{{ deal.title }}</a> &ndash; {{ deal.savings_percent }}% off ({{ deal.store }}){% if not loop.last %}, {% endif %}{% endfor %}
+<p style="{{ box }}">
+  <strong style="{{ label }}">Deals:</strong>
+  {% for deal in game_deals %}<a href="{{ deal.url }}" style="{{ link }}">{{ deal.title }}</a> &ndash; {{ deal.savings_percent }}% off ({{ deal.store }}){% if not loop.last %}, {% endif %}{% endfor %}
 </p>
 {% endif %}

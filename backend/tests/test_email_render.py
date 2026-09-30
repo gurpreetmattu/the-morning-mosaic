@@ -359,3 +359,35 @@ def test_an_empty_weekend_content_renders_nothing_extra() -> None:
     without = render()
     empty = render(weekend=WeekendContent())
     assert without.html == empty.html
+
+
+# ------------------------------------------------------------ redesign (600px)
+
+
+def test_the_email_is_600px_wide_with_the_shared_palette() -> None:
+    from app.render import PALETTE
+
+    email = render()
+
+    assert 'width="600"' in email.html
+    assert "width:600px" in email.html
+    assert PALETTE["paper"] in email.html
+    assert PALETTE["ink"] in email.html
+    assert "Curated for Asha" in email.html
+    assert "The morning paper, set to your interests." in email.html
+
+
+def test_the_email_has_no_leftover_pre_redesign_styling() -> None:
+    email = render(weather=Weather(city="Pune", summary="Clear", low=21, high=33))
+
+    for stale in ("#141414", "#5a5a5a", "#f4f2ee", "Playfair", "width:640px"):
+        assert stale not in email.html
+
+
+def test_the_email_stays_free_of_scripts_web_fonts_and_stylesheets() -> None:
+    html = render().html
+
+    assert "<script" not in html
+    assert "<link" not in html
+    assert "@import" not in html
+    assert "@font-face" not in html
