@@ -51,7 +51,9 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       anywhere without this) and Cloudflare Turnstile. Neon, Gmail,
       OpenWeatherMap, a market API, a sports API, TMDB, Unsplash, Pexels,
       and Langfuse are done — see the accounts-provisioned Done entry.
-- [ ] **No git remote.** Nothing is pushed anywhere.
+- [x] ~~No git remote.~~ Pushed 2026-10-01 to a private GitHub repo
+      (`gurpreetmattu/the-morning-mosaic`) after a secrets/history audit found
+      nothing leaked. CI has not yet run there; check the first Actions run.
 - [x] ~~CLAUDE.md's agent table and the Orchestrator disagree.~~ Asked the
       owner: correct the table to match the code, not give the Orchestrator
       an LLM role. See the agent-table Done entry.
