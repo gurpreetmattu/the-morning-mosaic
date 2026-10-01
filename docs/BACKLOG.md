@@ -178,9 +178,15 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       built-in 'deploy from GitHub': Terraform owns the services/jobs, and there are two
       images, 7 jobs and a build-time Turnstile arg. Do this AFTER reading the first real
       build with the 5-genre scope.
-- [ ] **Pending owner action (2026-10-01 evening): apply `infra/release.tfplan`** (9 updates:
-      7 jobs + 2 services to image tag `328e625`, plus the longer job timeouts). Must be
-      applied before the 04:15 IST build or it runs the old 10-genre image with a 600 s timeout.
+- [x] ~~Pending owner action: apply `infra/release.tfplan`~~ Applied 2026-10-01 ~20:15 IST (by
+      Claude on the owner's instruction). Live: 5 genres on `/api/config`, landing says
+      "Five genres", disabled genres refused at signup; services on `328e625`; job timeouts
+      build 5400 / late-update 1500 / delivery 1800 / failure-notice 1800. Lesson: the first
+      attempt hit a DNS blip, left a stale GCS state lock, and every later Terraform command
+      would have failed until it was cleared. With the GCS backend `terraform force-unlock`
+      wants the lock OBJECT'S NUMERIC GENERATION (`gcloud storage objects describe
+      gs://the-morning-mosaic-tfstate/default.tflock --format='value(generation)'`), not the
+      UUID in the lock file.
 - [ ] **`deploy.yml`'s terraform apply has no `terraform.tfvars` in CI**
       (`*.tfvars` is gitignored), so it does not repeat `base_url`, despite its
       own comment saying it repeats what's in tfvars/state. Every CI deploy would
