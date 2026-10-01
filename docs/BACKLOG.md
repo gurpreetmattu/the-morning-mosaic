@@ -323,7 +323,7 @@ finder (6) is the last one closed — see its own Done entry.)
       the Done entry. Still open: other operational runbooks (a manual
       build rerun, approving a held notice batch, rotating out of a
       degraded LLM provider) beyond the one incident-response doc.
-- [ ] **`terraform plan`/`apply` have never run against a real project.**
+- [x] ~~**`terraform plan`/`apply` have never run against a real project.**~~ Applied 2026-10-01; see the first-deploy Done entry. Original note:
       No GCP project exists yet (Blockers). `terraform validate` passes;
       `fmt` is clean. Two real bugs were only found by going one step
       further and actually building+running both Docker images the config
@@ -550,6 +550,26 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 ---
 
 ## Done
+
+- [x] **First deploy to GCP (project `the-morning-mosaic`, `asia-south1`), 2026-10-01.**
+      State bucket `the-morning-mosaic-tfstate`; 2 Cloud Run services, 7 jobs,
+      14 Scheduler triggers, 4 alert policies, 18 secrets populated. Live at
+      `https://mosaic-web-297073209731.asia-south1.run.app` (`BASE_URL`): all pages 200,
+      `/api/config` returns 10 genres and 87 cities from the real database,
+      no error-level logs. Images are the manual `:manual` tag; the Turnstile
+      site key is confirmed inside the web image's bundle. Things that bit:
+      a first `terraform apply` ran concurrently with a second and left the
+      state behind reality (4 secrets + the registry repo existed but were
+      untracked; fixed with temporary `import` blocks, nothing destroyed);
+      two alert policies failed once because their log metrics were not
+      registered yet (retry worked); `newsapi-key` was dropped from Terraform
+      (unused, empty values are rejected). The prod `TOKEN_SIGNING_KEY` is a
+      fresh key, not the dev one. **Not yet done:** a real signup/opt-in
+      round trip in prod, a manual build + delivery run, preflight `--prod`
+      against prod values, HSTS header (none sent), Workload Identity
+      Federation for `deploy.yml`, and the `BASE_URL` CI-reset bug above.
+      `terraform plan` always shows 2 in-place changes (Cloud Run `scaling`
+      fields going 0 -> unset): provider noise, harmless.
 
 - [x] **Critical: the Turnstile site key never reached the production
       frontend.** `TurnstileWidget` reads `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, which
