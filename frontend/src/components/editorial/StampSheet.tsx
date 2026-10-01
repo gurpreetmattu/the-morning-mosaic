@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { GENRES } from "@/content/genres";
+import { LIVE_GENRES } from "@/content/genres";
 import { GenreCard } from "./GenreCard";
 
 /**
@@ -18,7 +18,7 @@ export function StampSheet() {
       <fieldset>
         <legend className="sr-only">Choose your genres</legend>
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-5">
-          {GENRES.map((g, i) => (
+          {LIVE_GENRES.map((g, i) => (
             <GenreCard
               key={g.slug}
               genre={g.slug}

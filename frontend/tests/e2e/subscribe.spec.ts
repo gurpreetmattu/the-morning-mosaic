@@ -78,12 +78,12 @@ test.describe("subscribe flow", () => {
 
   test("the landing stamp sheet hands its genres to the flow", async ({ page }) => {
     await page.goto("/");
-    await stamp(page, "Gaming").click();
-    await stamp(page, "Hollywood").click();
+    await stamp(page, "AI").click();
+    await stamp(page, "Sports").click();
     await page.locator("#genres").getByRole("link", { name: "Start my edition" }).click();
 
-    await expect(page).toHaveURL(/\/subscribe\?genres=gaming,hollywood/);
-    await expect(page.getByRole("checkbox", { name: /^Gaming/ })).toBeChecked();
+    await expect(page).toHaveURL(/\/subscribe\?genres=ai,sports/);
+    await expect(page.getByRole("checkbox", { name: /^AI/ })).toBeChecked();
   });
 
   test("the old /signup URL redirects and keeps its query", async ({ page }) => {

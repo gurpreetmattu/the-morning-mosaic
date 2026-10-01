@@ -16,6 +16,7 @@ from app.api.deps import db_session
 from app.api.deps import settings as settings_dep
 from app.api.routes import account
 from app.api.session import CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE
+from app.config.loader import load_genres
 from app.config.settings import Settings
 from app.db.seed import seed_cities, seed_sources
 from app.email import tokens
@@ -330,6 +331,20 @@ class TestPreferences:
             "/api/me", json={"city_id": "atlantis"}, headers=csrf_headers(client)
         )
         assert response.status_code == 400
+
+    def test_a_genre_that_is_switched_off_is_refused(
+        self, client: TestClient, session: Session
+    ) -> None:
+        off = next(g.key for g in load_genres().genres if not g.enabled)
+        user = make_user(session)
+        sign_in(client, session, user)
+
+        response = client.patch(
+            "/api/me", json={"genres": ["india", off]}, headers=csrf_headers(client)
+        )
+
+        assert response.status_code == 422
+        assert "not available yet" in response.text
 
     def test_emptying_genres_is_refused(self, client: TestClient, session: Session) -> None:
         """A subscriber with no genres would receive an empty newsletter."""

@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from app.config.schemas import (
     CitiesConfig,
     EditionsConfig,
+    GenreKey,
     GenresConfig,
     ModelsConfig,
     PolicyConfig,
@@ -53,6 +54,15 @@ def _load[T: BaseModel](filename: str, model: type[T]) -> T:
 @lru_cache(maxsize=1)
 def load_genres() -> GenresConfig:
     return _load("genres.yaml", GenresConfig)
+
+
+def only_active_genres(genres: list[GenreKey]) -> list[GenreKey]:
+    """Reject any genre that is defined but switched off (`enabled: false`)."""
+    active = set(load_genres().active_keys)
+    unavailable = sorted({genre for genre in genres if genre not in active})
+    if unavailable:
+        raise ValueError(f"genre not available yet: {', '.join(unavailable)}")
+    return genres
 
 
 @lru_cache(maxsize=1)

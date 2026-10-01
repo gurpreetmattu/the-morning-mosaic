@@ -5,6 +5,7 @@ import { RubberStamp } from "@/components/editorial/RubberStamp";
 import { StampSheet } from "@/components/editorial/StampSheet";
 import { StickyCta } from "@/components/editorial/StickyCta";
 import { SUPPORTING_LINE, TAGLINE } from "@/content/brand";
+import { LIVE_GENRE_COUNT_WORD } from "@/content/genres";
 
 const primaryCta =
   "font-gothic inline-block min-h-12 border-2 border-ink bg-ink px-6 py-3 text-base font-bold tracking-[0.06em] text-paper uppercase shadow-[var(--block-1)] transition-transform hover:-translate-x-px hover:-translate-y-px active:translate-x-[3px] active:translate-y-[3px] active:shadow-none";
@@ -12,7 +13,11 @@ const secondaryCta =
   "font-gothic inline-block min-h-12 border-2 border-ink bg-paper-raised px-6 py-3 text-base font-bold tracking-[0.06em] text-ink uppercase shadow-[var(--block-1)] transition-transform hover:-translate-x-px hover:-translate-y-px active:translate-x-[3px] active:translate-y-[3px] active:shadow-none";
 
 const STEPS = [
-  { n: "1", title: "Pick your genres", text: "Choose from ten. Each brings 4–6 stories." },
+  {
+    n: "1",
+    title: "Pick your genres",
+    text: `Choose from ${LIVE_GENRE_COUNT_WORD}. Each brings 4–6 stories.`,
+  },
   {
     n: "2",
     title: "Choose city and time",
@@ -137,7 +142,10 @@ export default function HomePage() {
 
       {/* Stamp sheet */}
       <section id="genres" className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6">
-        <SectionHeading kicker="The genres">Ten genres. Your mix.</SectionHeading>
+        <SectionHeading kicker="The genres">
+          {LIVE_GENRE_COUNT_WORD.charAt(0).toUpperCase() + LIVE_GENRE_COUNT_WORD.slice(1)} genres.
+          Your mix.
+        </SectionHeading>
         <StampSheet />
       </section>
 

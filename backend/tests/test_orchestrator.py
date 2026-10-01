@@ -17,7 +17,7 @@ from app.agents.schemas import (
     WrittenStory,
 )
 from app.config.loader import load_editions, load_genres
-from app.config.schemas import EditionsConfig, GenreKey
+from app.config.schemas import EditionsConfig, GenreKey, GenresConfig
 from app.models.enums import SectionStatus
 from app.sources.schemas import CollectedArticle, CollectionResult, Passage
 
@@ -122,7 +122,7 @@ def orchestrator(
         collector=collector or FakeCollector(),
         ranker=ranker or FakeRanker(),
         verify=verify or FakeVerifier(),
-        genres=load_genres(),
+        genres=every_genre_on(),
         editions=editions or launch_on(date(2026, 10, 1)),
         max_workers=1,
         clock=clock or Clock(NOW),
@@ -302,6 +302,34 @@ def test_saturday_and_sunday_are_weekend_editions() -> None:
     assert saturday.is_weekend is True
 
 
+def every_genre_on() -> GenresConfig:
+    """All ten genres enabled with the full pool, whatever the launch set is."""
+    payload = load_genres().model_dump()
+    for genre in payload["genres"]:
+        genre["enabled"] = True
+        genre["pool_size"] = 10
+    return GenresConfig.model_validate(payload)
+
+
+def test_only_enabled_genres_are_built_when_none_are_named() -> None:
+    payload = every_genre_on().model_dump()
+    for genre in payload["genres"]:
+        genre["enabled"] = genre["key"] in {"india", "ai"}
+    subject = Orchestrator(
+        collector=FakeCollector(),
+        ranker=FakeRanker(),
+        verify=FakeVerifier(),
+        genres=GenresConfig.model_validate(payload),
+        editions=launch_on(date(2026, 10, 1)),
+        max_workers=1,
+        clock=Clock(NOW),
+    )
+
+    build = subject.build(edition_date=EDITION_DATE, deadline=DEADLINE, now=NOW)
+
+    assert sorted(outcome.genre for outcome in build.genres) == ["ai", "india"]
+
+
 def test_every_genre_is_built_when_none_are_named() -> None:
     build = orchestrator().build(edition_date=EDITION_DATE, deadline=DEADLINE, now=NOW)
     assert len(build.genres) == 10
@@ -313,7 +341,7 @@ def test_genres_can_run_in_parallel() -> None:
         collector=FakeCollector(),
         ranker=FakeRanker(),
         verify=FakeVerifier(),
-        genres=load_genres(),
+        genres=every_genre_on(),
         editions=launch_on(date(2026, 10, 1)),
         max_workers=4,
         clock=Clock(NOW),

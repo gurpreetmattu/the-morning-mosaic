@@ -23,10 +23,20 @@ import pytest
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session
 
+from app.config.settings import Settings
 from app.db.engine import normalise_url
 from app.models import Base
 
 TEST_DB_ENV = "TEST_DATABASE_URL"
+
+
+@pytest.fixture(autouse=True)
+def _tests_never_read_dot_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`Settings.model_validate({...})` still falls back to the developer's real
+    `.env` for any field the test did not set, so a key added there later (a
+    Turnstile secret, say) silently changed test behaviour - 7 signup tests
+    failed the day it was added. Tests must be independent of the machine."""
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
 
 
 @pytest.fixture(scope="session")

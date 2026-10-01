@@ -43,3 +43,32 @@ export const GENRES: readonly { slug: GenreSlug; name: string; blurb: string }[]
     blurb: "Releases, tours, and the industry behind the charts.",
   },
 ];
+
+// The genres switched on in config/genres.yaml (`enabled: true`). The landing page is static, so it
+// keeps its own copy of that list; backend/tests/test_launch_genres.py fails if the two drift.
+export const LIVE_GENRE_SLUGS: readonly GenreSlug[] = [
+  "india",
+  "business",
+  "technology",
+  "ai",
+  "sports",
+];
+
+export const LIVE_GENRES = GENRES.filter((g) => LIVE_GENRE_SLUGS.includes(g.slug));
+
+const NUMBER_WORDS = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+];
+
+/** "five", for copy like "Choose from five." */
+export const LIVE_GENRE_COUNT_WORD = NUMBER_WORDS[LIVE_GENRES.length] ?? String(LIVE_GENRES.length);

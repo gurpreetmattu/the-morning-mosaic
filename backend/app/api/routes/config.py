@@ -71,7 +71,7 @@ def read_config(
 ) -> ConfigResponse:
     genres = [
         GenreOption(key=genre.key, display_name=genre.display_name, blurb=genre.blurb)
-        for genre in load_genres().genres
+        for genre in load_genres().active
     ]
     cities = [
         CityOption(id=row.id, name=row.name, state=row.state)

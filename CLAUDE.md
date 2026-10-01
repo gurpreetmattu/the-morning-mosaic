@@ -23,6 +23,10 @@ releases, deals). If an item has no reliable source for the day, omit it.
   Hollywood, Music), with an India angle where one exists.
 - **Genres (10):** india, politics, business, technology, ai, sports, gaming, bollywood,
   hollywood (global entertainment), music.
+  **Launch set (owner decision, 2026-10-01):** only india, business, technology, ai and sports
+  are enabled, each with a pool of 6, because free LLM tiers cannot carry ten genres a day.
+  The other five stay fully defined with `enabled: false` in `config/genres.yaml`; flip that
+  flag (and the matching list in `frontend/src/content/genres.ts`) to bring a genre back.
 - **Stories per genre:** up to 6 verified stories, target 4–6 (1–2 A4 pages). Keyword-matched
   stories replace lower-ranked ones within that cap. If fewer than 2 verified stories exist, the
   section shows a short "quiet news day" note instead.

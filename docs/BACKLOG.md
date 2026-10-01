@@ -47,6 +47,14 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       (Groq pay-as-you-go is the cheapest route; a full day should cost
       pennies - measure it), or cut the per-day call volume. Do NOT open signups
       until a build yields 4-6 verified stories per genre.
+      **Owner constraint (2026-10-01): spend nothing on LLMs (student).** So the
+      launch scope is cut to 5 genres (india, business, technology, ai, sports),
+      pool 6 each - see the launch-scope Done entry. Still open under this
+      constraint: re-route Writer/Fact-checker across Groq's three free
+      per-model buckets (200K tokens/day each; `config/models.yaml`, needs a
+      small eval run), pause the late updates, and measure one clean build.
+      Cerebras was ruled out: its free tier is $5 of credit that needs a payment
+      method and expires in 30 days.
       **Measured cost (2026-10-01, from `llm_calls` + provider pricing pages):**
       earlier clean runs cost ~14.5k input / 2.1k output tokens and ~$0.010 per
       persisted story, so 50-100 stories/day is ~$0.5-1.0/day for a build, ~$0.8-1.6/day
@@ -575,6 +583,20 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 ---
 
 ## Done
+
+- [x] **Launch scope cut to 5 genres, pool 6** (owner decision 2026-10-01, free-LLM
+      budget). New `enabled` flag on `Genre` (default true); `config/genres.yaml` turns off
+      politics, gaming, bollywood, hollywood and music. Build and late update default to the
+      enabled genres; `/api/config` lists only them; signup and `PATCH /api/me` reject a
+      disabled genre ("not available yet"); the landing stamp sheet and copy come from
+      `LIVE_GENRES` in `frontend/src/content/genres.ts`, and
+      `backend/tests/test_launch_genres.py` fails if that list drifts from the YAML. Also
+      fixed a test-isolation bug found on the way: tests read the developer's real `.env`
+      (a newly added Turnstile secret made 7 signup tests fail), so `conftest.py` now
+      disables `.env` loading for every test. 829 backend tests (with Postgres), 66 vitest
+      and 207 Playwright tests pass. **Not yet done:** the deployed images still carry the
+      old config - rebuild and redeploy both before this takes effect in prod; the
+      existing test subscriber (india, business) is unaffected.
 
 - [x] **Cloud Run job timeouts were 600 s for every job; the real build needs
       ~16 min.** The first manual build was killed at 600 s. Terraform now sets

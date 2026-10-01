@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { LIVE_GENRE_SLUGS } from "../../src/content/genres";
 
 // DESIGN.md section 10 (motion inventory) and 6.2 (genre motifs).
 
@@ -127,20 +128,11 @@ test.describe("subscribe flow motion", () => {
 });
 
 test.describe("genre motifs", () => {
-  test("every genre stamp carries its own decorative motif in the genre ink", async ({ page }) => {
+  test("every live genre stamp carries its own decorative motif in the genre ink", async ({
+    page,
+  }) => {
     await page.goto("/");
-    const genres = [
-      "india",
-      "politics",
-      "business",
-      "technology",
-      "ai",
-      "sports",
-      "gaming",
-      "bollywood",
-      "hollywood",
-      "music",
-    ];
+    const genres = LIVE_GENRE_SLUGS;
     for (const genre of genres) {
       const motif = page.locator(`#genres .motif-${genre}`);
       await expect(motif, genre).toHaveCount(1);
@@ -154,11 +146,12 @@ test.describe("genre motifs", () => {
     }
   });
 
-  test("the ten motifs are all different", async ({ page }) => {
+  test("the live genres' motifs are all different", async ({ page }) => {
     await page.goto("/");
     const masks = await page
       .locator("#genres .motif")
       .evaluateAll((els) => els.map((el) => getComputedStyle(el).maskImage));
-    expect(new Set(masks).size).toBe(10);
+    expect(masks).toHaveLength(LIVE_GENRE_SLUGS.length);
+    expect(new Set(masks).size).toBe(LIVE_GENRE_SLUGS.length);
   });
 });

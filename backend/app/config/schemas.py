@@ -90,6 +90,10 @@ class Genre(ConfigBase):
     corroboration: Corroboration
     topic_tags: list[Slug] = Field(min_length=4)
     extras: list[ExtraKind] = Field(default_factory=list)
+    # False keeps the genre defined (theme, tags, sources) but takes it out of the
+    # build, the signup/preferences choices and /api/config. Used to launch with
+    # fewer genres than the free LLM tiers can carry; see docs/BACKLOG.md.
+    enabled: bool = True
     pool_size: int = Field(default=10, ge=1, le=20)
     min_stories: int = Field(default=2, ge=1)
     max_stories: int = Field(default=6, ge=1)
@@ -118,10 +122,21 @@ class GenresConfig(ConfigBase):
         missing = sorted(set(GENRE_KEYS) - set(keys))
         if missing:
             raise ValueError(f"missing genre definitions {missing}")
+        if not any(genre.enabled for genre in self.genres):
+            raise ValueError("at least one genre must be enabled")
         return self
 
     def by_key(self) -> dict[GenreKey, Genre]:
         return {genre.key: genre for genre in self.genres}
+
+    @property
+    def active(self) -> list[Genre]:
+        """Genres switched on, in config order."""
+        return [genre for genre in self.genres if genre.enabled]
+
+    @property
+    def active_keys(self) -> list[GenreKey]:
+        return [genre.key for genre in self.active]
 
     def topic_tags(self, key: GenreKey) -> frozenset[str]:
         return frozenset(self.by_key()[key].topic_tags)

@@ -16,13 +16,20 @@ describe("StampSheet", () => {
     );
 
     await user.click(screen.getByRole("checkbox", { name: /AI/ }));
-    await user.click(screen.getByRole("checkbox", { name: /Music/ }));
+    await user.click(screen.getByRole("checkbox", { name: /Sports/ }));
 
     expect(screen.getByRole("link", { name: "Start my edition" })).toHaveAttribute(
       "href",
-      "/subscribe?genres=ai,music",
+      "/subscribe?genres=ai,sports",
     );
     expect(screen.getByText("2 genres chosen.")).toBeInTheDocument();
+  });
+
+  it("offers only the genres that are switched on", () => {
+    render(<StampSheet />);
+
+    expect(screen.getAllByRole("checkbox")).toHaveLength(5);
+    expect(screen.queryByRole("checkbox", { name: /Music/ })).not.toBeInTheDocument();
   });
 });
 

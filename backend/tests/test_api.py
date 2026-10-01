@@ -24,7 +24,7 @@ from app.api.deps import db_session
 from app.api.deps import settings as settings_dep
 from app.api.routes import public
 from app.api.routes.archive import is_public
-from app.config.loader import load_policy
+from app.config.loader import load_genres, load_policy
 from app.config.settings import Settings
 from app.db.persist import persist_genre
 from app.db.publish import publish_revision
@@ -286,6 +286,17 @@ class TestSignup:
         user = session.scalar(select(User).where(User.email == "asha@example.com"))
         assert user is not None
         assert user.status is SubscriptionStatus.PENDING
+
+    def test_a_genre_that_is_switched_off_cannot_be_chosen(
+        self, client: TestClient, session: Session
+    ) -> None:
+        off = next(g.key for g in load_genres().genres if not g.enabled)
+
+        response = client.post("/api/signup", json=signup_payload(genres=["india", off]))
+
+        assert response.status_code in (400, 422)
+        assert "not available yet" in response.text
+        assert session.scalar(select(User).where(User.email == "asha@example.com")) is None
 
     def test_signing_somebody_else_up_does_not_subscribe_them(
         self, client: TestClient, session: Session
@@ -658,7 +669,9 @@ class TestConfig:
         body = response.json()
         genre_keys = {genre["key"] for genre in body["genres"]}
         assert "india" in genre_keys
-        assert len(body["genres"]) == 10
+        # Only enabled genres are offered (config/genres.yaml `enabled`).
+        assert genre_keys == set(load_genres().active_keys)
+        assert len(body["genres"]) == len(load_genres().active)
         city_ids = {city["id"] for city in body["cities"]}
         assert "mumbai" in city_ids
         assert "06:00:00" in body["delivery_slots"]

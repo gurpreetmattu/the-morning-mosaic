@@ -1,5 +1,10 @@
 # The ten genres. One fixed theme each; variety comes from special editions.
 #
+# `enabled: false` keeps a genre defined but out of the build, the signup choices and
+# /api/config. Launch set (2026-10-01): india, business, technology, ai, sports, each with
+# pool_size 6 - sized to what the free LLM tiers can carry (see docs/BACKLOG.md).
+# Re-enable a genre by flipping it to true; nothing else changes.
+#
 # `topic_tags` is the CLOSED taxonomy the Writer may choose from for this genre.
 # The Fact-checker rejects any tag outside this list, and keyword matching runs
 # against these tags, so adding or renaming a tag is a product change.
@@ -13,6 +18,8 @@ genres:
     section_title: Across India
     blurb: The day's most consequential national news.
     corroboration: strict
+    enabled: true
+    pool_size: 6
     theme:
       accent: "#A63F08"
       accent_soft: "#F6DCC3"
@@ -40,6 +47,7 @@ genres:
     section_title: The Political Desk
     blurb: Parliament, parties, and policy — reported without a side.
     corroboration: strict
+    enabled: false
     theme:
       accent: "#7A1F3D"
       accent_soft: "#EBD0D3"
@@ -65,6 +73,8 @@ genres:
     section_title: Business & Markets
     blurb: Companies, markets, and the economy.
     corroboration: strict
+    enabled: true
+    pool_size: 6
     theme:
       accent: "#1E5B3A"
       accent_soft: "#D6E4CF"
@@ -92,6 +102,8 @@ genres:
     section_title: Technology
     blurb: Products, platforms, and the policy around them.
     corroboration: standard
+    enabled: true
+    pool_size: 6
     theme:
       accent: "#0E6B78"
       accent_soft: "#CFE3DF"
@@ -117,6 +129,8 @@ genres:
     section_title: Artificial Intelligence
     blurb: Models, research, tooling, and the rules being written around them.
     corroboration: standard
+    enabled: true
+    pool_size: 6
     extras:
       - ai_tool_of_the_day
     theme:
@@ -144,6 +158,8 @@ genres:
     section_title: Sport
     blurb: Results, fixtures, and the stories behind them.
     corroboration: standard
+    enabled: true
+    pool_size: 6
     extras:
       - scores_fixtures
     theme:
@@ -171,6 +187,7 @@ genres:
     section_title: Gaming
     blurb: Releases, esports, and the business of play.
     corroboration: standard
+    enabled: false
     extras:
       - game_deals
     theme:
@@ -195,6 +212,7 @@ genres:
     section_title: Bollywood
     blurb: Indian cinema — releases, screens, and the industry.
     corroboration: standard
+    enabled: false
     extras:
       - movie_releases
     theme:
@@ -220,6 +238,7 @@ genres:
     section_title: Screen & Stage
     blurb: Global film and television.
     corroboration: standard
+    enabled: false
     extras:
       - movie_releases
     theme:
@@ -244,6 +263,7 @@ genres:
     section_title: Music
     blurb: Releases, tours, and the industry behind the charts.
     corroboration: standard
+    enabled: false
     extras:
       - music_releases
     theme:

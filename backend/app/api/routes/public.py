@@ -20,7 +20,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
@@ -30,7 +30,7 @@ from app.api.deps import db_session
 from app.api.deps import settings as get_request_settings
 from app.api.security import RateLimiter, TurnstileError, client_key, verify_turnstile
 from app.clock import now_utc
-from app.config.loader import load_policy
+from app.config.loader import load_policy, only_active_genres
 from app.config.schemas import GENRE_KEYS, GenreKey
 from app.config.settings import Settings
 from app.email import tokens
@@ -78,6 +78,11 @@ class SignupRequest(BaseModel):
     keywords: list[str] = Field(default_factory=list, max_length=10)
     age_confirmed: bool
     turnstile_token: str | None = None
+
+    @field_validator("genres")
+    @classmethod
+    def _genres_are_offered(cls, genres: list[GenreKey]) -> list[GenreKey]:
+        return only_active_genres(genres)
 
 
 class SignupResponse(BaseModel):

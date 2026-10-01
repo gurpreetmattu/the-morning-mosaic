@@ -17,7 +17,7 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -29,6 +29,7 @@ from app.api.routes.public import DELIVERY_SLOTS
 from app.api.security import RateLimiter, client_key
 from app.api.session import clear_session, issue_session, require_csrf, require_user
 from app.clock import now_utc
+from app.config.loader import only_active_genres
 from app.config.schemas import GENRE_KEYS, GenreKey
 from app.config.settings import Settings
 from app.email import tokens
@@ -171,6 +172,11 @@ class PreferencesUpdate(BaseModel):
     frequency: Literal["daily", "weekdays"] | None = None
     edition_preference: Literal["india", "global", "mixed"] | None = None
     keywords: list[str] | None = Field(default=None, max_length=10)
+
+    @field_validator("genres")
+    @classmethod
+    def _genres_are_offered(cls, genres: list[GenreKey] | None) -> list[GenreKey] | None:
+        return None if genres is None else only_active_genres(genres)
 
 
 def _profile(user: User) -> MeResponse:

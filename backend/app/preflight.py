@@ -334,7 +334,7 @@ def check_config_files(report: Report) -> None:
         bool(enabled), "at least one source is enabled", "no source is enabled: nothing to collect"
     )
     covered = {genre for source in enabled for genre in source.genres}
-    all_genres = {g.key for g in loader.load_genres().genres}
+    all_genres = set(loader.load_genres().active_keys)
     missing = sorted(all_genres - covered)
     if missing:
         report.add(

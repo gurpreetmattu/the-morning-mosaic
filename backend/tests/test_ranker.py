@@ -124,6 +124,9 @@ def load_genres_with(corroboration: str) -> GenresConfig:
     real = load_genres()
     payload = real.model_dump()
     for genre in payload["genres"]:
+        # The tests cover the ranker, not the launch set: every genre on, full pool.
+        genre["enabled"] = True
+        genre["pool_size"] = 10
         if genre["key"] == "india":
             genre["corroboration"] = corroboration
     return GenresConfig.model_validate(payload)

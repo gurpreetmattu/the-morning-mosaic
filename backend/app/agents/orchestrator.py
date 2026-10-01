@@ -81,7 +81,7 @@ class Orchestrator:
         genres: list[GenreKey] | None = None,
         now: datetime | None = None,
     ) -> EditionBuild:
-        targets = genres if genres is not None else [g.key for g in self._genres.genres]
+        targets = genres if genres is not None else self._genres.active_keys
         reference = now or self._clock()
 
         outcomes: list[GenreOutcome] = []
