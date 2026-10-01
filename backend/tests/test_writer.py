@@ -193,7 +193,7 @@ def test_an_entity_absent_from_the_passages_is_dropped() -> None:
 
 
 def test_a_generic_phrase_is_dropped_even_when_it_appears_in_the_passages() -> None:
-    """"union cabinet" is in P1 verbatim, but it is not a proper noun —
+    """ "union cabinet" is in P1 verbatim, but it is not a proper noun —
     accepting it would let real entity tags drown in noise like this."""
     draft = good_draft(entity_tags=["union cabinet"])
     result = validate(draft)

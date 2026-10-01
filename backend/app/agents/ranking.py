@@ -264,8 +264,7 @@ def independent_sources(articles: Sequence[CollectedArticle], tiers: Mapping[str
         if any(article.source_key == voice.source_key for voice in voices):
             continue
         if any(
-            syndication_overlap(article, voice) >= SYNDICATION_OVERLAP_THRESHOLD
-            for voice in voices
+            syndication_overlap(article, voice) >= SYNDICATION_OVERLAP_THRESHOLD for voice in voices
         ):
             continue
         voices.append(article)

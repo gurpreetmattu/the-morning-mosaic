@@ -291,9 +291,7 @@ def validate_draft(
         candidate = str(tag).strip()
         if not candidate:
             continue
-        grounded = re.search(
-            rf"\b{re.escape(candidate)}\b", " ".join(passage_texts), re.IGNORECASE
-        )
+        grounded = re.search(rf"\b{re.escape(candidate)}\b", " ".join(passage_texts), re.IGNORECASE)
         if grounded and looks_like_a_proper_noun(candidate):
             entity_tags.append(candidate)
         elif not grounded:

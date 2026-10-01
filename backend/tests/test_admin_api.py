@@ -754,9 +754,7 @@ class TestCorrections:
 
         assert response.status_code == 404
 
-    def test_an_empty_description_is_rejected(
-        self, client: TestClient, session: Session
-    ) -> None:
+    def test_an_empty_description_is_rejected(self, client: TestClient, session: Session) -> None:
         publish_with_stories(session)
         target = session.scalar(select(Story).where(Story.headline == "Corridor cleared"))
         assert target is not None

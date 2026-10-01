@@ -254,6 +254,7 @@ def looks_like_a_proper_noun(candidate: str) -> bool:
     """
     return _CAPITALISED.fullmatch(candidate.strip()) is not None
 
+
 # Below the four-character floor a candidate is normally skipped, since
 # raising the floor for every short capitalised word would flood the check
 # with false positives ("Fed", "PM", ordinary words at a sentence's start).

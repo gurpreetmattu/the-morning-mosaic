@@ -621,9 +621,7 @@ class TestArchive:
         ]
         assert first_page["has_more"] is True
 
-        second_page = client.get(
-            "/api/archive", params={"limit": 2, "before": "2026-09-11"}
-        ).json()
+        second_page = client.get("/api/archive", params={"limit": 2, "before": "2026-09-11"}).json()
         assert [row["edition_date"] for row in second_page["editions"]] == ["2026-09-10"]
         assert second_page["has_more"] is False
 
