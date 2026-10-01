@@ -605,6 +605,17 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 
 ## Done
 
+- [x] **Morning build report:** `uv run python -m app.buildreport [--date YYYY-MM-DD]`
+      (`backend/app/buildreport.py`, read-only): every build/late-update run for the date with
+      duration and error, what was published per genre, LLM calls by agent and model with
+      tokens, what the same tokens would cost on a paid plan, failed calls bucketed by cause
+      (Cloudflare neurons, daily quota, per-minute rate limit, 413, invalid JSON), and the
+      delivery rows. Use it first when reading any build.
+      **Found with it:** `pipeline_runs` keeps 'running' rows for runs whose container was
+      killed (timeout / my 600 s kill), e.g. 5 stale rows for 2026-10-01. A SIGKILL cannot
+      update its own row; a janitor step at the start of each build should mark RUNNING rows
+      older than their deadline as failed. Not built.
+
 - [x] **Launch scope cut to 5 genres, pool 6** (owner decision 2026-10-01, free-LLM
       budget). New `enabled` flag on `Genre` (default true); `config/genres.yaml` turns off
       politics, gaming, bollywood, hollywood and music. Build and late update default to the
