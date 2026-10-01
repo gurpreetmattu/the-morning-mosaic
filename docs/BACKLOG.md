@@ -568,6 +568,13 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       round trip in prod, a manual build + delivery run, preflight `--prod`
       against prod values, HSTS header (none sent), Workload Identity
       Federation for `deploy.yml`, and the `BASE_URL` CI-reset bug above.
+      **Signup verified in prod 2026-10-01** (Turnstile passed after both run.app
+      hostnames were added to the widget; error 110200 before that): POST
+      /api/signup 200, opt-in GET+POST 200, user `pending` -> `active`, 1 consent
+      row, opt-in token marked used. **Found:** uvicorn's access log writes full
+      request paths to Cloud Logging, so opt-in, unsubscribe and feedback tokens
+      (unsubscribe tokens never expire) sit in request logs readable by anyone
+      with log access; scrub or suppress token paths in the access log.
       `terraform plan` always shows 2 in-place changes (Cloud Run `scaling`
       fields going 0 -> unset): provider noise, harmless.
 
