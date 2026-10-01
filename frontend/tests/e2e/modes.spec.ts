@@ -45,7 +45,9 @@ test.describe("user preferences and modes", () => {
 
     await page.getByRole("button", { name: "Switch to Late edition" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    expect(await bg()).not.toBe(lightBg);
+    // body fades its background over --dur-base, so poll until the new colour lands
+    // (a single read right after the attribute flips races the transition on slow runners).
+    await expect.poll(bg).not.toBe(lightBg);
 
     // The choice is applied before first paint on the next visit (no flash).
     await page.goto("/how-we-report", { waitUntil: "commit" });
