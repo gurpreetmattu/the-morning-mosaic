@@ -123,6 +123,15 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       populate `database-direct-url` (and `llm-secondary-api-key`) in Secret
       Manager, and set `llm_secondary_url`, before the first apply.
 
+- [ ] **`deploy.yml`'s terraform apply has no `terraform.tfvars` in CI**
+      (`*.tfvars` is gitignored), so it does not repeat `base_url`, despite its
+      own comment saying it repeats what's in tfvars/state. Every CI deploy would
+      reset `BASE_URL` to the variables.tf placeholder and break every email
+      link. Found 2026-10-01 while wiring the Turnstile key; not fixed (needs a
+      decision on a `BASE_URL` repository variable vs a committed non-secret
+      tfvars file). Same applies to any other tfvars-only value. Until fixed,
+      deploy by hand with `terraform apply` locally.
+
 ## 3. Provisional values that will cause harm if forgotten
 
 - [ ] **`launch_date: 2026-10-01`** in `config/editions.yaml` is still a
@@ -531,6 +540,18 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 ---
 
 ## Done
+
+- [x] **Critical: the Turnstile site key never reached the production
+      frontend.** `TurnstileWidget` reads `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, which
+      Next inlines into the client bundle at *build* time; the Dockerfile and
+      `deploy.yml` passed nothing, so the prod widget would render nothing and
+      every signup would be rejected (missing token). `frontend/Dockerfile` now
+      takes it as a build arg; `deploy.yml` passes `vars.TURNSTILE_SITE_KEY`
+      (and `LLM_SECONDARY_URL`, `TURNSTILE_SITE_KEY` to terraform); the manual
+      build in `infra/README.md` shows the flag. Verified with a plain
+      `npm run build` and a marker key found in `.next/static` - the Docker
+      image itself was not built (Docker Desktop was not running). New
+      repository variables to set: `TURNSTILE_SITE_KEY`, `LLM_SECONDARY_URL`.
 
 - [x] Pre-flight check: `uv run python -m app.preflight [--live] [--prod]`
       (`backend/app/preflight.py`, 15 tests in `test_preflight.py`). Offline:

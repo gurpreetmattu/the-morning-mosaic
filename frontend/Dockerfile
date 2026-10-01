@@ -12,7 +12,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # BACKEND_ORIGIN is read at request time (see next.config.ts), not needed
-# to build; no env vars are baked into this image.
+# to build. The one value baked in is the *public* Turnstile site key: Next
+# inlines NEXT_PUBLIC_* into the client bundle at build time, so passing it
+# only at runtime leaves the widget unrendered and blocks every signup in prod.
+# Pass it with --build-arg; the secret key never enters this image.
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY=""
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 RUN npm run build
 
 FROM node:22-slim AS runtime

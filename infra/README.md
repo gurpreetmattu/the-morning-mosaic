@@ -57,7 +57,7 @@ gcloud auth configure-docker asia-south1-docker.pkg.dev
 docker build -f backend/Dockerfile -t asia-south1-docker.pkg.dev/<project-id>/the-morning-mosaic/backend:manual .
 docker push asia-south1-docker.pkg.dev/<project-id>/the-morning-mosaic/backend:manual
 
-docker build -f frontend/Dockerfile -t asia-south1-docker.pkg.dev/<project-id>/the-morning-mosaic/web:manual frontend
+docker build -f frontend/Dockerfile --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY=<site-key> -t asia-south1-docker.pkg.dev/<project-id>/the-morning-mosaic/web:manual frontend
 docker push asia-south1-docker.pkg.dev/<project-id>/the-morning-mosaic/web:manual
 ```
 

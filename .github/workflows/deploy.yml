@@ -66,7 +66,9 @@ jobs:
       - name: build and push the web image
         run: |
           image="${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/the-morning-mosaic/web:${{ env.IMAGE_TAG }}"
-          docker build -f frontend/Dockerfile -t "$image" frontend
+          docker build -f frontend/Dockerfile \
+            --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY="${{ vars.TURNSTILE_SITE_KEY }}" \
+            -t "$image" frontend
           docker push "$image"
 
   terraform-apply:
@@ -106,5 +108,7 @@ jobs:
             -var="sender_email=${{ vars.SENDER_EMAIL }}" \
             -var="admin_email=${{ vars.ADMIN_EMAIL }}" \
             -var="llm_gateway_url=${{ vars.LLM_GATEWAY_URL }}" \
+            -var="llm_secondary_url=${{ vars.LLM_SECONDARY_URL }}" \
+            -var="turnstile_site_key=${{ vars.TURNSTILE_SITE_KEY }}" \
             -var="backend_image=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/the-morning-mosaic/backend:${{ env.IMAGE_TAG }}" \
             -var="web_image=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/the-morning-mosaic/web:${{ env.IMAGE_TAG }}"
