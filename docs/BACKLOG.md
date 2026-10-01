@@ -166,6 +166,21 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       populate `database-direct-url` (and `llm-secondary-api-key`) in Secret
       Manager, and set `llm_secondary_url`, before the first apply.
 
+- [ ] **PLANNED 2026-10-02 (agreed with the owner): turn on auto-deploy from GitHub.**
+      `deploy.yml` is the GitHub -> Cloud Run path (build both images, push, terraform
+      apply) but is gated off: no `GCP_PROJECT_ID` repo variable and no Workload Identity
+      Federation. Steps: (1) fix the `BASE_URL`/tfvars bug below first; (2) create the WIF
+      pool + provider + deploy service account bound to `gurpreetmattu/the-morning-mosaic`
+      (IAM changes - needs the owner's approval); (3) set the repo variables
+      (`GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT`,
+      `TURNSTILE_SITE_KEY`, `LLM_SECONDARY_URL`, `SENDER_EMAIL`, `ADMIN_EMAIL`,
+      `LLM_GATEWAY_URL`, and a `BASE_URL`); (4) test on a throwaway change. Not Cloud Run's
+      built-in 'deploy from GitHub': Terraform owns the services/jobs, and there are two
+      images, 7 jobs and a build-time Turnstile arg. Do this AFTER reading the first real
+      build with the 5-genre scope.
+- [ ] **Pending owner action (2026-10-01 evening): apply `infra/release.tfplan`** (9 updates:
+      7 jobs + 2 services to image tag `328e625`, plus the longer job timeouts). Must be
+      applied before the 04:15 IST build or it runs the old 10-genre image with a 600 s timeout.
 - [ ] **`deploy.yml`'s terraform apply has no `terraform.tfvars` in CI**
       (`*.tfvars` is gitignored), so it does not repeat `base_url`, despite its
       own comment saying it repeats what's in tfvars/state. Every CI deploy would
