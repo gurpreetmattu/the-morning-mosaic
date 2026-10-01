@@ -47,6 +47,16 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       (Groq pay-as-you-go is the cheapest route; a full day should cost
       pennies - measure it), or cut the per-day call volume. Do NOT open signups
       until a build yields 4-6 verified stories per genre.
+      **Measured cost (2026-10-01, from `llm_calls` + provider pricing pages):**
+      earlier clean runs cost ~14.5k input / 2.1k output tokens and ~$0.010 per
+      persisted story, so 50-100 stories/day is ~$0.5-1.0/day for a build, ~$0.8-1.6/day
+      with late updates and a 60% safety margin (~$25-49/month). Today's two
+      incomplete runs billed ~$0.60 for 4 stories (wasted attempts). Prices used
+      ($/1M in/out): gpt-oss-20b 0.075/0.30, gpt-oss-120b 0.15/0.60, qwen3.8-27b
+      0.80/4.00, Cloudflare llama-3.3-70b 0.293/2.253, Gemini Flash-Lite 0.30/2.50.
+      Caveats: small sample (24 stories from limited-genre runs), Gemini price
+      assumed equal to the page's Flash-Lite listing, and failed 429 calls are
+      unbilled. The constraint is rate limits and quotas, not price.
 - [x] ~~Source terms review.~~ 18 of 27 sources reviewed and enabled by the
       owner; the real Collector now returns real articles across all 10
       genres. See the source-terms-review Done entry for what was
