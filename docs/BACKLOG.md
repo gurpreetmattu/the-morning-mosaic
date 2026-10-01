@@ -53,7 +53,15 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       and Langfuse are done — see the accounts-provisioned Done entry.
 - [x] ~~No git remote.~~ Pushed 2026-10-01 to a private GitHub repo
       (`gurpreetmattu/the-morning-mosaic`) after a secrets/history audit found
-      nothing leaked. CI has not yet run there; check the first Actions run.
+      nothing leaked. CI ran on GitHub for the first time the same day and
+      failed on three things, all found by reproducing from a fresh clone
+      and fixed: 10 unformatted files (`ruff format --check`), `tsc` needing
+      `next typegen` for `LayoutProps` on a clean checkout, and a theme-toggle
+      e2e that raced the 200 ms background transition. All 6 jobs now pass
+      (`36848457172`). Still open: the Lighthouse job passed once but stays
+      `continue-on-error` until a few runs show stable numbers; Actions warns
+      that `checkout@v4`/`setup-node@v4`/`setup-uv@v5` run on a deprecated
+      Node 20 runtime - bump them before it is removed.
 - [x] ~~CLAUDE.md's agent table and the Orchestrator disagree.~~ Asked the
       owner: correct the table to match the code, not give the Orchestrator
       an LLM role. See the agent-table Done entry.
