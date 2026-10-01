@@ -42,3 +42,7 @@ mailsink/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Terraform plan files can contain resolved values
+tfplan
+*.tfplan

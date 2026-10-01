@@ -68,7 +68,6 @@ locals {
     TURNSTILE_SECRET_KEY   = google_secret_manager_secret.this["turnstile-secret-key"].secret_id
     NEWSDATA_API_KEY       = google_secret_manager_secret.this["newsdata-api-key"].secret_id
     GNEWS_API_KEY          = google_secret_manager_secret.this["gnews-api-key"].secret_id
-    NEWSAPI_KEY            = google_secret_manager_secret.this["newsapi-key"].secret_id
     OPENWEATHERMAP_API_KEY = google_secret_manager_secret.this["openweathermap-api-key"].secret_id
     MARKET_API_KEY         = google_secret_manager_secret.this["market-api-key"].secret_id
     SPORTS_API_KEY         = google_secret_manager_secret.this["sports-api-key"].secret_id

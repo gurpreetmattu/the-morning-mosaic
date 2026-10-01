@@ -26,7 +26,6 @@ locals {
     "turnstile-secret-key",
     "newsdata-api-key",
     "gnews-api-key",
-    "newsapi-key",
     "openweathermap-api-key",
     "market-api-key",
     "sports-api-key",
