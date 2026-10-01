@@ -16,6 +16,18 @@ locals {
     "failure-notice" = "app.jobs.failure_notice"
     "bounces"        = "app.jobs.bounces"
   }
+
+  # Per-job timeouts in seconds; any job not listed uses var.job_timeout_seconds.
+  # build: CLAUDE.md gives it 04:15 -> 05:30 (75 min), and a manual rerun may run
+  # to 07:30 with an 08:45 deadline, so 90 min. The 600 s default killed the first
+  # real 10-genre build mid-run (2026-10-01). late-update: 20 min deadline + slack.
+  # delivery / failure-notice: sized to the 30-minute delivery cadence.
+  job_timeout_overrides = {
+    "build"          = 5400
+    "late-update"    = 1500
+    "delivery"       = 1800
+    "failure-notice" = 1800
+  }
 }
 
 resource "google_cloud_run_v2_job" "jobs" {
@@ -28,7 +40,7 @@ resource "google_cloud_run_v2_job" "jobs" {
   template {
     template {
       service_account = google_service_account.jobs.email
-      timeout         = "${var.job_timeout_seconds}s"
+      timeout         = "${lookup(local.job_timeout_overrides, each.key, var.job_timeout_seconds)}s"
       max_retries     = 0 # a job that fails partway shouldn't blindly rerun; see each job's own idempotency notes
 
       containers {

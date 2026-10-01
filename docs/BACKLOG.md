@@ -32,6 +32,21 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 1. Blockers — need a decision or an account from the owner
 
+- [ ] **LAUNCH BLOCKER: free-tier LLM capacity cannot carry one daily build
+      (measured 2026-10-01).** First real prod build (edition 2026-10-01, 16 min)
+      produced 4 stories; 8 of 10 genres fell to "quiet news day". Cause, from
+      `llm_calls`: Fact-checker's Cloudflare route returned HTTP 429 "used up your
+      daily free allocation of 10,000 neurons" on 411 calls, its Groq
+      `gpt-oss-20b` route 429'd on 318 more, and the Writer's Gemini flash-lite
+      route 429'd on 211 of 354 calls; the Ranker hit both Groq and Gemini
+      limits. The fail-closed design did exactly what it should (nothing
+      unverified published), but the yield is unusable. A single build also
+      spends the next build's quota: Cloudflare's allowance resets 00:00 UTC
+      (05:30 IST), AFTER the 04:15 IST build, so the next build starts with the
+      previous day's quota already gone. Needs an owner decision: a paid tier
+      (Groq pay-as-you-go is the cheapest route; a full day should cost
+      pennies - measure it), or cut the per-day call volume. Do NOT open signups
+      until a build yields 4-6 verified stories per genre.
 - [x] ~~Source terms review.~~ 18 of 27 sources reviewed and enabled by the
       owner; the real Collector now returns real articles across all 10
       genres. See the source-terms-review Done entry for what was
@@ -550,6 +565,26 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 ---
 
 ## Done
+
+- [x] **Cloud Run job timeouts were 600 s for every job; the real build needs
+      ~16 min.** The first manual build was killed at 600 s. Terraform now sets
+      per-job timeouts (`local.job_timeout_overrides`): build 90 min, late-update
+      25, delivery and failure-notice 30, the rest keep the 600 s default.
+      Committed; **the apply is pending** (saved plan `infra/timeouts.tfplan`,
+      4 timeouts change). Until applied, the 04:15 scheduled build would be
+      killed at 10 minutes. A manual run can override with
+      `gcloud run jobs execute mosaic-build --task-timeout=3600s --args=-m,app.jobs.build,...`
+      (note `--args` replaces the whole argument list, so `-m,app.jobs.build`
+      must be included).
+- [x] **Dev test data was sitting in the production database** (12 editions
+      dated 2026-10-01..15, 51 stories, 76 articles, built Sept 18-28) because
+      dev and prod share one Neon database. It would have crashed every
+      scheduled build ("already has a published revision") and could have let
+      delivery send September stories as current news. Deleted 2026-10-01 by
+      the owner in one guarded transaction after a local backup; subscriber,
+      consent, token, city and source rows were untouched. **Follow-up:** dev
+      and prod must not share a database again - add a separate Neon branch for
+      dev before running any more local builds.
 
 - [x] **First deploy to GCP (project `the-morning-mosaic`, `asia-south1`), 2026-10-01.**
       State bucket `the-morning-mosaic-tfstate`; 2 Cloud Run services, 7 jobs,

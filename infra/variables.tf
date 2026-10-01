@@ -160,7 +160,7 @@ variable "api_max_instances" {
 }
 
 variable "job_timeout_seconds" {
-  description = "Applies to every Cloud Run job. CLAUDE.md: 'Job timeouts set explicitly.'"
+  description = "Default timeout for Cloud Run jobs without an entry in local.job_timeout_overrides (cloud_run_jobs.tf). CLAUDE.md: 'Job timeouts set explicitly.'"
   type        = number
   default     = 600
 }
