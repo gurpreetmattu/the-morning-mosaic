@@ -8,6 +8,10 @@ admin_email  = "" # the one allowlisted admin-dashboard address
 # writing) — see docs/BACKLOG.md's now-closed gateway-reachability blocker.
 llm_gateway_url = "https://api.groq.com/openai/v1"
 
+# The Fact-checker's alternate gateway (Cloudflare Workers AI); its key goes in
+# Secret Manager as llm-secondary-api-key. See config/models.yaml.
+# llm_secondary_url = "https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/ai/v1"
+
 # Leave these on their defaults for the first apply; see infra/README.md
 # for why base_url needs a second apply once web's real URL is known, and
 # why backend_image/web_image start as unset placeholders.

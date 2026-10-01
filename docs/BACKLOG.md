@@ -111,6 +111,17 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       actual challenge flow has never run.
 - [x] ~~The frontend has no component or interaction tests.~~ See the
       component-tests Done entry.
+- [x] ~~**Terraform does not pass `DATABASE_DIRECT_URL`, `LLM_SECONDARY_URL` or
+      `LLM_SECONDARY_API_KEY` to Cloud Run, and has no Secret Manager
+      container for the two secrets**~~ (found by `app.preflight`, 2026-10-01;
+      fixed the same day in `infra/locals.tf`, `infra/secrets.tf`,
+      `variables.tf`; `terraform validate`/`fmt` pass, `apply` still never
+      run). Before the fix, in prod that meant the job lock
+      runs on the pooled Neon URL (the advisory-lock hazard in
+      `app/jobs/locking.py`) and the Fact-checker's Cloudflare gateway is
+      unconfigured, so its only route was Groq's quota. **New obligation:**
+      populate `database-direct-url` (and `llm-secondary-api-key`) in Secret
+      Manager, and set `llm_secondary_url`, before the first apply.
 
 ## 3. Provisional values that will cause harm if forgotten
 
@@ -520,6 +531,18 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 ---
 
 ## Done
+
+- [x] Pre-flight check: `uv run python -m app.preflight [--live] [--prod]`
+      (`backend/app/preflight.py`, 15 tests in `test_preflight.py`). Offline:
+      settings validate, config YAML validates, prod-only rules (https
+      `BASE_URL`, public LLM URL, signing-key strength, Turnstile, GCP/bucket,
+      direct DB URL with a pooled one, Gmail subscriber cap), `launch_date`,
+      and drift between `Settings`, `.env.example` and Terraform. `--live`
+      adds read-only DB (reachable, migrated to head, seeded), SMTP and IMAP
+      logins, LLM gateway auth and a Turnstile secret probe. Never prints
+      secret values; nothing sent. First run against dev: 0 failures. Not
+      covered: a real Turnstile widget token, and the optional providers'
+      keys are checked for presence only.
 
 - [x] Website redesign steps 1–2: token pipeline (`frontend/design/tokens.json`
       → `src/styles/tokens.css`, contrast check over 102 pairs), self-hosted

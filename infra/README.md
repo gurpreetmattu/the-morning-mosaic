@@ -91,7 +91,9 @@ Terraform creates the Secret Manager **containers** in `secrets.tf` and
 grants the api/jobs service accounts read access to all of them; it never
 writes a value into any of them, so no secret ever appears in a `.tf` file,
 a `terraform plan`, or the state file. Populate at least the four the app
-cannot start without:
+cannot start without (plus `database-direct-url`, Neon's un-pooled
+endpoint, whenever `database-url` is the pooled one, and `llm-secondary-api-key`
+if you set `llm_secondary_url`):
 
 ```
 printf '%s' '<value>' | gcloud secrets versions add database-url         --data-file=-

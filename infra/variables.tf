@@ -119,6 +119,12 @@ variable "llm_fallback_url" {
   default = ""
 }
 
+variable "llm_secondary_url" {
+  description = "The second, distinct alternate gateway (Cloudflare Workers AI, used by the Fact-checker; see config/models.yaml). Its key lives in Secret Manager as llm-secondary-api-key."
+  type        = string
+  default     = ""
+}
+
 variable "turnstile_site_key" {
   description = "Public; the matching secret key lives in Secret Manager (secrets.tf)."
   type        = string

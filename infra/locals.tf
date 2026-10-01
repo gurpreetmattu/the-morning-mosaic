@@ -46,6 +46,7 @@ locals {
       FAILURE_NOTICE_AUTO_LIMIT = tostring(var.failure_notice_auto_limit)
       LLM_GATEWAY_URL           = var.llm_gateway_url
       LLM_FALLBACK_URL          = var.llm_fallback_url
+      LLM_SECONDARY_URL         = var.llm_secondary_url
       TURNSTILE_SITE_KEY        = var.turnstile_site_key
       LANGFUSE_HOST             = var.langfuse_host
       GCS_PDF_BUCKET            = google_storage_bucket.pdf_cache.name
@@ -58,10 +59,12 @@ locals {
   # has populated it yet.
   secret_env = {
     DATABASE_URL           = google_secret_manager_secret.this["database-url"].secret_id
+    DATABASE_DIRECT_URL    = google_secret_manager_secret.this["database-direct-url"].secret_id
     GMAIL_APP_PASSWORD     = google_secret_manager_secret.this["gmail-app-password"].secret_id
     TOKEN_SIGNING_KEY      = google_secret_manager_secret.this["token-signing-key"].secret_id
     LLM_GATEWAY_API_KEY    = google_secret_manager_secret.this["llm-gateway-api-key"].secret_id
     LLM_FALLBACK_API_KEY   = google_secret_manager_secret.this["llm-fallback-api-key"].secret_id
+    LLM_SECONDARY_API_KEY  = google_secret_manager_secret.this["llm-secondary-api-key"].secret_id
     TURNSTILE_SECRET_KEY   = google_secret_manager_secret.this["turnstile-secret-key"].secret_id
     NEWSDATA_API_KEY       = google_secret_manager_secret.this["newsdata-api-key"].secret_id
     GNEWS_API_KEY          = google_secret_manager_secret.this["gnews-api-key"].secret_id

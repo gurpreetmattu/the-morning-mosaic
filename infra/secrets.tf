@@ -17,10 +17,12 @@
 locals {
   secret_ids = [
     "database-url",
+    "database-direct-url",
     "gmail-app-password",
     "token-signing-key",
     "llm-gateway-api-key",
     "llm-fallback-api-key",
+    "llm-secondary-api-key",
     "turnstile-secret-key",
     "newsdata-api-key",
     "gnews-api-key",
