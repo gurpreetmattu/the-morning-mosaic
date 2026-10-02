@@ -4,6 +4,8 @@
     uv run python -m app.buildreport --date 2026-10-02
 
 Reads `pipeline_runs`, `edition_*`, `llm_calls` and `deliveries`; writes nothing.
+Only runs that STARTED on the edition date (IST) are counted, so older runs that happened
+to target the same date (dev tests, a manual rerun the night before) do not skew the totals.
 Meant for the morning after a scheduled build: stories per genre, how long it took,
 whether free-tier quotas ran out, and what the day would have cost on paid tiers.
 """
@@ -77,6 +79,7 @@ def build_runs(conn: Connection, edition_date: date) -> list[dict[str, object]]:
             """select id, job, status, started_at, finished_at, deadline_at, detail
                from pipeline_runs
                where edition_date = :d and job in ('build', 'late_update')
+                 and (started_at at time zone 'Asia/Kolkata')::date = :d
                order by started_at"""
         ),
         {"d": edition_date},

@@ -55,6 +55,24 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       small eval run), pause the late updates, and measure one clean build.
       Cerebras was ruled out: its free tier is $5 of credit that needs a payment
       method and expires in 30 days.
+      **First unattended night (2026-10-02, 5 genres):** pipeline works end to end -
+      scheduler fired every job on time, build 04:15-04:20 (4.5 min), late updates 05:35 and
+      07:05 each published a better revision, 7 delivery runs, and the 09:05 failure notice
+      reached the test subscriber because both their genres (india, business) were empty
+      ("all genres failed -> failure notice" path verified for real). Yield: rev 3 = ai 5,
+      technology 4, sports 2, india 0, business 0. Evidence from `app.buildreport`:
+      Cloudflare returned 0 successful calls all night (369 "daily free allocation of 10,000
+      neurons" errors) and STILL did at 14:23 IST, long after its documented 00:00 UTC reset,
+      so it cannot be relied on as the pinned Fact-checker route; the fallback gpt-oss-20b did
+      35 ok calls and 287 429s (8K tokens/min, reasoning-heavy output ~1.6K tokens/call);
+      Writer's Gemini route 115 quota 429s; Ranker 55 Groq 429s + 18 invalid-JSON. Collection
+      itself is healthy (india 40 fresh articles / 6 sources, business 40 / 4). Hypothesis,
+      NOT confirmed: india/business (strict corroboration) lose when Ranker's LLM clustering
+      fails and the title-only fallback splits same-event articles into single-source
+      clusters. Per-genre drop reasons are not logged anywhere, which is why this is still a
+      guess - add them to `pipeline_runs.detail` (collected, clusters, pooled, dropped by
+      reason, attempted, verified, dropped-after-retries) before changing any model.
+      The late updates paid for themselves (they added 6 stories), so do not pause them.
       **Measured cost (2026-10-01, from `llm_calls` + provider pricing pages):**
       earlier clean runs cost ~14.5k input / 2.1k output tokens and ~$0.010 per
       persisted story, so 50-100 stories/day is ~$0.5-1.0/day for a build, ~$0.8-1.6/day
