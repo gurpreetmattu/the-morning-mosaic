@@ -623,6 +623,18 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 
 ## Done
 
+- [x] **First real newsletter sent from production (2026-10-02 17:14 IST).** At the owner's
+      request: real `mosaic-late-update` (ran clean, published nothing new - quota spent, as
+      expected) then real `mosaic-delivery --slot 07:00`. The test subscriber's genres were
+      widened from india+business to all five live genres so there was content (revision 3:
+      ai 5, technology 4, sports 2, india/business quiet). Result: `deliveries` row
+      `newsletter / sent / attempts 1 / no error / revision 3`; delivery run
+      `{sent: 1, failed: 0, no_content: 0}`. Proves the whole path in prod: Cloud Run job ->
+      selection -> render -> Gmail SMTP -> inbox. **Not yet checked by eye:** how the email
+      renders in Gmail mobile and Outlook (still open under section 2), the PDF link, and the
+      quiet-day sections. The test subscriber still follows all five genres; revert in
+      preferences if wanted.
+
 - [x] **Per-genre build diagnostics** (2026-10-02). Every build and late update now saves, per
       genre, into `pipeline_runs.detail["genres"]`: articles collected (total, by source,
       dropped by reason), clusters and whether the Ranker used the title-only FALLBACK
