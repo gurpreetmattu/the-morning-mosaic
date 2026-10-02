@@ -623,6 +623,28 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 
 ## Done
 
+- [ ] **Findings from reading the first real email in Gmail desktop (2026-10-02, Chrome).**
+      Layout is good: masthead, dateline with edition number and special-edition rule, Curated-for
+      and weather boxes, dated USD/INR strip with the not-investment-advice note, On-this-day with
+      Wikipedia attribution, a Today-in-60-seconds box, themed section bands, per-story Sources
+      links, a credited Pexels image, an AI-tool-of-the-day card, Why-this-matters blocks, and a
+      footer whose PDF (signed), preferences and unsubscribe links all point at the live origin.
+      Defects, in priority order:
+      1. **A followed genre with fewer than 2 stories vanishes from the email instead of showing
+         the "quiet news day" note CLAUDE.md requires.** `render/selection.py` skips thin genres
+         ("the caller shows a quiet note") but `render/email.py` renders only the selected ones,
+         so India and Business (both followed) were silently absent. Spec deviation; fix in the
+         per-reader assembly + a test.
+      2. **The same event appears twice in one email** (OpenAI dismissing three safety staff, with
+         two different headlines, across Technology and AI). Needs cross-genre dedup in per-reader
+         assembly, plus the same-genre case if clustering splits it.
+      3. **Sports carried an American-football story** (Chicago Bears injury report, from
+         Hindustan Times' `us-sports` path) in an India-first product. Restrict that feed by URL
+         path or rank/filter on `india_relevance`.
+      4. Weather box reads "33-33C" when min equals max; show one number.
+      5. Still unchecked: Gmail MOBILE, Outlook, dark mode, and the quiet-day note rendering
+         (once 1 is fixed). Also a 'Sign in to The Morning Mosaic' magic-link email arrived at
+         17:16, two minutes after the send - not requested by the assistant.
 - [x] **First real newsletter sent from production (2026-10-02 17:14 IST).** At the owner's
       request: real `mosaic-late-update` (ran clean, published nothing new - quota spent, as
       expected) then real `mosaic-delivery --slot 07:00`. The test subscriber's genres were
