@@ -634,6 +634,20 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       `python -m app.buildreport` prints it as "WHY EACH GENRE CAME OUT AS IT DID". 855 tests.
       **Not live until the images are rebuilt and redeployed**; the first night with it will
       confirm or kill the hypothesis that india/business lose to fallback clustering.
+- [x] **Dry run with the new diagnostics (2026-10-02 ~16:00 IST, nothing published; script kept
+      outside the repo): the hypothesis was half right.** 3.5 min, 1 of 5 genres publishable.
+      * **business** - CONFIRMED: Ranker clustering fell back to titles (its model 429'd),
+        79 clusters from 4 outlets, 78 dropped `insufficient_corroboration`, 1 pooled.
+      * **india** - REJECTED: model clustering worked, 6 stories pooled; they died after that:
+        `checker_unavailable` 2, `writer:copied_text` 1, Writer-model failures 3 (then filed as
+        `writer:unparseable`, since fixed to `writer_unavailable`). 57 of 63 clusters were
+        genuinely single-outlet, so corroboration is strict but not the blocker.
+      * **technology** 3 verified; **ai** and **sports** 1 each (min is 2 -> quiet day), lost to
+        Writer-model failures (Gemini quota 429 x85) and `checker_unavailable`.
+      * Call volume is inflated ~3x by retrying outages: ai spent 17 write cycles on 6 stories.
+      * LLM quota is therefore still THE blocker, and a dry run spends the same quota as a real
+        build - this one was run ~12 h before the next scheduled build, inside the same Gemini
+        quota window (resets 12:30 IST) and Groq's rolling day.
 - [ ] **Fact-checker outage is treated as a content failure and retried (found 2026-10-02).**
       When the checker's model cannot run, `FactChecker._model_claims` returns every claim as
       UNSUPPORTED with detail "verification unavailable"; `write_and_verify` then feeds that

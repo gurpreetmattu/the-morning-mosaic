@@ -44,6 +44,8 @@ def article(source: str, n: int) -> CollectedArticle:
         (None, "no_reason"),
         ("- claim 1: verification unavailable: LlmHttpError", "checker_unavailable"),
         ("- unparseable: model returned prose", "writer:unparseable"),
+        ("- unparseable: LlmHttpError: HTTP 429: quota exceeded", "writer_unavailable"),
+        ("- unparseable: LlmProtocolError: response was not valid JSON", "writer:unparseable"),
         ("- copied_text: sentence 2 matches the source", "writer:copied_text"),
         ("- headline: the figure 12% is not in the passages", "writer:headline"),
         ("the number 40 does not appear in P2", "claims_unsupported"),

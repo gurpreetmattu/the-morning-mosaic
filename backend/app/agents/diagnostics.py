@@ -12,21 +12,27 @@ from app.sources.schemas import CollectionResult
 # Writer problems arrive as "- <issue>: <detail>" lines (write_and_verify).
 _WRITER_LINE = re.compile(r"^- ([a-z_]+):", re.MULTILINE)
 UNAVAILABLE_MARKER = "verification unavailable"
+# The Writer reports a failed model call as an "unparseable" problem whose detail
+# starts with the error class ("LlmHttpError: HTTP 429 ..."); only an HTTP-level
+# error means the model could not be reached or refused (quota, 5xx).
+_WRITER_OUTAGE = re.compile(r"LlmHttpError|LlmUnavailableError")
 
 
 def categorize_abandon(reason: str | None) -> str:
     """A short, stable key for why a story was given up on.
 
-    `checker_unavailable` means the Fact-checker's model could not run (quota,
-    outage), which says nothing about the story; `claims_unsupported` means the
-    checker ran and rejected claims; `writer:<issue>` is the Writer's output
-    failing before the checker was even called.
+    `checker_unavailable` and `writer_unavailable` mean a model could not run
+    (quota, outage), which says nothing about the story; `claims_unsupported`
+    means the checker ran and rejected claims; `writer:<issue>` is the Writer's
+    output being rejected on its merits before the checker was even called.
     """
     if not reason:
         return "no_reason"
     lowered = reason.lower()
     if UNAVAILABLE_MARKER in lowered:
         return "checker_unavailable"
+    if _WRITER_OUTAGE.search(reason):
+        return "writer_unavailable"
     writer_issue = _WRITER_LINE.search(reason)
     if writer_issue:
         return f"writer:{writer_issue.group(1)}"
