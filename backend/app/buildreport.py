@@ -73,6 +73,27 @@ def _fmt_dt(value: object) -> str:
     )
 
 
+def _pairs(counts: object) -> str:
+    if not isinstance(counts, dict) or not counts:
+        return "none"
+    return ", ".join(f"{key} {value}" for key, value in counts.items())
+
+
+def format_genre_diagnostics(genre: str, d: dict[str, object]) -> list[str]:
+    """Two readable lines for one genre from its saved `GenreDiagnostics`."""
+    fallback = d.get("used_fallback_clustering")
+    clustering = "not reached" if fallback is None else ("FALLBACK" if fallback else "model")
+    more = ", asked for more coverage" if d.get("requested_more_coverage") else ""
+    return [
+        f"     {genre}: collected {d.get('collected', 0)} ({_pairs(d.get('articles_by_source'))})"
+        f"; dropped at collection: {_pairs(d.get('collector_drops'))}",
+        f"        clusters {d.get('clusters', 0)} (clustering: {clustering}{more})"
+        f" -> pooled {d.get('pooled', 0)}; pool drops: {_pairs(d.get('pool_drops'))}"
+        f" -> attempted {d.get('attempted', 0)}, verified {d.get('verified', 0)}"
+        f" in {d.get('write_cycles', 0)} write cycles; abandoned: {_pairs(d.get('abandoned'))}",
+    ]
+
+
 def build_runs(conn: Connection, edition_date: date) -> list[dict[str, object]]:
     rows = conn.execute(
         text(
@@ -116,6 +137,21 @@ def report(conn: Connection, edition_date: date) -> str:
             f"  ({minutes}; deadline {_fmt_dt(run['deadline_at'])})"
             + (f"  ERROR: {error}" if error else "")
         )
+
+    lines += ["", "WHY EACH GENRE CAME OUT AS IT DID"]
+    explained = False
+    for run in runs:
+        detail = run["detail"]
+        genres = detail.get("genres") if isinstance(detail, dict) else None
+        if not isinstance(genres, dict) or not genres:
+            continue
+        explained = True
+        lines.append(f"  {run['job']} {_fmt_dt(run['started_at'])}")
+        for genre, diag in sorted(genres.items()):
+            if isinstance(diag, dict):
+                lines.extend(format_genre_diagnostics(genre, diag))
+    if not explained:
+        lines.append("  not recorded (runs before 2026-10-02 did not save diagnostics)")
 
     lines += ["", "PUBLISHED"]
     revisions = (

@@ -125,3 +125,60 @@ def test_a_pool_at_the_maximum_configured_size_is_verified_in_full() -> None:
     assert outcome.status is SectionStatus.OK
     assert verifier.calls == MAX_POOL_SIZE
     assert len(outcome.stories) == MAX_POOL_SIZE
+
+
+class FailsAsCheckerUnavailable:
+    """Every story is abandoned because the Fact-checker's model could not run."""
+
+    def __call__(self, story: PooledStory, genre: GenreKey) -> VerificationOutcome:
+        return VerificationOutcome(
+            verified=None,
+            attempts=3,
+            reason="- headline: verification unavailable: LlmHttpError",
+        )
+
+
+def run_genre(verify: object, *, collected: int = 4, pooled_count: int = 3) -> object:
+    return build_genre.run(
+        collector=FakeCollector(collected),
+        ranker=FakeRanker(pooled_count),
+        verify=verify,  # type: ignore[arg-type]
+        clock=lambda: NOW,
+        genre="india",
+        deadline=DEADLINE,
+        now=NOW,
+        pool_size=6,
+        min_stories=2,
+    )
+
+
+def test_a_quiet_day_explains_itself_when_the_checker_was_down() -> None:
+    outcome = run_genre(FailsAsCheckerUnavailable())
+
+    assert outcome.status is SectionStatus.QUIET_DAY  # type: ignore[attr-defined]
+    d = outcome.diagnostics  # type: ignore[attr-defined]
+    assert d.collected == 4
+    assert d.articles_by_source == {"wire": 4}
+    assert d.pooled == 3
+    assert d.attempted == 3
+    assert d.verified == 0
+    assert d.write_cycles == 9  # 3 stories x 3 write-and-check rounds
+    assert d.abandoned == {"checker_unavailable": 3}
+    assert d.used_fallback_clustering is False
+
+
+def test_a_successful_genre_reports_what_it_verified() -> None:
+    outcome = run_genre(AlwaysVerifies(), pooled_count=3)
+
+    d = outcome.diagnostics  # type: ignore[attr-defined]
+    assert d.verified == 3
+    assert d.attempted == 3
+    assert d.abandoned == {}
+    assert d.write_cycles == 3
+
+
+def test_an_empty_collection_still_records_what_was_dropped() -> None:
+    outcome = run_genre(AlwaysVerifies(), collected=0)
+
+    assert outcome.status is SectionStatus.QUIET_DAY  # type: ignore[attr-defined]
+    assert outcome.diagnostics.collected == 0  # type: ignore[attr-defined]

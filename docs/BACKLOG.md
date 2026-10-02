@@ -623,6 +623,26 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 
 ## Done
 
+- [x] **Per-genre build diagnostics** (2026-10-02). Every build and late update now saves, per
+      genre, into `pipeline_runs.detail["genres"]`: articles collected (total, by source,
+      dropped by reason), clusters and whether the Ranker used the title-only FALLBACK
+      clustering, whether it asked for more coverage, pooled stories and pool drops by reason
+      (e.g. `insufficient_corroboration`), stories attempted/verified, total write-and-check
+      cycles, and why stories were abandoned (`checker_unavailable`, `claims_unsupported`,
+      `writer:<issue>`). Counts and reason keys only - no article text. `GenreDiagnostics` in
+      `agents/schemas.py`, helpers in `agents/diagnostics.py`, wired in `graph/build_genre.py`;
+      `python -m app.buildreport` prints it as "WHY EACH GENRE CAME OUT AS IT DID". 855 tests.
+      **Not live until the images are rebuilt and redeployed**; the first night with it will
+      confirm or kill the hypothesis that india/business lose to fallback clustering.
+- [ ] **Fact-checker outage is treated as a content failure and retried (found 2026-10-02).**
+      When the checker's model cannot run, `FactChecker._model_claims` returns every claim as
+      UNSUPPORTED with detail "verification unavailable"; `write_and_verify` then feeds that
+      back to the Writer as feedback and rewrites the story up to 3 times. During a quota
+      outage that multiplies Writer and checker calls ~3x per story - the very calls that are
+      running out. Fix (behaviour change, needs tests + an eval run): when every finding is
+      "verification unavailable", abandon the story at once with reason `checker_unavailable`
+      and do not call the Writer again. Fail-closed stays exactly as is.
+
 - [x] **Morning build report:** `uv run python -m app.buildreport [--date YYYY-MM-DD]`
       (`backend/app/buildreport.py`, read-only): every build/late-update run for the date with
       duration and error, what was published per genre, LLM calls by agent and model with

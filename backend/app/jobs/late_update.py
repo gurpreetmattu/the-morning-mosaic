@@ -63,6 +63,8 @@ class LateUpdateReport:
     changed: list[str] = field(default_factory=list)
     carried_forward: list[str] = field(default_factory=list)
     reason: str | None = None
+    # Why each genre came out as it did (GenreDiagnostics, as plain JSON).
+    genre_diagnostics: dict[str, dict[str, object]] = field(default_factory=dict)
 
     @property
     def published(self) -> bool:
@@ -113,6 +115,9 @@ def run_late_update(
     build = orchestrator.build(
         edition_date=edition_date, deadline=deadline, genres=genres, now=started
     )
+    report.genre_diagnostics = {
+        outcome.genre: outcome.diagnostics.model_dump(mode="json") for outcome in build.genres
+    }
 
     for outcome in build.genres:
         if outcome.status is not SectionStatus.OK:
@@ -234,6 +239,7 @@ def _finish(run: PipelineRun, status: RunStatus, report: LateUpdateReport) -> No
         "changed": report.changed,
         "carried_forward": report.carried_forward,
         "reason": report.reason,
+        "genres": report.genre_diagnostics,
     }
 
 

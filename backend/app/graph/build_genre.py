@@ -27,7 +27,9 @@ from typing import Protocol, TypedDict, cast
 
 from langgraph.graph import END, StateGraph
 
+from app.agents.diagnostics import categorize_abandon, with_collection, with_pool
 from app.agents.schemas import (
+    GenreDiagnostics,
     GenreOutcome,
     PooledStory,
     StoryPool,
@@ -74,6 +76,7 @@ class _State(TypedDict, total=False):
     collected_count: int
     pooled_count: int
     done_verifying: bool
+    diagnostics: GenreDiagnostics
     result: GenreOutcome | None
 
 
@@ -96,13 +99,17 @@ def _check_start_deadline(state: _State) -> dict[str, object]:
 
 def _collect(state: _State) -> dict[str, object]:
     collected = state["collector"].collect(state["genre"], now=state["now"])
+    diagnostics = with_collection(GenreDiagnostics(), collected)
     if not collected.articles:
         return {
             "result": GenreOutcome(
-                genre=state["genre"], status=SectionStatus.QUIET_DAY, note=QUIET_DAY_NOTE
+                genre=state["genre"],
+                status=SectionStatus.QUIET_DAY,
+                note=QUIET_DAY_NOTE,
+                diagnostics=diagnostics,
             )
         }
-    return {"collected": collected}
+    return {"collected": collected, "diagnostics": diagnostics}
 
 
 def _rank(state: _State) -> dict[str, object]:
@@ -110,6 +117,7 @@ def _rank(state: _State) -> dict[str, object]:
     assert collected is not None  # only reachable once _collect has set it
     pool = state["ranker"].rank(collected, now=state["now"])
     return {
+        "diagnostics": with_pool(state["diagnostics"], pool),
         "candidates": pool.stories[: state["pool_size"]],
         "collected_count": len(collected.articles),
         "pooled_count": len(pool.stories),
@@ -132,9 +140,20 @@ def _verify_step(state: _State) -> dict[str, object]:
 
     outcome = state["verify"](candidates[index], state["genre"])
     verified = state["verified"]
+    diagnostics = state["diagnostics"]
+    abandoned = dict(diagnostics.abandoned)
     if outcome.verified is not None:
         verified = [*verified, outcome.verified]
+    else:
+        key = categorize_abandon(outcome.reason)
+        abandoned[key] = abandoned.get(key, 0) + 1
     return {
+        "diagnostics": diagnostics.model_copy(
+            update={
+                "write_cycles": diagnostics.write_cycles + outcome.attempts,
+                "abandoned": dict(sorted(abandoned.items())),
+            }
+        ),
         "index": index + 1,
         "attempted": state["attempted"] + 1,
         "verified": verified,
@@ -144,6 +163,9 @@ def _verify_step(state: _State) -> dict[str, object]:
 
 def _finalize(state: _State) -> dict[str, object]:
     verified = state["verified"]
+    diagnostics = state["diagnostics"].model_copy(
+        update={"attempted": state["attempted"], "verified": len(verified)}
+    )
     if len(verified) < state["min_stories"]:
         return {
             "result": GenreOutcome(
@@ -154,6 +176,7 @@ def _finalize(state: _State) -> dict[str, object]:
                 attempted=state["attempted"],
                 note=QUIET_DAY_NOTE,
                 deadline_hit=state["cut_short"],
+                diagnostics=diagnostics,
             )
         }
     return {
@@ -165,6 +188,7 @@ def _finalize(state: _State) -> dict[str, object]:
             pooled=state["pooled_count"],
             attempted=state["attempted"],
             deadline_hit=state["cut_short"],
+            diagnostics=diagnostics,
         )
     }
 

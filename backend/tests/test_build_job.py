@@ -692,6 +692,19 @@ def test_the_run_is_recorded_as_succeeded(session: Session) -> None:
     assert run.detail["published_revision"] == 1
 
 
+def test_the_run_saves_why_each_genre_came_out_as_it_did(session: Session) -> None:
+    build(session)
+
+    run = this_run(session)
+    assert run is not None and run.detail is not None
+    genres = run.detail["genres"]
+    assert genres, "per-genre diagnostics must be saved with the run"
+    for diagnostics in genres.values():
+        assert {"collected", "pooled", "attempted", "verified", "abandoned", "pool_drops"} <= set(
+            diagnostics
+        )
+
+
 # ------------------------------------------------------------- failure
 
 

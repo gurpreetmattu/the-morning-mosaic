@@ -222,6 +222,33 @@ class VerificationOutcome(Base):
 # --------------------------------------------------------------- orchestrator
 
 
+class GenreDiagnostics(Base):
+    """Why a genre came out the way it did. Operational facts only - counts and
+    short reason keys, never article text - saved into `pipeline_runs.detail`
+    so a thin section can be explained the next morning without guessing.
+
+    Every field has a zero value, so a genre that stopped early (deadline, an
+    empty collection) simply reports what it got to.
+    """
+
+    # Collector
+    collected: int = 0
+    articles_by_source: dict[str, int] = Field(default_factory=dict)
+    collector_drops: dict[str, int] = Field(default_factory=dict)
+    # Ranker. `used_fallback_clustering` is None until the Ranker has run.
+    clusters: int = 0
+    used_fallback_clustering: bool | None = None
+    requested_more_coverage: bool = False
+    pooled: int = 0
+    pool_drops: dict[str, int] = Field(default_factory=dict)
+    # Writer + Fact-checker. `write_cycles` counts every write-and-check round
+    # across all attempted stories (a story gets up to 3).
+    attempted: int = 0
+    verified: int = 0
+    write_cycles: int = 0
+    abandoned: dict[str, int] = Field(default_factory=dict)
+
+
 class GenreOutcome(Base):
     """What the build produced for one genre."""
 
@@ -237,6 +264,7 @@ class GenreOutcome(Base):
     note: str | None = None
     # True when the deadline stopped this genre before it finished.
     deadline_hit: bool = False
+    diagnostics: GenreDiagnostics = Field(default_factory=GenreDiagnostics)
 
     @property
     def verified_count(self) -> int:

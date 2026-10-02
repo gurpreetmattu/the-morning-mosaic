@@ -77,6 +77,8 @@ class BuildReport:
     published_revision: int | None = None
     stories_persisted: int = 0
     sections: dict[str, str] = field(default_factory=dict)
+    # Why each genre came out as it did (GenreDiagnostics, as plain JSON).
+    genre_diagnostics: dict[str, dict[str, object]] = field(default_factory=dict)
     weekend_features: list[str] = field(default_factory=list)
     extras: list[str] = field(default_factory=list)
     images: list[str] = field(default_factory=list)
@@ -195,6 +197,9 @@ def run_build(
         edition_date=edition_date, deadline=deadline, genres=genres, now=started
     )
     report.deadline_missed = build.deadline_missed
+    report.genre_diagnostics = {
+        outcome.genre: outcome.diagnostics.model_dump(mode="json") for outcome in build.genres
+    }
     if report.deadline_missed:
         # Distinct, greppable message text: infra/monitoring.tf's log-based
         # metric matches on this literal, not on the log level alone (a
@@ -323,6 +328,7 @@ def _finish(run: PipelineRun, status: RunStatus, report: BuildReport) -> None:
     run.finished_at = now_utc()
     run.detail = {
         "sections": report.sections,
+        "genres": report.genre_diagnostics,
         "stories_persisted": report.stories_persisted,
         "weekend_features": report.weekend_features,
         "published_revision": report.published_revision,
