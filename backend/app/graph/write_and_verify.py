@@ -61,7 +61,11 @@ def _write(state: _State) -> dict[str, object]:
     written = state["writer"].write(state["pooled"], state["genre"], feedback=state["feedback"])
 
     if written.story is None:
-        return _retry_or_give_up(attempt, state, _problems_as_feedback(written.problems))
+        feedback = _problems_as_feedback(written.problems)
+        if any(p.issue is WriterIssue.MODEL_UNAVAILABLE for p in written.problems):
+            # The Writer's model is down: a retry would just ask it again.
+            return _abandon(attempt, feedback)
+        return _retry_or_give_up(attempt, state, feedback)
 
     copied = [p for p in written.problems if p.issue is WriterIssue.COPIED_TEXT]
     if copied:
@@ -94,19 +98,27 @@ def _check(state: _State) -> dict[str, object]:
             )
         }
     feedback = checked.feedback or _problems_as_feedback(state["problems"])
+    if checked.unavailable:
+        # The checker's model is down. Fail closed, but do not rewrite a story that
+        # nothing is able to judge.
+        return _abandon(state["attempt"], feedback)
     return _retry_or_give_up(state["attempt"], state, feedback)
+
+
+def _abandon(attempt: int, feedback: str) -> dict[str, object]:
+    return {
+        "attempt": attempt,
+        "result": VerificationOutcome(
+            verified=None,
+            attempts=attempt,
+            reason=feedback or "no verifiable story after all attempts",
+        ),
+    }
 
 
 def _retry_or_give_up(attempt: int, state: _State, feedback: str) -> dict[str, object]:
     if attempt >= state["max_retries"] + 1:
-        return {
-            "attempt": attempt,
-            "result": VerificationOutcome(
-                verified=None,
-                attempts=attempt,
-                reason=feedback or "no verifiable story after all attempts",
-            ),
-        }
+        return _abandon(attempt, feedback)
     return {"attempt": attempt, "feedback": feedback, "draft": None}
 
 

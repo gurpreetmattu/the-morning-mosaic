@@ -119,6 +119,20 @@ def _is_retryable(exc: Exception) -> bool:
     return False
 
 
+def is_outage(exc: BaseException) -> bool:
+    """True when the model could not be reached or declined to serve (HTTP 429/5xx,
+    a dropped connection) - as opposed to answering with unusable content.
+
+    `LlmClient.complete` wraps every total failure in `LlmUnavailableError`, so the
+    kind of failure is the *cause*. An outage says nothing about the story being
+    written or checked, and rewriting the story cannot fix it.
+    """
+    cause = exc.__cause__ if isinstance(exc, LlmUnavailableError) and exc.__cause__ else exc
+    if isinstance(cause, httpx.TransportError):
+        return True
+    return isinstance(cause, LlmHttpError) and cause.status_code in RETRYABLE_STATUS
+
+
 @dataclass(frozen=True)
 class _Completion:
     text: str

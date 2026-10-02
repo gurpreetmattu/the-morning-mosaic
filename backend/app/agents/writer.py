@@ -25,7 +25,7 @@ from app.agents.schemas import (
 from app.agents.writing import build_passages, validate_draft
 from app.config.loader import load_genres
 from app.config.schemas import GenreKey, GenresConfig
-from app.llm.client import LlmClient, Message, strip_json_fence
+from app.llm.client import LlmClient, Message, is_outage, strip_json_fence
 from app.llm.errors import LlmError
 from app.llm.guard import redact_identifiers
 from app.llm.prompts import writer_v1
@@ -58,12 +58,11 @@ class Writer:
         try:
             payload, model = self._draft(passages, allowed, require_hedge, feedback)
         except (LlmError, ValueError, TypeError) as exc:
+            # An unreachable model is not bad output: it must not be retried as if a
+            # rewrite could help (see write_and_verify), nor filed as unparseable.
+            issue = WriterIssue.MODEL_UNAVAILABLE if is_outage(exc) else WriterIssue.UNPARSEABLE
             return WriterResult(
-                problems=[
-                    WriterProblem(
-                        issue=WriterIssue.UNPARSEABLE, detail=f"{type(exc).__name__}: {exc}"
-                    )
-                ]
+                problems=[WriterProblem(issue=issue, detail=f"{type(exc).__name__}: {exc}")]
             )
 
         return validate_draft(

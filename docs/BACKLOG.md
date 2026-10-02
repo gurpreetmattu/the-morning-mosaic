@@ -648,15 +648,20 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       * LLM quota is therefore still THE blocker, and a dry run spends the same quota as a real
         build - this one was run ~12 h before the next scheduled build, inside the same Gemini
         quota window (resets 12:30 IST) and Groq's rolling day.
-- [ ] **Fact-checker outage is treated as a content failure and retried (found 2026-10-02).**
-      When the checker's model cannot run, `FactChecker._model_claims` returns every claim as
-      UNSUPPORTED with detail "verification unavailable"; `write_and_verify` then feeds that
-      back to the Writer as feedback and rewrites the story up to 3 times. During a quota
-      outage that multiplies Writer and checker calls ~3x per story - the very calls that are
-      running out. Fix (behaviour change, needs tests + an eval run): when every finding is
-      "verification unavailable", abandon the story at once with reason `checker_unavailable`
-      and do not call the Writer again. Fail-closed stays exactly as is.
-
+- [x] **Model outages no longer trigger rewrite retries (2026-10-02).** `is_outage()` in
+      `llm/client.py` classifies a total LLM failure by its cause (HTTP 429/408/5xx or a dropped
+      connection = outage; invalid JSON, empty completion, 400/413 = bad answer).
+      `FactChecker` sets `CheckResult.unavailable` and the Writer files an outage as
+      `WriterIssue.MODEL_UNAVAILABLE`; `write_and_verify` then abandons the story at once
+      (1 call instead of up to 6) and still fails closed - nothing unchecked is ever published.
+      Content failures (unsupported claims, bad Writer output) retry exactly as before; tests
+      pin both sides. 863 tests pass; the deterministic evals (4) are unchanged.
+      **Eval gate NOT fully met:** CLAUDE.md requires evals after a behaviour change, and the 4
+      model-backed evals (groundedness, tag accuracy, catch rate full pipeline, clustering full
+      pipeline) can only run with live quota. They were run once by accident on 2026-10-02
+      under exhausted free-tier quotas: 6 passed, 2 failed - cause not captured (output lost)
+      and probably quota. Rerun `uv run python -m evals.run --verbose` ONCE on a morning after
+      reading the 04:15 build (it spends the same quota a build does), before relying on this.
 - [x] **Morning build report:** `uv run python -m app.buildreport [--date YYYY-MM-DD]`
       (`backend/app/buildreport.py`, read-only): every build/late-update run for the date with
       duration and error, what was published per genre, LLM calls by agent and model with

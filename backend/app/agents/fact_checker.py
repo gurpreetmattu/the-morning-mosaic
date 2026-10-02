@@ -26,7 +26,7 @@ from app.agents.schemas import (
     PassageRef,
     WrittenStory,
 )
-from app.llm.client import LlmClient, Message, strip_json_fence
+from app.llm.client import LlmClient, Message, is_outage, strip_json_fence
 from app.llm.errors import LlmError
 from app.llm.guard import redact_identifiers
 from app.llm.prompts import fact_checker_v1
@@ -42,7 +42,16 @@ class FactChecker:
         elements = story_elements(story)
 
         findings = self._deterministic(elements, texts)
-        findings += self._model_claims(elements, passages)
+        model_findings, unavailable = self._model_claims(elements, passages)
+        findings += model_findings
+
+        if unavailable:
+            # Nothing was judged, so the story still fails closed. But the story is not
+            # at fault and a rewrite cannot make the model answer: say so explicitly,
+            # so the retry loop stops instead of burning Writer and checker calls.
+            return CheckResult(
+                story=None, findings=findings, feedback=_feedback(findings), unavailable=True
+            )
 
         failed = {finding.element for finding in findings if finding.failed}
         fatal = {element for element in failed if not is_optional(element)}
@@ -95,7 +104,8 @@ class FactChecker:
         self,
         elements: list[tuple[str, DraftSentence]],
         passages: dict[str, PassageRef],
-    ) -> list[CheckFinding]:
+    ) -> tuple[list[CheckFinding], bool]:
+        """The model's verdicts, and whether the model could not run at all."""
         rendered_passages = "\n".join(
             fact_checker_v1.render_passage(citation_id, redact_identifiers(ref.text))
             for citation_id, ref in passages.items()
@@ -133,16 +143,19 @@ class FactChecker:
         except (LlmError, ValueError, KeyError, TypeError) as exc:
             # The checker is the safety net. If it cannot run, nothing is
             # verified, so every element fails rather than passing by default.
-            return [
-                CheckFinding(
-                    element=element,
-                    claim=sentence.text,
-                    verdict=ClaimVerdict.UNSUPPORTED,
-                    method=CheckMethod.LLM,
-                    detail=f"verification unavailable: {type(exc).__name__}",
-                )
-                for element, sentence in elements
-            ]
+            return (
+                [
+                    CheckFinding(
+                        element=element,
+                        claim=sentence.text,
+                        verdict=ClaimVerdict.UNSUPPORTED,
+                        method=CheckMethod.LLM,
+                        detail=f"verification unavailable: {type(exc).__name__}",
+                    )
+                    for element, sentence in elements
+                ],
+                is_outage(exc),
+            )
 
         known = {element for element, _ in elements}
         findings: list[CheckFinding] = []
@@ -160,7 +173,7 @@ class FactChecker:
                     detail=str(claim.get("detail", ""))[:300],
                 )
             )
-        return findings
+        return findings, False
 
 
 def _verdict(raw: object) -> ClaimVerdict:

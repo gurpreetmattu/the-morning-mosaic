@@ -414,7 +414,7 @@ def test_a_model_failure_drops_the_story_rather_than_inventing_one() -> None:
     respx.post(f"{PRIMARY}/chat/completions").mock(return_value=httpx.Response(500))
     result = writer().write(pooled(), "india")
     assert result.dropped
-    assert WriterIssue.UNPARSEABLE in issues(result)
+    assert WriterIssue.MODEL_UNAVAILABLE in issues(result)
 
 
 @respx.mock

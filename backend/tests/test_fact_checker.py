@@ -549,3 +549,94 @@ def test_the_loop_gives_up_after_two_retries() -> None:
     assert outcome.verified is None
     assert outcome.attempts == 3  # one attempt plus two retries
     assert outcome.reason is not None
+
+
+# ----------------------------------------------- outages are not content failures
+
+
+@respx.mock
+def test_a_checker_outage_is_flagged_unavailable() -> None:
+    respx.post(f"{PRIMARY}/chat/completions").mock(return_value=httpx.Response(429))
+    result = FactChecker(llm=client()).check(story(), passages())
+
+    assert result.story is None  # still fails closed
+    assert result.unavailable is True
+    assert not result.passed
+
+
+@respx.mock
+def test_a_checker_that_judged_the_story_is_not_flagged_unavailable() -> None:
+    respx.post(f"{PRIMARY}/chat/completions").mock(
+        return_value=reply(verdicts(("summary[0]", "unsupported")))
+    )
+    result = FactChecker(llm=client()).check(story(), passages())
+
+    assert result.story is None
+    assert result.unavailable is False
+
+
+@respx.mock
+def test_malformed_checker_output_is_not_an_outage() -> None:
+    """Invalid JSON is the model answering badly, not being unreachable: it still fails
+    closed, and keeps the retry behaviour it always had."""
+    respx.post(f"{PRIMARY}/chat/completions").mock(return_value=reply("not valid json at all"))
+    result = FactChecker(llm=client()).check(story(), passages())
+
+    assert result.story is None
+    assert result.unavailable is False
+
+
+@respx.mock
+def test_a_dead_checker_stops_the_loop_after_one_round_instead_of_rewriting() -> None:
+    """Before: three rewrites and three checks (6 calls) against a model that never answers."""
+    respx.post(f"{PRIMARY}/chat/completions").mock(
+        side_effect=[reply(GOOD_DRAFT), httpx.Response(429)] + [reply(GOOD_DRAFT)] * 10
+    )
+    shared = client()
+    outcome = write_and_verify(
+        writer=Writer(llm=shared),
+        checker=FactChecker(llm=shared),
+        pooled=pooled(),
+        genre="business",
+    )
+
+    assert outcome.verified is None  # never published unchecked
+    assert outcome.attempts == 1
+    assert len(respx.calls) == 2  # one draft, one failed check
+    assert outcome.reason is not None
+    assert "verification unavailable" in outcome.reason
+
+
+@respx.mock
+def test_a_dead_writer_stops_the_loop_after_one_call() -> None:
+    respx.post(f"{PRIMARY}/chat/completions").mock(return_value=httpx.Response(429))
+    shared = client()
+    outcome = write_and_verify(
+        writer=Writer(llm=shared),
+        checker=FactChecker(llm=shared),
+        pooled=pooled(),
+        genre="business",
+    )
+
+    assert outcome.verified is None
+    assert outcome.attempts == 1
+    assert len(respx.calls) == 1
+    assert outcome.reason is not None
+    assert "model_unavailable" in outcome.reason
+
+
+@respx.mock
+def test_a_writer_that_answers_badly_is_still_retried() -> None:
+    """Only an unreachable model short-circuits; bad output keeps the full retry budget."""
+    respx.post(f"{PRIMARY}/chat/completions").mock(return_value=reply("not valid json at all"))
+    shared = client()
+    outcome = write_and_verify(
+        writer=Writer(llm=shared),
+        checker=FactChecker(llm=shared),
+        pooled=pooled(),
+        genre="business",
+    )
+
+    assert outcome.verified is None
+    assert outcome.attempts == 3  # one attempt plus two retries, as before
+    assert len(respx.calls) == 3

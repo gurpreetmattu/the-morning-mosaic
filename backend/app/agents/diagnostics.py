@@ -12,10 +12,6 @@ from app.sources.schemas import CollectionResult
 # Writer problems arrive as "- <issue>: <detail>" lines (write_and_verify).
 _WRITER_LINE = re.compile(r"^- ([a-z_]+):", re.MULTILINE)
 UNAVAILABLE_MARKER = "verification unavailable"
-# The Writer reports a failed model call as an "unparseable" problem whose detail
-# starts with the error class ("LlmHttpError: HTTP 429 ..."); only an HTTP-level
-# error means the model could not be reached or refused (quota, 5xx).
-_WRITER_OUTAGE = re.compile(r"LlmHttpError|LlmUnavailableError")
 
 
 def categorize_abandon(reason: str | None) -> str:
@@ -31,7 +27,7 @@ def categorize_abandon(reason: str | None) -> str:
     lowered = reason.lower()
     if UNAVAILABLE_MARKER in lowered:
         return "checker_unavailable"
-    if _WRITER_OUTAGE.search(reason):
+    if "- model_unavailable:" in reason:
         return "writer_unavailable"
     writer_issue = _WRITER_LINE.search(reason)
     if writer_issue:

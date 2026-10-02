@@ -95,6 +95,9 @@ class WriterIssue(StrEnum):
     MISSING_CITATION = "missing_citation"
     COPIED_TEXT = "copied_text"
     MISSING_HEDGE = "missing_hedge"
+    # The model could not be reached (quota, 5xx). Says nothing about the story and a
+    # rewrite cannot fix it, so the verification loop abandons at once instead of retrying.
+    MODEL_UNAVAILABLE = "model_unavailable"
 
     # Recoverable — the element is dropped, the story survives.
     DROPPED_ONE_LINER = "dropped_one_liner"
@@ -187,6 +190,9 @@ class CheckResult(Base):
     findings: list[CheckFinding] = Field(default_factory=list)
     # Populated when the Writer should try again, naming what to fix.
     feedback: str | None = None
+    # True when the checker's model could not run (quota, 5xx). Nothing was judged, so
+    # the story fails closed - but rewriting it cannot help, and the loop must not try.
+    unavailable: bool = False
 
     @property
     def passed(self) -> bool:
