@@ -150,6 +150,10 @@ class Feed(ConfigBase):
 
     url: HttpUrl
     genres: list[GenreKey] = Field(min_length=1)
+    # Article URL paths to skip from this feed, e.g. "/sports/us-sports/". For a
+    # publisher feed that mixes in sections the product does not cover (an India-first
+    # Sports genre does not want American football). Matched as a substring of the path.
+    exclude_paths: list[str] = Field(default_factory=list)
 
 
 class Source(ConfigBase):

@@ -17,6 +17,7 @@ not cost the section.
 from __future__ import annotations
 
 from datetime import datetime
+from urllib.parse import urlparse
 
 from app.clock import now_utc
 from app.config.loader import load_sources
@@ -177,14 +178,16 @@ class Collector:
                     )
                 )
                 continue
-            items.extend(
-                parse_feed(
-                    response.content,
-                    source_key=source.key,
-                    genre=genre,
-                    fallback_timezone=source.fallback_timezone,
-                )
-            )
+            for item in parse_feed(
+                response.content,
+                source_key=source.key,
+                genre=genre,
+                fallback_timezone=source.fallback_timezone,
+            ):
+                if any(path in urlparse(item.url).path for path in feed.exclude_paths):
+                    failures.append(self._drop(item, DropReason.EXCLUDED_PATH))
+                    continue
+                items.append(item)
 
         return items, failures
 

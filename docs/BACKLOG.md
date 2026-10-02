@@ -623,28 +623,27 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 
 ## Done
 
-- [ ] **Findings from reading the first real email in Gmail desktop (2026-10-02, Chrome).**
-      Layout is good: masthead, dateline with edition number and special-edition rule, Curated-for
-      and weather boxes, dated USD/INR strip with the not-investment-advice note, On-this-day with
-      Wikipedia attribution, a Today-in-60-seconds box, themed section bands, per-story Sources
-      links, a credited Pexels image, an AI-tool-of-the-day card, Why-this-matters blocks, and a
-      footer whose PDF (signed), preferences and unsubscribe links all point at the live origin.
-      Defects, in priority order:
-      1. **A followed genre with fewer than 2 stories vanishes from the email instead of showing
-         the "quiet news day" note CLAUDE.md requires.** `render/selection.py` skips thin genres
-         ("the caller shows a quiet note") but `render/email.py` renders only the selected ones,
-         so India and Business (both followed) were silently absent. Spec deviation; fix in the
-         per-reader assembly + a test.
-      2. **The same event appears twice in one email** (OpenAI dismissing three safety staff, with
-         two different headlines, across Technology and AI). Needs cross-genre dedup in per-reader
-         assembly, plus the same-genre case if clustering splits it.
-      3. **Sports carried an American-football story** (Chicago Bears injury report, from
-         Hindustan Times' `us-sports` path) in an India-first product. Restrict that feed by URL
-         path or rank/filter on `india_relevance`.
-      4. Weather box reads "33-33C" when min equals max; show one number.
-      5. Still unchecked: Gmail MOBILE, Outlook, dark mode, and the quiet-day note rendering
-         (once 1 is fixed). Also a 'Sign in to The Morning Mosaic' magic-link email arrived at
-         17:16, two minutes after the send - not requested by the assistant.
+- [x] **Fixed: the four defects found in the first real email (2026-10-02).** Layout in Gmail
+      desktop was otherwise good (masthead, dateline, boxes, extras, sources, image credit,
+      footer links all correct). Fixes, each pinned by tests (877 pass):
+      1. A followed genre with fewer than 2 stories now shows the "quiet news day" note
+         (`quiet_genres()` in `render/selection.py`, `quiet_genres=` on `EmailRenderer.render`,
+         HTML and plain text). An all-quiet reader still gets no newsletter, only the failure
+         notice, exactly as before.
+      2. One story per event: `drop_duplicate_events()` treats stories that cite the same
+         source article URL as one event, across genres and within one, and keeps the
+         best-ranked (ties: config genre order, then story id - deterministic). Checked on the
+         real revision 3: Technology 4 -> 3, AI 5 -> 4, both repeats gone.
+      3. US sports: new per-feed `exclude_paths` in `config/sources.yaml`; Hindustan Times'
+         sports feed now skips `/sports/us-sports/` (recorded as drop reason `excluded_path`).
+         Takes effect from the next collection, not for stored revisions.
+      4. Weather shows one number when low == high.
+      **New finding, not fixed:** the AI section is filled with general-tech stories (an AMD
+      chip, an Apple camera, an Android blog) because its sources are general tech feeds
+      (The Verge, TechCrunch). The AI genre needs AI-specific feeds or a relevance filter on
+      the Writer's topic tags. Still unchecked: Gmail MOBILE, Outlook, dark mode, and the
+      rendering of the new quiet-day note in real clients. Also: a 'Sign in to The Morning
+      Mosaic' magic-link email arrived at 17:16 on 2026-10-02, not requested by the assistant.
 - [x] **First real newsletter sent from production (2026-10-02 17:14 IST).** At the owner's
       request: real `mosaic-late-update` (ran clean, published nothing new - quota spent, as
       expected) then real `mosaic-delivery --slot 07:00`. The test subscriber's genres were

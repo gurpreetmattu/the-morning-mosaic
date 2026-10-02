@@ -31,6 +31,7 @@ class DropReason(StrEnum):
     TOO_SHORT = "too_short"
     DUPLICATE_URL = "duplicate_url"
     DUPLICATE_CONTENT = "duplicate_content"
+    EXCLUDED_PATH = "excluded_path"
 
 
 class Base(BaseModel):

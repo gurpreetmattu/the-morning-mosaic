@@ -314,3 +314,45 @@ def test_round_robin_handles_a_single_source() -> None:
 
 def test_round_robin_handles_no_items() -> None:
     assert _round_robin([]) == []
+
+
+# ------------------------------------------------------------- excluded paths
+
+
+def sources_excluding(*paths: str) -> SourcesConfig:
+    config = sources().model_dump(mode="json")
+    config["sources"][0]["feeds"][0]["exclude_paths"] = list(paths)
+    return SourcesConfig.model_validate(config)
+
+
+@respx.mock
+def test_an_item_on_an_excluded_path_is_dropped_and_never_fetched() -> None:
+    mock_site()
+    article = respx.get(f"{HOST}/a/rail-corridor").mock(
+        return_value=httpx.Response(200, text=ARTICLE_HTML)
+    )
+
+    result = collector(sources_excluding("/a/rail-corridor")).collect("india", now=NOW)
+
+    assert result.articles == []
+    assert result.reason_counts().get(DropReason.EXCLUDED_PATH) == 1
+    assert not article.called
+
+
+@respx.mock
+def test_an_exclusion_that_does_not_match_leaves_the_item_alone() -> None:
+    mock_site()
+
+    result = collector(sources_excluding("/us-sports/")).collect("india", now=NOW)
+
+    assert len(result.articles) == 1
+    assert DropReason.EXCLUDED_PATH not in result.reason_counts()
+
+
+def test_the_hindustan_times_sports_feed_excludes_us_sports() -> None:
+    from app.config.loader import load_sources
+
+    source = next(s for s in load_sources().sources if s.key == "hindustan-times")
+    sports = next(f for f in source.feeds if "sports" in str(f.url) and "sports" in f.genres)
+
+    assert "/sports/us-sports/" in sports.exclude_paths

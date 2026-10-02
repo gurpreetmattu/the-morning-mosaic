@@ -22,8 +22,11 @@ from app.models.enums import EditionPreference, SectionStatus
 from app.render.selection import (
     Candidate,
     Reader,
+    SourceLink,
+    drop_duplicate_events,
     load_candidates,
     matches_keywords,
+    quiet_genres,
     score,
     select_for_reader,
 )
@@ -274,3 +277,75 @@ def test_candidates_load_with_their_tags_and_source_links(session: Session) -> N
 def test_no_stories_means_no_candidates(session: Session) -> None:
     assert load_candidates(session, edition_date=EDITION_DATE, genres=["india"]) == []
     assert load_candidates(session, edition_date=EDITION_DATE, genres=[]) == []
+
+
+# ---------------------------------------------- one story per event, quiet genres
+
+
+def with_sources(item: Candidate, *urls: str) -> Candidate:
+    from dataclasses import replace
+
+    return replace(item, sources=tuple(SourceLink(name="Wire", url=url) for url in urls))
+
+
+def test_two_stories_citing_the_same_article_are_one_event_and_the_better_rank_survives() -> None:
+    tech = with_sources(candidate(1, genre="technology"), "https://wire.test/a/openai")
+    ai = with_sources(candidate(3, genre="ai"), "https://wire.test/a/openai/")  # trailing slash
+
+    chosen = select_for_reader(
+        [tech, ai, candidate(2, genre="technology"), candidate(1, genre="ai")],
+        reader(genres=("technology", "ai")),
+    )
+
+    kept = {c.story_id for stories in chosen.values() for c in stories}
+    assert tech.story_id in kept
+    assert ai.story_id not in kept
+
+
+def test_a_duplicate_inside_one_genre_is_dropped_too() -> None:
+    first = with_sources(candidate(2, genre="technology"), "https://wire.test/a/x")
+    second = with_sources(candidate(4, genre="technology"), "https://wire.test/a/x#top")
+
+    chosen = select_for_reader(
+        [first, second, candidate(1, genre="technology"), candidate(3, genre="technology")],
+        reader(genres=("technology",)),
+    )
+
+    ids = {c.story_id for c in chosen["technology"]}
+    assert first.story_id in ids
+    assert second.story_id not in ids
+
+
+def test_a_tie_goes_to_the_genre_that_comes_first_in_config_order() -> None:
+    tech = with_sources(candidate(1, genre="technology"), "https://wire.test/a/y")
+    ai = with_sources(candidate(1, genre="ai"), "https://wire.test/a/y")
+
+    kept = drop_duplicate_events([ai, tech], genre_order=["technology", "ai"])
+
+    assert [c.genre for c in kept] == ["technology"]
+
+
+def test_the_choice_does_not_depend_on_the_order_candidates_arrive_in() -> None:
+    a = with_sources(candidate(2, genre="india"), "https://wire.test/a/z")
+    b = with_sources(candidate(2, genre="business"), "https://wire.test/a/z")
+    order: list[GenreKey] = ["india", "business"]
+
+    assert drop_duplicate_events([a, b], genre_order=order) == drop_duplicate_events(
+        [b, a], genre_order=order
+    )
+
+
+def test_stories_that_merely_share_a_source_site_are_not_duplicates() -> None:
+    one = with_sources(candidate(1), "https://wire.test/a/one")
+    two = with_sources(candidate(2), "https://wire.test/a/two")
+
+    assert len(drop_duplicate_events([one, two], genre_order=["india"])) == 2
+
+
+def test_quiet_genres_are_the_followed_ones_that_were_too_thin() -> None:
+    chosen = select_for_reader(
+        [candidate(1, genre="ai"), candidate(2, genre="ai")],
+        reader(genres=("india", "business", "ai")),
+    )
+
+    assert quiet_genres(reader(genres=("india", "business", "ai")), chosen) == ["india", "business"]

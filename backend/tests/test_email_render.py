@@ -391,3 +391,54 @@ def test_the_email_stays_free_of_scripts_web_fonts_and_stylesheets() -> None:
     assert "<link" not in html
     assert "@import" not in html
     assert "@font-face" not in html
+
+
+# ------------------------------------------------------------ quiet-day sections
+
+
+def test_a_followed_genre_that_was_too_thin_shows_the_quiet_day_note() -> None:
+    from app.agents.orchestrator import QUIET_DAY_NOTE
+
+    email = render(
+        {"technology": [candidate(1, genre="technology"), candidate(2, genre="technology")]},
+        quiet_genres=["india", "business"],
+    )
+
+    for title in ("Across India", "Business"):
+        assert title.lower() in email.html.lower()
+    assert email.html.count(QUIET_DAY_NOTE) == 2
+    assert email.text.count(QUIET_DAY_NOTE) == 2
+
+
+def test_quiet_sections_sit_in_config_order_among_the_real_ones() -> None:
+    email = render(
+        {"technology": [candidate(1, genre="technology"), candidate(2, genre="technology")]},
+        quiet_genres=["india"],
+    )
+
+    assert email.html.index("Across India") < email.html.index("Headline 1")
+
+
+def test_a_quiet_section_has_no_extras_and_adds_no_reading_time_or_digest() -> None:
+    quiet_only_story: dict[GenreKey, list[Candidate]] = {
+        "ai": [candidate(1, genre="ai"), candidate(2, genre="ai")]
+    }
+    with_quiet = render(quiet_only_story, quiet_genres=["sports"])
+    without = render(quiet_only_story)
+
+    assert with_quiet.reading_minutes == without.reading_minutes
+
+
+def test_no_quiet_genres_means_the_email_is_unchanged() -> None:
+    assert render().html == render(quiet_genres=[]).html
+
+
+def test_the_weather_shows_one_number_when_the_range_is_a_single_value() -> None:
+    flat = render(weather=Weather(city="Mumbai", summary="Clear sky", low=33, high=33))
+    ranged = render(weather=Weather(city="Mumbai", summary="Clear sky", low=26, high=33))
+
+    assert "33&deg;C" in flat.html
+    assert "33&ndash;33" not in flat.html
+    assert "Mumbai: Clear sky, 33C" in flat.text
+    assert "26&ndash;33&deg;C" in ranged.html
+    assert "26-33C" in ranged.text

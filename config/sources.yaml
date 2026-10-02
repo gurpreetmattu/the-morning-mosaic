@@ -144,6 +144,9 @@ sources:
       # real, fresh, on-topic items, allowed by robots.txt.
       - url: https://www.hindustantimes.com/feeds/rss/sports/rssfeed.xml
         genres: [sports]
+        # Added 2026-10-02: this feed mixes in American sports (an NFL injury report
+        # reached the first real newsletter). The product is India-first.
+        exclude_paths: ["/sports/us-sports/"]
       - url: https://www.hindustantimes.com/feeds/rss/entertainment/bollywood/rssfeed.xml
         genres: [bollywood]
     notes: >-

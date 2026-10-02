@@ -182,6 +182,68 @@ def score(candidate: Candidate, reader: Reader, *, pool_size: int) -> float:
     return total
 
 
+def _article_key(url: str) -> str:
+    """A source URL with the parts that vary between feeds of the same article removed."""
+    return url.split("#", 1)[0].rstrip("/").lower()
+
+
+def drop_duplicate_events(
+    candidates: Sequence[Candidate], *, genre_order: Sequence[GenreKey]
+) -> list[Candidate]:
+    """Keep one story per event.
+
+    Two stories that cite the same source article are the same event, whether the
+    Writer produced them in one genre (clustering split it) or in two (Technology and
+    AI both collect the same wire stories). Of each such group the best-ranked story
+    survives; ties go to the genre that comes first in `genre_order`, then to the
+    story id, so the choice never changes between runs or between readers.
+    """
+    parent: dict[uuid.UUID, uuid.UUID] = {c.story_id: c.story_id for c in candidates}
+
+    def find(item: uuid.UUID) -> uuid.UUID:
+        while parent[item] != item:
+            parent[item] = parent[parent[item]]
+            item = parent[item]
+        return item
+
+    first_seen: dict[str, uuid.UUID] = {}
+    for candidate in candidates:
+        for source in candidate.sources:
+            key = _article_key(source.url)
+            if key in first_seen:
+                parent[find(candidate.story_id)] = find(first_seen[key])
+            else:
+                first_seen[key] = candidate.story_id
+
+    order = {genre: index for index, genre in enumerate(genre_order)}
+    best: dict[uuid.UUID, Candidate] = {}
+    for candidate in candidates:
+        root = find(candidate.story_id)
+        rank = (
+            candidate.pool_rank,
+            order.get(candidate.genre, len(order)),
+            str(candidate.story_id),
+        )
+        current = best.get(root)
+        if current is None or rank < (
+            current.pool_rank,
+            order.get(current.genre, len(order)),
+            str(current.story_id),
+        ):
+            best[root] = candidate
+    keep = {candidate.story_id for candidate in best.values()}
+    return [candidate for candidate in candidates if candidate.story_id in keep]
+
+
+def quiet_genres(reader: Reader, selected: Mapping[GenreKey, list[Candidate]]) -> list[GenreKey]:
+    """The reader's genres that came up too thin to show, in the reader's order.
+
+    CLAUDE.md: a section with fewer than the minimum stories "shows a short 'quiet
+    news day' note instead". The email shows the note rather than dropping the genre.
+    """
+    return [genre for genre in reader.genres if genre not in selected]
+
+
 def select_for_reader(
     candidates: Sequence[Candidate],
     reader: Reader,
@@ -189,8 +251,10 @@ def select_for_reader(
     genres: GenresConfig | None = None,
 ) -> dict[GenreKey, list[Candidate]]:
     """Pick and order each subscribed genre's stories for one reader."""
-    settings = (genres or load_genres()).by_key()
+    config = genres or load_genres()
+    settings = config.by_key()
     chosen: dict[GenreKey, list[Candidate]] = {}
+    candidates = drop_duplicate_events(candidates, genre_order=[g.key for g in config.genres])
 
     for genre in reader.genres:
         genre_settings = settings[genre]

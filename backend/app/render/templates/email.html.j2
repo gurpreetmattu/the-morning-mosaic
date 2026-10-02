@@ -38,7 +38,7 @@
       </td>
       {% if weather %}
       <td valign="top" align="right" style="font-family:{{ pal.sans }};font-size:12px;line-height:1.4;color:{{ pal.ink }};">
-        <span style="display:inline-block;padding:6px 10px;border:2px solid {{ pal.ink }};">{{ weather.city }}: {{ weather.summary }}, {{ weather.low }}&ndash;{{ weather.high }}&deg;C</span>
+        <span style="display:inline-block;padding:6px 10px;border:2px solid {{ pal.ink }};">{{ weather.city }}: {{ weather.summary }}, {% if weather.low == weather.high %}{{ weather.low }}{% else %}{{ weather.low }}&ndash;{{ weather.high }}{% endif %}&deg;C</span>
       </td>
       {% endif %}
     </tr></table>
@@ -111,6 +111,11 @@
       {% set section_title = section.title %}
       {% set blurb = section.blurb %}
       {% include "_section_header.html.j2" %}
+      {% if section.quiet %}
+      <p style="margin:0 12px;padding:14px 16px;background:{{ theme.accent_soft }};border-left:4px solid {{ theme.accent }};font-family:{{ theme.body_font }};font-size:15px;line-height:1.5;color:{{ pal.ink }};">
+        {{ section.quiet_note }}
+      </p>
+      {% else %}
       {% set image = section.image %}
       {% set ai_tool = section.ai_tool %}
       {% set movie_releases = section.movie_releases %}
@@ -122,6 +127,7 @@
       {% for story in section.stories %}
         {% include "_story.html.j2" %}
       {% endfor %}
+      {% endif %}
     </section>
     {% endfor %}
   </td></tr>

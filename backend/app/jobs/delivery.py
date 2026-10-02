@@ -58,7 +58,7 @@ from app.models.enums import (
 from app.models.operations import PipelineRun
 from app.models.users import FollowedKeyword, OutageState, User, UserGenre, UserPreference
 from app.render.email import EmailRenderer, Links, SectionExtras, Weather
-from app.render.selection import Reader, load_candidates, select_for_reader
+from app.render.selection import Reader, load_candidates, quiet_genres, select_for_reader
 from app.render.weekend import WeekendContent, load_weekend_features
 from app.services.deals import load_game_deals
 from app.services.markets import load_market_strip
@@ -476,6 +476,7 @@ def run_delivery(
             edition_date=edition_date,
             edition_number=edition.edition_number,
             selected=selected,
+            quiet_genres=quiet_genres(reader, selected),
             links=links,
             weather=weather,
             quote=quote,

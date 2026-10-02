@@ -19,6 +19,7 @@ from jinja2 import Environment
 from pydantic import BaseModel, ConfigDict
 
 from app.agents.image_finder import ImageResult
+from app.agents.orchestrator import QUIET_DAY_NOTE
 from app.config.loader import load_genres
 from app.config.schemas import GenreKey, GenresConfig
 from app.render.sections import build_environment, text_environment, tidy
@@ -147,18 +148,39 @@ class EmailRenderer:
         corrections: str | None = None,
         weekend: WeekendContent | None = None,
         section_extras: Mapping[GenreKey, SectionExtras] | None = None,
+        quiet_genres: Sequence[GenreKey] = (),
     ) -> RenderedEmail:
         by_key = self._genres.by_key()
         # Config order, so a reader's sections do not shuffle between days.
-        ordered = [genre.key for genre in self._genres.genres if genre.key in selected]
+        quiet = set(quiet_genres) - set(selected)
+        ordered = [
+            genre.key
+            for genre in self._genres.genres
+            if genre.key in selected or genre.key in quiet
+        ]
         extras_by_genre = section_extras or {}
 
-        sections = [
-            {
+        def quiet_section(key: GenreKey) -> dict[str, object]:
+            """A followed genre with too few stories: header and the quiet-day note only."""
+            return {
                 "genre": key,
                 "title": by_key[key].section_title,
                 "blurb": by_key[key].blurb,
                 "theme": by_key[key].theme.model_dump(),
+                "quiet": True,
+                "quiet_note": QUIET_DAY_NOTE,
+                "stories": [],
+            }
+
+        sections = [
+            quiet_section(key)
+            if key in quiet
+            else {
+                "genre": key,
+                "title": by_key[key].section_title,
+                "blurb": by_key[key].blurb,
+                "theme": by_key[key].theme.model_dump(),
+                "quiet": False,
                 "stories": selected[key],
                 "image": (extras_by_genre.get(key) or SectionExtras()).image,
                 "movie_releases": (extras_by_genre.get(key) or SectionExtras()).movie_releases,
@@ -173,7 +195,7 @@ class EmailRenderer:
             }
             for key in ordered
         ]
-        chosen = [selected[key] for key in ordered]
+        chosen = [selected[key] for key in ordered if key in selected]
         minutes = reading_minutes(chosen)
 
         context = {
