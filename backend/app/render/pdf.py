@@ -35,14 +35,14 @@ TAGLINE = "The morning paper, set to your interests."
 
 PdfRenderer = Callable[[str], bytes]
 
-# The page is white, not newsprint: print-safe (no full-bleed tint, no
-# textures). Ink, rules and each genre's spot colour carry the identity.
-# Section fragments are also given a paper background for the archive page;
-# it is switched off here so the printed page stays white.
+# The page carries the same newsprint tint as the email and the website, so
+# the PDF reads as the same publication rather than a different document.
+# `paper_raised` is the email's card colour; the section fragments already
+# paint it themselves, and the @page background keeps the margins matching.
 _PAGE_CSS = (
     """
   @page {{
-    size: A4; margin: 22mm 18mm 26mm 18mm;
+    size: A4; margin: 22mm 18mm 26mm 18mm; background: {paper};
     @top-left {{ content: "{brand}"; font: 8pt {mono}; color: {ink_muted}; }}
     @bottom-center {{
       content: "Every fact comes from the sources linked beneath each story.";
@@ -50,8 +50,7 @@ _PAGE_CSS = (
     }}
   }}
   html, body {{ margin: 0; padding: 0; height: 100%; }}
-  body {{ font-family: {serif}; color: {ink}; background: #ffffff; }}
-  section {{ background: #ffffff !important; }}
+  body {{ font-family: {serif}; color: {ink}; background: {paper}; }}
 """
 ).format(
     brand=BRAND,
@@ -60,6 +59,7 @@ _PAGE_CSS = (
     serif=PALETTE["serif"],
     ink=PALETTE["ink"],
     ink_muted=PALETTE["ink_muted"],
+    paper=PALETTE["paper_raised"],
 )
 
 _SHELL = """<!doctype html>
@@ -68,21 +68,30 @@ _SHELL = """<!doctype html>
 
 _COVER = """<!doctype html>
 <html lang="en-IN"><head><meta charset="utf-8"><style>{css}
-  .cover {{ display: flex; flex-direction: column; justify-content: center;
-            align-items: center; height: 100%; text-align: center; }}
-  .plate {{ border-top: 4px solid {ink}; border-bottom: 4px solid {ink};
-            padding: 14px 0 12px; width: 100%; }}
-  .plate .rule {{ border-top: 1px solid {ink}; margin-top: 10px; }}
+  .cover {{ height: 100%; border: 2px solid {ink}; background: {paper}; }}
+  .dateline {{ padding: 8px 20px; border-bottom: 1px solid {ink};
+               font: 12px {mono}; color: {ink_soft}; }}
+  .nameplate {{ text-align: center; padding: 150px 20px 10px; }}
+  /* WeasyPrint has no text-shadow, so the email's red offset shadow is a
+     second copy of the title, nudged down and right, behind the first. */
+  .title {{ position: relative; display: inline-block; font: bold 46px/1.05 {serif};
+            letter-spacing: -0.5px; margin: 0; white-space: nowrap; }}
+  .title .shadow {{ position: absolute; left: 2px; top: 2px; color: {press_red};
+                    white-space: nowrap; }}
+  .title .front {{ position: relative; color: {ink}; }}
+  .tagline {{ text-align: center; padding: 0 20px 12px; border-bottom: 4px double {ink};
+              font: italic 15px {serif}; color: {ink_soft}; margin: 0 20px; }}
+  .curated {{ text-align: center; margin-top: 56px; }}
+  .curated span {{ display: inline-block; padding: 6px 12px; border: 2px solid {ink};
+                   font: bold 12px {sans}; letter-spacing: 0.14em; text-transform: uppercase; }}
 </style></head>
 <body><div class="cover">
-  <div class="plate">
-    <h1 style="font-size:46px;line-height:1;margin:0;font-weight:bold;">{brand}</h1>
-    <div class="rule"></div>
-    <p style="font-size:15px;font-style:italic;color:{ink_soft};margin:8px 0 0;">{tagline}</p>
+  <div class="dateline">{date_label} &middot; Edition {edition_number}</div>
+  <div class="nameplate">
+    <h1 class="title"><span class="shadow">{brand}</span><span class="front">{brand}</span></h1>
   </div>
-  <p style="font-size:22px;margin:56px 0 6px;">Curated for {first_name}</p>
-  <p style="font-size:15px;color:{ink_soft};margin:0 0 4px;">{date_label}</p>
-  <p style="font-size:13px;color:{ink_muted};margin:0;">Edition No. {edition_number}</p>
+  <p class="tagline">{tagline}</p>
+  <div class="curated"><span>Curated for {first_name}</span></div>
 </div></body></html>"""
 
 
@@ -103,7 +112,11 @@ def cover_html(*, first_name: str, edition_date: date, edition_number: int) -> s
         css=_PAGE_CSS,
         ink=PALETTE["ink"],
         ink_soft=PALETTE["ink_soft"],
-        ink_muted=PALETTE["ink_muted"],
+        paper=PALETTE["paper_raised"],
+        press_red=PALETTE["press_red"],
+        mono=PALETTE["mono"],
+        sans=PALETTE["sans"],
+        serif=PALETTE["serif"],
         brand=escape(BRAND),
         tagline=escape(TAGLINE),
         first_name=escape(first_name),

@@ -43,7 +43,7 @@ def test_the_pdf_cover_carries_the_masthead_details() -> None:
     assert "The morning paper, set to your interests." in html
     assert "Curated for Asha" in html
     assert "Monday, 5 October 2026" in html
-    assert "Edition No. 5" in html
+    assert "Edition 5" in html
     assert "<script" not in html
 
 
@@ -54,9 +54,10 @@ def test_the_cover_escapes_the_readers_name() -> None:
     assert "&lt;b&gt;Asha" in html
 
 
-def test_pdf_pages_are_a4_and_print_white() -> None:
+def test_pdf_pages_are_a4_and_use_the_email_paper() -> None:
     html = page_html("<section>hello</section>")
 
     assert "size: A4" in html
-    assert "section { background: #ffffff !important; }" in html
+    assert f"background: {PALETTE['paper_raised']}" in html
+    assert "#ffffff" not in html
     assert "hello" in html

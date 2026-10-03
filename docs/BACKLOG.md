@@ -491,9 +491,12 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
         rendered as designed. Gmail **strips the nameplate's red text-shadow** (it shows
         plain black ink - acceptable). Not yet seen: the "Stop press" 60-second box in
         Gmail, **Gmail mobile, Outlook (desktop/web), and Gmail's automatic dark mode.**
-      - **PDF not rendered.** WeasyPrint's system libraries aren't on this
-        machine, so `pdf.py`'s new `@page` margin boxes (running header/footer)
-        and cover layout were checked as HTML only.
+      - **PDF theme fixed (2026-10-03).** The PDF used a forced white page and a
+        plain cover, nothing like the email. Pages now use the email's paper tint
+        and the cover has the email masthead (dateline, red-shadow nameplate,
+        double rule, boxed "Curated for"). Rendered for real in the backend image
+        and checked. Still open: no weather box on the cover, and white-paper
+        print-friendliness was traded away for matching the email.
       - No dark-mode variant for email (would need a `<style>` block; the
         section HTML forbids one) - clients that auto-invert get explicit
         backgrounds on every container.
