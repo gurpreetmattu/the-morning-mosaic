@@ -500,6 +500,12 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
         Follow-up: stories were unsplittable at screen-size type, leaving pages a
         third empty; print CSS now shrinks type and lets stories break, and the
         cover lists genres with page numbers.
+        **Then (2026-10-03):** the last page of every genre was still half blank
+        because each genre was its own PDF, merged afterwards. A reader's PDF is
+        now ONE document, so genres flow on from one another and the cover's page
+        numbers come from WeasyPrint's `target-counter`. Trade-off: the per-genre
+        render cache is gone, so a reader's first download lays out their whole
+        edition (cached per reader after that).
       - No dark-mode variant for email (would need a `<style>` block; the
         section HTML forbids one) - clients that auto-invert get explicit
         backgrounds on every container.
@@ -606,8 +612,8 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 - [ ] **`GcsObjectStorage` has never touched real Cloud Storage.** No GCP
       project exists yet (see Blockers). It mirrors `LocalObjectStorage`'s
       interface exactly, so the PDF route needs no change once a bucket
-      does exist; the object-key layout (`pdf/sections/{revision}/{genre}.pdf`,
-      `pdf/readers/{revision}/{user}.pdf`) is what the 30-day lifecycle
+      does exist; the object-key layout (`pdf/readers/{revision}/{user}.pdf`;
+      the per-genre `pdf/sections/...` keys were retired 2026-10-03) is what the 30-day lifecycle
       rule from CLAUDE.md will need to target.
 - [ ] **The PDF route streams bytes through `api` rather than serving a
       signed link**, which is what CLAUDE.md's tech stack section literally

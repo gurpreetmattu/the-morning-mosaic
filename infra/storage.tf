@@ -1,7 +1,7 @@
 # CLAUDE.md: assembled PDFs are "cached in Cloud Storage (30-day lifecycle
 # rule)". Matches app/storage.py's GcsObjectStorage and the two-tier key
-# layout the PDF route writes: pdf/sections/{revision}/{genre}.pdf (shared
-# per revision) and pdf/readers/{revision}/{user}.pdf (per reader). Private:
+# layout the PDF route writes: pdf/readers/{revision}/{user}.pdf (one
+# finished document per reader). Private:
 # the api service streams bytes to the browser itself (see
 # app/api/routes/pdf.py), nothing here is ever public.
 

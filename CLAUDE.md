@@ -220,8 +220,8 @@ newsletter and record provider + terms link in config.
 - **Frontend:** Next.js (App Router) + Tailwind, as a Cloud Run service.
 - **Email:** Jinja2 templates with inlined CSS; Gmail SMTP (port 587, app password) behind
   `backend/app/email/sender.py`, replaceable by Resend/Brevo once the custom domain is approved.
-- **PDF:** WeasyPrint. Genre pages rendered once per revision; per-user PDFs assembled on first
-  download, cached in Cloud Storage (30-day lifecycle rule), served via signed links through the API.
+- **PDF:** WeasyPrint. Each reader's PDF is laid out as one document (cover + their genres flowing on
+  from one another, no blank page ends) on first download, cached in Cloud Storage (30-day lifecycle rule), served via signed links through the API.
 - **Region:** GCP `asia-south1` (Mumbai) for Cloud Run, Cloud Storage, and Artifact Registry.
 - **Deployment:** Cloud Run (services: web, api; jobs: purge, feedback, build, late-update,
   delivery, failure-notice, bounces), Cloud Scheduler, Cloud Monitoring, Secret Manager, Artifact Registry, Cloud Storage. Terraform in `/infra`,

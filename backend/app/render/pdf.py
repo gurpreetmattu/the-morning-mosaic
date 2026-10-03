@@ -1,17 +1,17 @@
 """Per-user PDF assembly. No LLM, and — past the first render — no re-rendering.
 
-CLAUDE.md: "Genre pages rendered once per revision; per-user PDFs assembled
-on first download." The two halves are deliberately different operations:
+A reader's PDF is one document: their personalised cover, then the
+`EditionSection.html` of each genre they subscribe to, in order. Those
+sections are the same already-verified, already-published bytes every reader
+of that genre gets in the archive and the email; nothing here changes a word.
 
-- A genre page comes straight from `EditionSection.html`, the same
-  already-verified, already-published bytes every reader of that genre gets
-  in the archive and the email. Turning it into a PDF page is pure layout —
-  WeasyPrint wraps it in an A4 page and paginates it — so it happens once per
-  revision and is cached by (revision, genre).
-- Assembling one reader's PDF is concatenation: their personalised cover
-  page plus whichever of those already-rendered genre pages they subscribe
-  to, in order. Nothing here re-lays-out a genre page per reader, which is
-  what makes "on first download" cheap for every download after the first.
+It is laid out as ONE document, not one PDF per genre merged afterwards, so a
+genre can start part-way down the page where the previous one ended instead of
+leaving the rest of that page blank. The cost is that a reader's first
+download lays out their whole edition rather than concatenating cached genre
+pages; the finished PDF is cached per (revision, reader), so every download
+after the first is a plain read. The cover's page numbers come from
+WeasyPrint's `target-counter`, so they are the real ones, not an estimate.
 
 WeasyPrint needs system libraries (GTK/Pango) this environment does not have
 — see docs/BACKLOG.md — so it is imported lazily, only inside the function
@@ -26,7 +26,6 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from html import escape
-from io import BytesIO
 
 from app.render import PALETTE
 
@@ -49,7 +48,7 @@ _PAGE_CSS = (
       font: 8pt {sans}; color: {ink_muted};
     }}
   }}
-  html, body {{ margin: 0; padding: 0; height: 100%; }}
+  html, body {{ margin: 0; padding: 0; }}
   body {{ font-family: {serif}; color: {ink}; background: {paper}; }}
   /* Section fragments are inline-styled for a 600px email: screen-sized type
      and stories that refuse to split across pages. On A4 that leaves pages
@@ -61,6 +60,10 @@ _PAGE_CSS = (
   article p {{ font-size: 12.5px !important; line-height: 1.5 !important;
                orphans: 3; widows: 3; }}
   article p:last-child {{ break-before: avoid; }}
+  /* "Why this matters" is the bordered paragraph; keep it with the summary. */
+  article p[style*="border-left"] {{ break-before: avoid; page-break-before: avoid; }}
+  section h2 {{ break-after: avoid; page-break-after: avoid; }}
+  section h2 + p {{ break-after: avoid; page-break-after: avoid; }}
 """
 ).format(
     brand=BRAND,
@@ -72,13 +75,9 @@ _PAGE_CSS = (
     paper=PALETTE["paper_raised"],
 )
 
-_SHELL = """<!doctype html>
-<html lang="en-IN"><head><meta charset="utf-8"><style>{css}</style></head>
-<body>{body}</body></html>"""
-
-_COVER = """<!doctype html>
-<html lang="en-IN"><head><meta charset="utf-8"><style>{css}
-  .cover {{ height: 100%; border: 2px solid {ink}; background: {paper}; }}
+_COVER_CSS = """
+  .cover {{ height: 245mm; border: 2px solid {ink}; background: {paper};
+            break-after: page; page-break-after: always; }}
   .dateline {{ padding: 8px 20px; border-bottom: 1px solid {ink};
                font: 12px {mono}; color: {ink_soft}; }}
   .nameplate {{ text-align: center; padding: 150px 20px 10px; }}
@@ -92,18 +91,21 @@ _COVER = """<!doctype html>
   .tagline {{ text-align: center; padding: 0 20px 12px; border-bottom: 4px double {ink};
               font: italic 15px {serif}; color: {ink_soft}; margin: 0 20px; }}
   .curated {{ text-align: center; margin-top: 44px; }}
+  .curated span {{ display: inline-block; padding: 6px 12px; border: 2px solid {ink};
+                   font: bold 12px {sans}; letter-spacing: 0.14em; text-transform: uppercase; }}
   .contents {{ margin: 56px 40px 0; }}
   .contents h2 {{ font: bold 12px {sans}; letter-spacing: 0.14em; text-transform: uppercase;
                   margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid {ink}; }}
   .contents .row {{ display: flex; justify-content: space-between; align-items: baseline;
                     padding: 9px 0; border-bottom: 1px dotted {ink}; }}
+  .contents .page {{ color: inherit; text-decoration: none; }}
   .contents .name {{ font: bold 17px {serif}; }}
   .contents .blurb {{ font: italic 12px {serif}; color: {ink_soft}; margin: 2px 0 0; }}
-  .contents .page {{ font: 14px {mono}; color: {ink_soft}; }}
-  .curated span {{ display: inline-block; padding: 6px 12px; border: 2px solid {ink};
-                   font: bold 12px {sans}; letter-spacing: 0.14em; text-transform: uppercase; }}
-</style></head>
-<body><div class="cover">
+  .contents .page::after {{ content: target-counter(attr(href url), page);
+                            font: 14px {mono}; color: {ink_soft}; }}
+"""
+
+_COVER_BODY = """<div class="cover">
   <div class="dateline">{date_label} &middot; Edition {edition_number}</div>
   <div class="nameplate">
     <h1 class="title"><span class="shadow">{brand}</span><span class="front">{brand}</span></h1>
@@ -111,11 +113,15 @@ _COVER = """<!doctype html>
   <p class="tagline">{tagline}</p>
   <div class="curated"><span>Curated for {first_name}</span></div>
   {contents}
-</div></body></html>"""
+</div>"""
+
+_DOCUMENT = """<!doctype html>
+<html lang="en-IN"><head><meta charset="utf-8"><style>{css}{cover_css}</style></head>
+<body>{body}</body></html>"""
 
 
 def weasyprint_renderer(html: str) -> bytes:
-    """The real renderer. Untested on this machine; see docs/BACKLOG.md."""
+    """The real renderer. Verified inside the backend image; see docs/BACKLOG.md."""
     from weasyprint import HTML  # heavy import, touched only for a real render
 
     pdf_bytes: bytes = HTML(string=html).write_pdf()
@@ -127,40 +133,53 @@ def date_label(edition_date: date) -> str:
 
 
 @dataclass(frozen=True)
-class ContentsEntry:
+class PdfSection:
+    """One genre of a reader's edition: its heading data and stored HTML."""
+
+    genre: str
     title: str
     blurb: str
-    page: int
+    html: str
 
 
-def _contents_html(entries: Sequence[ContentsEntry]) -> str:
-    if not entries:
+def _anchor(genre: str) -> str:
+    return f"genre-{genre}"
+
+
+def _contents_html(sections: Sequence[PdfSection]) -> str:
+    if not sections:
         return ""
     rows = "".join(
-        f'<div class="row"><div><div class="name">{escape(e.title)}</div>'
-        f'<p class="blurb">{escape(e.blurb)}</p></div>'
-        f'<div class="page">{e.page}</div></div>'
-        for e in entries
+        f'<div class="row"><div><span class="name">{escape(s.title)}</span>'
+        f'<p class="blurb">{escape(s.blurb)}</p></div>'
+        f'<a class="page" href="#{escape(_anchor(s.genre))}"></a></div>'
+        for s in sections
     )
     return f'<div class="contents"><h2>In this edition</h2>{rows}</div>'
 
 
-def pdf_page_count(pdf: bytes) -> int:
-    from pypdf import PdfReader
-
-    return len(PdfReader(BytesIO(pdf)).pages)
-
-
-def cover_html(
+def edition_html(
     *,
     first_name: str,
     edition_date: date,
     edition_number: int,
-    contents: Sequence[ContentsEntry] = (),
+    sections: Sequence[PdfSection],
 ) -> str:
-    return _COVER.format(
-        contents=_contents_html(contents),
-        css=_PAGE_CSS,
+    """The whole reader's edition as one HTML document.
+
+    Section HTML is not escaped: it is our own stored, previously-escaped
+    output (see `render/sections.py`), not raw input. Everything else here is.
+    """
+    cover = _COVER_BODY.format(
+        date_label=escape(date_label(edition_date)),
+        edition_number=edition_number,
+        brand=escape(BRAND),
+        tagline=escape(TAGLINE),
+        first_name=escape(first_name),
+        contents=_contents_html(sections),
+    )
+    body = cover + "".join(f'<div id="{escape(_anchor(s.genre))}">{s.html}</div>' for s in sections)
+    cover_css = _COVER_CSS.format(
         ink=PALETTE["ink"],
         ink_soft=PALETTE["ink_soft"],
         paper=PALETTE["paper_raised"],
@@ -168,60 +187,27 @@ def cover_html(
         mono=PALETTE["mono"],
         sans=PALETTE["sans"],
         serif=PALETTE["serif"],
-        brand=escape(BRAND),
-        tagline=escape(TAGLINE),
-        first_name=escape(first_name),
-        date_label=escape(date_label(edition_date)),
-        edition_number=edition_number,
     )
-
-
-def page_html(section_html: str) -> str:
-    """Wrap an already-rendered, already-trusted section fragment for print.
-
-    Not escaped: `section_html` is our own stored, previously-escaped output
-    (see `render/sections.py`), not raw input.
-    """
-    return _SHELL.format(css=_PAGE_CSS, body=section_html)
-
-
-def merge_pdfs(parts: Sequence[bytes]) -> bytes:
-    """Concatenate whole PDFs, page by page, in order."""
-    from pypdf import PdfReader, PdfWriter
-
-    writer = PdfWriter()
-    for part in parts:
-        reader = PdfReader(BytesIO(part))
-        for page in reader.pages:
-            writer.add_page(page)
-
-    buffer = BytesIO()
-    writer.write(buffer)
-    return buffer.getvalue()
+    return _DOCUMENT.format(css=_PAGE_CSS, cover_css=cover_css, body=body)
 
 
 @dataclass(frozen=True)
 class PdfAssembler:
     render_html: PdfRenderer = field(default=weasyprint_renderer)
 
-    def render_section(self, section_html: str) -> bytes:
-        return self.render_html(page_html(section_html))
-
-    def render_cover(
+    def render_edition(
         self,
         *,
         first_name: str,
         edition_date: date,
         edition_number: int,
-        contents: Sequence[ContentsEntry] = (),
+        sections: Sequence[PdfSection],
     ) -> bytes:
-        html = cover_html(
-            first_name=first_name,
-            edition_date=edition_date,
-            edition_number=edition_number,
-            contents=contents,
+        return self.render_html(
+            edition_html(
+                first_name=first_name,
+                edition_date=edition_date,
+                edition_number=edition_number,
+                sections=sections,
+            )
         )
-        return self.render_html(html)
-
-    def assemble(self, *, cover: bytes, sections: Sequence[bytes]) -> bytes:
-        return merge_pdfs([cover, *sections])

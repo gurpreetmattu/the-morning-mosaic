@@ -6,7 +6,7 @@ from datetime import date
 
 from app.render import PALETTE
 from app.render.notices import failure_notice, paused_notice
-from app.render.pdf import ContentsEntry, cover_html, page_html
+from app.render.pdf import PdfSection, edition_html
 
 LINKS = {
     "first_name": "Asha",
@@ -36,8 +36,17 @@ def test_notices_stay_independent_of_everything_external() -> None:
         assert "https://example.test/unsubscribe/abc" in notice.html
 
 
+def _html(*, name: str = "Asha", sections: list[PdfSection] | None = None) -> str:
+    return edition_html(
+        first_name=name,
+        edition_date=date(2026, 10, 5),
+        edition_number=5,
+        sections=sections or [],
+    )
+
+
 def test_the_pdf_cover_carries_the_masthead_details() -> None:
-    html = cover_html(first_name="Asha", edition_date=date(2026, 10, 5), edition_number=5)
+    html = _html()
 
     assert "The Morning Mosaic" in html
     assert "The morning paper, set to your interests." in html
@@ -48,35 +57,46 @@ def test_the_pdf_cover_carries_the_masthead_details() -> None:
 
 
 def test_the_cover_escapes_the_readers_name() -> None:
-    html = cover_html(first_name="<b>Asha</b>", edition_date=date(2026, 10, 5), edition_number=1)
+    html = _html(name="<b>Asha</b>")
 
     assert "<b>Asha</b>" not in html
     assert "&lt;b&gt;Asha" in html
 
 
 def test_pdf_pages_are_a4_and_use_the_email_paper() -> None:
-    html = page_html("<section>hello</section>")
+    html = _html()
 
     assert "size: A4" in html
     assert f"background: {PALETTE['paper_raised']}" in html
     assert "#ffffff" not in html
-    assert "hello" in html
 
 
-def test_the_cover_lists_each_genre_with_its_page_and_escapes_it() -> None:
-    html = cover_html(
-        first_name="Asha",
-        edition_date=date(2026, 10, 5),
-        edition_number=5,
-        contents=[ContentsEntry(title="Across India", blurb="A & B", page=2)],
+def test_the_edition_is_one_document_so_genres_flow_without_blank_pages() -> None:
+    sections = [
+        PdfSection(
+            genre="india", title="Across India", blurb="A & B", html="<section>one</section>"
+        ),
+        PdfSection(genre="ai", title="AI", blurb="Models", html="<section>two</section>"),
+    ]
+    html = _html(sections=sections)
+
+    assert html.count("<!doctype html>") == 1
+    assert "<section>one</section>" in html and "<section>two</section>" in html
+    # Only the cover forces a page break; genres follow each other on the page.
+    assert html.count("break-after: page") == 1
+
+
+def test_the_cover_lists_each_genre_linked_to_its_section_and_escaped() -> None:
+    html = _html(
+        sections=[PdfSection(genre="india", title="Across India", blurb="A & B", html="<p>x</p>")]
     )
 
     assert "In this edition" in html
-    assert "Across India" in html
+    assert 'href="#genre-india"' in html
+    assert 'id="genre-india"' in html
     assert "A &amp; B" in html
+    assert "target-counter" in html
 
 
 def test_pdf_pages_let_stories_split_instead_of_leaving_gaps() -> None:
-    html = page_html("<article>hello</article>")
-
-    assert "break-inside: auto !important" in html
+    assert "break-inside: auto !important" in _html()

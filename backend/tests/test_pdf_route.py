@@ -1,10 +1,10 @@
-"""The PDF download link: revision-bound content, and two-tier caching.
+"""The PDF download link: revision-bound content, and per-reader caching.
 
 WeasyPrint cannot run on this machine (no GTK/Pango; see docs/BACKLOG.md), so
-every test injects a fake renderer that returns a real one-page PDF built
-with pypdf instead of an actual layout of the HTML. That keeps the merge
-itself — the part these tests actually exercise — genuine: `pypdf` is pure
-Python and runs the same here as anywhere.
+every test injects a fake renderer instead of an actual layout of the HTML. It
+returns a real PDF built with pypdf: a cover page plus one page per genre
+section it finds in the HTML, which is enough to show which genres made it into
+the reader's document.
 """
 
 from __future__ import annotations
@@ -58,23 +58,24 @@ def settings(**overrides: Any) -> Settings:
     return Settings.model_validate(base | overrides)
 
 
-def one_page_pdf() -> bytes:
+def pdf_with_pages(count: int) -> bytes:
     writer = PdfWriter()
-    writer.add_blank_page(width=200, height=200)
+    for _ in range(count):
+        writer.add_blank_page(width=200, height=200)
     buffer = BytesIO()
     writer.write(buffer)
     return buffer.getvalue()
 
 
 class FakeRenderer:
-    """Stands in for WeasyPrint: ignores the HTML, returns a real PDF page."""
+    """Stands in for WeasyPrint: one page for the cover plus one per genre."""
 
     def __init__(self) -> None:
         self.calls: list[str] = []
 
     def __call__(self, html: str) -> bytes:
         self.calls.append(html)
-        return one_page_pdf()
+        return pdf_with_pages(1 + html.count('id="genre-'))
 
 
 @pytest.fixture
@@ -244,21 +245,20 @@ class TestCaching:
         assert first.content == second.content
         assert len(fake_renderer.calls) == calls_after_first
 
-    def test_a_shared_genre_page_is_rendered_once_across_readers(
+    def test_each_reader_gets_their_own_render_of_their_own_genres(
         self, client: TestClient, session: Session, fake_renderer: FakeRenderer
     ) -> None:
-        """Genre pages are cached per revision, not per reader."""
+        """One document per reader, so readers do not share a render."""
         revision = publish(session, "india", "business")
         first_reader = make_user(session, "asha@example.com", "india")
         second_reader = make_user(session, "bala@example.com", "india", "business")
 
-        client.get(f"/pdf/{pdf_token(revision, first_reader)}")
-        calls_for_first = len(fake_renderer.calls)
-        client.get(f"/pdf/{pdf_token(revision, second_reader)}")
+        first = client.get(f"/pdf/{pdf_token(revision, first_reader)}")
+        second = client.get(f"/pdf/{pdf_token(revision, second_reader)}")
 
-        # The second reader adds one new genre page (business) plus their own
-        # cover; "india" is already cached, so it does not render again.
-        assert len(fake_renderer.calls) == calls_for_first + 2
+        assert len(fake_renderer.calls) == 2
+        assert page_count(first.content) == 2  # cover + india
+        assert page_count(second.content) == 3  # cover + india + business
 
     def test_late_content_after_the_link_was_issued_does_not_appear(
         self, client: TestClient, session: Session

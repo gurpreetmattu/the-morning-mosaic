@@ -34,7 +34,7 @@ from app.email.tokens import TokenError
 from app.models.editions import Edition, EditionRevision, EditionSection
 from app.models.enums import SectionStatus
 from app.models.users import User, UserGenre
-from app.render.pdf import ContentsEntry, PdfAssembler, pdf_page_count
+from app.render.pdf import PdfAssembler, PdfSection
 from app.render.pdf import weasyprint_renderer as render_pdf_html
 from app.storage import ObjectStorage, get_object_storage
 
@@ -43,31 +43,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _section_cache_key(revision_id: uuid.UUID, genre: str) -> str:
-    return f"pdf/sections/{revision_id}/{genre}.pdf"
-
-
 def _reader_cache_key(revision_id: uuid.UUID, user_id: uuid.UUID) -> str:
     return f"pdf/readers/{revision_id}/{user_id}.pdf"
-
-
-def _rendered_section(
-    storage: ObjectStorage,
-    assembler: PdfAssembler,
-    *,
-    revision_id: uuid.UUID,
-    section: EditionSection,
-) -> bytes:
-    """The cached PDF page for this genre in this revision, rendering once."""
-    key = _section_cache_key(revision_id, section.genre)
-    cached = storage.get(key)
-    if cached is not None:
-        return cached
-
-    assert section.html is not None  # enforced by the ok_sections_are_rendered CHECK
-    rendered = assembler.render_section(section.html)
-    storage.put(key, rendered, content_type="application/pdf")
-    return rendered
 
 
 def assemble_reader_pdf(
@@ -84,8 +61,7 @@ def assemble_reader_pdf(
         return None
 
     genre_settings = {g.key: g for g in load_genres().genres if g.key in subscribed}
-    ordered_genres = list(genre_settings)
-    sections = {
+    rows = {
         row.genre: row
         for row in session.scalars(
             select(EditionSection).where(
@@ -95,36 +71,28 @@ def assemble_reader_pdf(
         )
     }
 
-    present = [genre for genre in ordered_genres if genre in sections]
-    pages_rendered = [
-        _rendered_section(storage, assembler, revision_id=revision.id, section=sections[genre])
-        for genre in present
-    ]
-    if not pages_rendered:
-        return None
-
-    # The cover is page 1, so the first genre starts on page 2.
-    contents: list[ContentsEntry] = []
-    next_page = 2
-    for genre, rendered in zip(present, pages_rendered, strict=True):
-        contents.append(
-            ContentsEntry(
-                title=genre_settings[genre].section_title,
-                blurb=genre_settings[genre].blurb,
-                page=next_page,
+    sections: list[PdfSection] = []
+    for genre, settings in genre_settings.items():
+        row = rows.get(genre)
+        if row is None:
+            continue
+        assert row.html is not None  # enforced by the ok_sections_are_rendered CHECK
+        sections.append(
+            PdfSection(
+                genre=genre, title=settings.section_title, blurb=settings.blurb, html=row.html
             )
         )
-        next_page += pdf_page_count(rendered)
+    if not sections:
+        return None
 
     edition = session.get(Edition, revision.edition_id)
     assert edition is not None
-    cover = assembler.render_cover(
+    return assembler.render_edition(
         first_name=user.name.split()[0] if user.name.strip() else "there",
         edition_date=edition.edition_date,
         edition_number=edition.edition_number,
-        contents=contents,
+        sections=sections,
     )
-    return assembler.assemble(cover=cover, sections=pages_rendered)
 
 
 @router.get("/pdf/{token}")
