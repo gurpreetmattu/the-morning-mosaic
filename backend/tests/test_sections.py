@@ -289,8 +289,13 @@ def test_render_candidates_also_features_the_top_ranked_ai_story() -> None:
     rendered = SectionRenderer().render_candidates(
         "ai",
         [
-            candidate(2, headline="Runner-up tool"),
-            candidate(1, headline="Top tool", one_liner="The one that matters."),
+            candidate(2, headline="Runner-up tool", topic_tags=frozenset({"ai-tools", "agents"})),
+            candidate(
+                1,
+                headline="Top tool",
+                one_liner="The one that matters.",
+                topic_tags=frozenset({"ai-tools", "model-releases"}),
+            ),
         ],
     )
 

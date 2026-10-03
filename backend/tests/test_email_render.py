@@ -159,12 +159,43 @@ def test_the_ai_tool_of_the_day_appears_for_the_top_ai_story() -> None:
     build-time archive render and never reached the actual delivered
     email — see app/render/email.py's SectionExtras docstring."""
     email = render(
-        {"ai": [candidate(1, genre="ai", headline="Model launches", one_liner="A fast model.")]}
+        {
+            "ai": [
+                candidate(
+                    1,
+                    genre="ai",
+                    headline="Model launches",
+                    one_liner="A fast model.",
+                    topic_tags=frozenset({"ai-tools", "model-releases"}),
+                )
+            ]
+        }
     )
 
     assert "AI tool of the day" in email.html
     assert "Model launches" in email.html
     assert "A fast model." in email.html
+
+
+def test_the_ai_tool_card_is_omitted_when_the_top_story_is_not_about_a_tool() -> None:
+    """2026-10-03: a Sling TV story was shown as the 'AI tool of the day'."""
+    email = render(
+        {
+            "ai": [
+                candidate(
+                    1,
+                    genre="ai",
+                    headline="Sling TV ends Sling Pass",
+                    topic_tags=frozenset({"enterprise-adoption"}),
+                ),
+                candidate(2, genre="ai", headline="Another story"),
+            ]
+        }
+    )
+
+    assert "AI tool of the day" not in email.html
+    assert "AI tool of the day" not in email.text
+    assert "Sling TV ends Sling Pass" in email.html  # still a normal story in the section
 
 
 def test_no_ai_tool_of_the_day_for_a_non_ai_genre() -> None:

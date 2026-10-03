@@ -10,15 +10,17 @@
 # PROVISIONAL — set this to the real first send date before going live.
 launch_date: 2026-10-01
 
+# The weekend quiz is SWITCHED OFF (owner decision, 2026-10-03). Its wrong answers were other
+# true stories from the same week, so several options were correct and one answer key was
+# wrong ("a missing item is acceptable; a wrong one is not"). Add `quiz` back to both lists only
+# after it is redesigned so the answer and every distractor are verifiable from the data.
 weekend:
   saturday_features:
     - top-stories
     - longer-reads
-    - quiz
   sunday_features:
     - top-stories
     - weekly-recap
-    - quiz
 
 # 2026-10 through 2027-12 lunar-calendar dates below are sourced from the
 # Department of Personnel and Training's own gazetted/restricted holiday

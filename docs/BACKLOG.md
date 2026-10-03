@@ -636,20 +636,21 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       Verified working live: the quiet-day note ("Business & Markets: A quiet news day..."),
       one-number weather, no duplicate stories between sections, Today in 60 seconds, scores and
       fixtures, images with credits, footer links, longer reads and quiz blocks render.
-      1. **The weekend quiz can print wrong answers.** Five questions "Which of these actually
-         happened in <genre> this week?" whose distractors are OTHER true stories from the same
-         week, so several options are correct: Q1 (technology) lists Sony PS5 upscaling, Gemini
-         4 Argon, the Trump/Grok story and ChatGPT shopping - all real, answer key says B; Q2
-         offers 'Virtual Try-On' and 'New Shopping Features' (the same event, two headlines) as
-         different options; Q3 'in ai' includes Sony's AI upscaling. Genre names print lowercase
-         ('in ai'). CLAUDE.md: "a missing item is acceptable; a wrong one is not". Needs a
-         redesign (answer and distractors both verifiable from the data - e.g. 'which outlet
-         reported X' against outlets that did not cite it, or numeric facts from verified
-         sentences with off-by-N distractors) or switching off until then.
-      2. **'AI tool of the day' is a Sling TV story** ('Sling TV Discontinues Its Short-Term
-         Sling Pass...'). `ai_tool_from_candidates` takes the section's top story whatever it is
-         about. Must be gated on the story actually being about an AI tool/product (topic tag),
-         otherwise omitted.
+      1. [FIXED 2026-10-03, owner decision] **The weekend quiz can print wrong answers** (the
+         distractors were other true stories from the same week). Switched OFF: `quiz` removed
+         from both weekend lists in `config/editions.yaml`, and `load_weekend_features` now
+         ignores any stored feature the config has turned off, so the Saturday row already in
+         the database can never be sent. To bring it back, redesign so the answer AND every
+         distractor are verifiable from the data (e.g. 'which outlet reported X' against outlets
+         that did not cite it, or a number from a verified sentence with off-by-N distractors),
+         print genre names properly ('in AI'), and cover the same-event-two-headlines case.
+      2. [FIXED 2026-10-03] **'AI tool of the day' was a Sling TV story.** `ai_tool_from_candidates`
+         now needs a story tagged `ai-tools` AND (`model-releases` or `agents`) AND none of
+         `funding`/`ai-policy`/`ai-safety`/`ai-ethics`, else the card is omitted. Checked on real
+         data: 2026-10-03 omits the card, 2026-10-02 picks the ChatGPT shopping launch. The tags
+         are only a heuristic (the Writer tagged a smart-home camera story `ai-tools`); the proper
+         design is a Writer-proposed `tool_name` that the Fact-checker verifies against the
+         passages like entity tags - needs a prompt change, hence evals.
       3. **The AI section is mostly not about AI** (Sling TV, TechCrunch Disrupt discount
          passes): its only sources are general tech feeds. Needs AI-specific feeds or a
          relevance filter on the Writer's topic tags.

@@ -297,7 +297,7 @@ def test_loading_reconstructs_what_was_persisted(session: Session) -> None:
     _seed_the_week(session)
     persist_weekend_features(session, edition_date=SATURDAY, editions=config())
 
-    loaded = load_weekend_features(session, edition_date=SATURDAY)
+    loaded = load_weekend_features(session, edition_date=SATURDAY, editions=config())
 
     assert loaded.longer_reads
     first = loaded.longer_reads[0]

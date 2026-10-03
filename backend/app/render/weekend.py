@@ -207,13 +207,34 @@ def persist_weekend_features(
     return tuple(rows)
 
 
-def load_weekend_features(session: Session, *, edition_date: date) -> WeekendContent:
-    """Read back whatever `persist_weekend_features` stored for this date."""
+def enabled_weekend_kinds(
+    edition_date: date, editions: EditionsConfig | None = None
+) -> frozenset[WeekendFeatureKind]:
+    """The weekend features the config switches on for this weekday."""
+    weekday = edition_date.weekday()
+    config = (editions or load_editions()).weekend
+    if weekday == 5:
+        keys = config.saturday_features
+    elif weekday == 6:
+        keys = config.sunday_features
+    else:
+        keys = []
+    return frozenset(_BUILDERS[key] for key in keys if key in _BUILDERS)
+
+
+def load_weekend_features(
+    session: Session, *, edition_date: date, editions: EditionsConfig | None = None
+) -> WeekendContent:
+    """Read back what `persist_weekend_features` stored for this date, limited to the
+    features the config has switched on - so a feature that was stored before it was
+    turned off (the quiz, 2026-10-03) can never reach a reader."""
+    enabled = enabled_weekend_kinds(edition_date, editions)
     by_kind: dict[WeekendFeatureKind, list[dict[str, Any]]] = {
         row.kind: row.payload["items"]
         for row in session.scalars(
             select(WeekendFeature).where(WeekendFeature.edition_date == edition_date)
         )
+        if row.kind in enabled
     }
 
     longer_reads = tuple(

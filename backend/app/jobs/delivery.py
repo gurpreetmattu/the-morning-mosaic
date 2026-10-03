@@ -412,7 +412,7 @@ def run_delivery(
     assert edition is not None
 
     weekend_content = (
-        load_weekend_features(session, edition_date=edition_date)
+        load_weekend_features(session, edition_date=edition_date, editions=editions_config)
         if edition.is_weekend
         else WeekendContent()
     )

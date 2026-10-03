@@ -94,25 +94,47 @@ def _tokens(text: str) -> frozenset[str]:
     return frozenset(_WORD.findall(text.lower()))
 
 
+# "AI tool of the day" must be a story about an AI tool or product that launched, not any
+# top AI story. The Writer's topic tags are the only signal available without a model call,
+# and `ai-tools` alone is too loose (it was put on a smart-home camera story and a music
+# funding story), so a story needs the tool tag AND a launch tag AND no reason to think it is
+# about money or rules. When nothing qualifies the card is omitted: a missing item is
+# acceptable, a wrong one is not (CLAUDE.md).
+AI_TOOL_TAG = "ai-tools"
+AI_TOOL_LAUNCH_TAGS = frozenset({"model-releases", "agents"})
+AI_TOOL_DISQUALIFYING_TAGS = frozenset({"funding", "ai-policy", "ai-safety", "ai-ethics"})
+
+
+def is_ai_tool_story(candidate: Candidate) -> bool:
+    tags = candidate.topic_tags
+    return (
+        AI_TOOL_TAG in tags
+        and bool(tags & AI_TOOL_LAUNCH_TAGS)
+        and not tags & AI_TOOL_DISQUALIFYING_TAGS
+    )
+
+
 def ai_tool_from_candidates(
     genre: str, candidates: Sequence[Candidate]
 ) -> dict[str, object] | None:
     """CLAUDE.md: "AI tool of the day" is picked from tools covered in that
     day's verified AI stories. Rather than guessing which entity tag names an
-    actual tool, this features the day's top-ranked verified AI story itself
-    — deterministic, and grounded in exactly the same already-checked
-    headline/one-liner/source every reader already sees in the section below.
+    actual tool, this features the day's top-ranked verified AI story about a
+    tool launch (see `is_ai_tool_story`) itself — deterministic, and grounded in
+    exactly the same already-checked headline/one-liner/source every reader
+    already sees in the section below.
 
     Shared between the once-per-revision build render (`SectionRenderer`,
     used for the public archive) and the per-reader delivered email
     (`EmailRenderer`) — this is never personalised, only the story selection
     is, so both must show the same pick from the same logic.
     """
-    if genre != "ai" or not candidates:
+    if genre != "ai":
         return None
-    top = min(candidates, key=lambda c: c.pool_rank)
-    if not top.sources:
+    eligible = [c for c in candidates if is_ai_tool_story(c) and c.sources]
+    if not eligible:
         return None
+    top = min(eligible, key=lambda c: c.pool_rank)
     blurb = top.one_liner or top.summary
     return {
         "headline": top.headline,

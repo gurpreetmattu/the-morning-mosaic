@@ -23,6 +23,7 @@ from app.render.selection import (
     Candidate,
     Reader,
     SourceLink,
+    ai_tool_from_candidates,
     drop_duplicate_events,
     load_candidates,
     matches_keywords,
@@ -349,3 +350,59 @@ def test_quiet_genres_are_the_followed_ones_that_were_too_thin() -> None:
     )
 
     assert quiet_genres(reader(genres=("india", "business", "ai")), chosen) == ["india", "business"]
+
+
+# ---------------------------------------------------------------- AI tool of the day
+
+
+def tagged(rank: int, *tags: str) -> Candidate:
+    from dataclasses import replace
+
+    return replace(
+        candidate(rank, genre="ai"),
+        topic_tags=frozenset(tags),
+        sources=(SourceLink(name="Wire", url=f"https://wire.test/a/{rank}"),),
+    )
+
+
+def test_the_ai_tool_is_the_best_ranked_story_about_a_tool_launch() -> None:
+    pick = ai_tool_from_candidates(
+        "ai",
+        [
+            tagged(3, "ai-tools", "agents"),
+            tagged(2, "ai-tools", "model-releases"),
+            tagged(1, "research"),
+        ],
+    )
+
+    assert pick is not None
+    assert pick["headline"] == "Headline 2"
+
+
+@pytest.mark.parametrize(
+    "tags",
+    [
+        (),  # untagged
+        ("enterprise-adoption",),  # the Sling TV story
+        ("ai-tools",),  # a tool tag with no launch (the smart-home camera story)
+        ("model-releases", "agents"),  # a launch with no tool tag
+        ("ai-tools", "model-releases", "funding"),  # the Stability AI funding story
+        ("ai-tools", "agents", "ai-policy"),
+        ("ai-tools", "agents", "ai-safety"),
+        ("ai-tools", "agents", "ai-ethics"),
+    ],
+)
+def test_a_story_that_is_not_clearly_a_tool_launch_is_never_the_ai_tool(
+    tags: tuple[str, ...],
+) -> None:
+    assert ai_tool_from_candidates("ai", [tagged(1, *tags)]) is None
+
+
+def test_no_ai_tool_card_when_nothing_qualifies_even_with_many_ai_stories() -> None:
+    stories = [tagged(rank, "enterprise-adoption") for rank in range(1, 8)]
+
+    assert ai_tool_from_candidates("ai", stories) is None
+
+
+def test_the_ai_tool_is_only_ever_picked_for_the_ai_genre() -> None:
+    assert ai_tool_from_candidates("technology", [tagged(1, "ai-tools", "agents")]) is None

@@ -936,7 +936,7 @@ def test_a_saturday_delivery_carries_the_weeks_longer_reads_and_quiz(session: Se
     session.commit()
     sender = FakeSender()
 
-    deliver(session, sender, edition_date=SATURDAY)
+    deliver(session, sender, edition_date=SATURDAY, editions=weekend_editions_config(SATURDAY))
 
     assert sender.messages
     html = sender.messages[0].html
@@ -954,3 +954,32 @@ def test_a_weekday_delivery_carries_no_weekend_block(session: Session) -> None:
 
     assert sender.messages
     assert "Weekend quiz" not in sender.messages[0].html
+
+
+def test_a_saturday_delivery_never_carries_a_quiz_the_config_has_switched_off(
+    session: Session,
+) -> None:
+    """The quiz was stored while it was still on; once the real config drops it, that stored
+    row must not reach a reader (2026-10-03: its answer key could be wrong)."""
+    make_user(session)
+    seed_the_week_before(session, SATURDAY)
+    published_edition(session, on=SATURDAY)
+    persist_weekend_features(
+        session, edition_date=SATURDAY, editions=weekend_editions_config(SATURDAY)
+    )
+    session.commit()
+    sender = FakeSender()
+
+    deliver(session, sender, edition_date=SATURDAY)  # the real config: no quiz
+
+    html = sender.messages[0].html
+    assert "This week's longer reads" in html
+    assert "Weekend quiz" not in html
+
+
+def test_the_real_config_has_no_quiz_on_either_weekend_day() -> None:
+    from app.config.loader import load_editions
+
+    weekend = load_editions().weekend
+    assert "quiz" not in weekend.saturday_features
+    assert "quiz" not in weekend.sunday_features

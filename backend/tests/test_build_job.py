@@ -368,15 +368,12 @@ def test_a_saturday_build_also_persists_weekend_features(session: Session) -> No
 
     assert report.succeeded
     assert report.sections == {"india": "ok"}
-    assert set(report.weekend_features) == {"longer_reads", "quiz"}
+    assert set(report.weekend_features) == {"longer_reads"}  # the quiz is switched off
 
     rows = session.scalars(
         select(WeekendFeature).where(WeekendFeature.edition_date == saturday)
     ).all()
-    assert {row.kind for row in rows} == {
-        WeekendFeatureKind.LONGER_READS,
-        WeekendFeatureKind.QUIZ,
-    }
+    assert {row.kind for row in rows} == {WeekendFeatureKind.LONGER_READS}
 
 
 @respx.mock

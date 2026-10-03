@@ -40,10 +40,15 @@ releases, deals). If an item has no reliable source for the day, omit it.
   the week's most significant verified stories) + quiz. Sunday = the day's top stories + weekly
   recap (built from stories already verified and published Mon–Sat) + quiz.
   Users on "weekdays only" frequency receive neither.
+  **The quiz is switched off (owner decision, 2026-10-03):** its wrong options were other true
+  stories from the week, so several answers were correct. It stays out of `config/editions.yaml`
+  until it is redesigned so the answer and every distractor are verifiable from the data.
 - **Newsletter extras:** "Today in 60 seconds", reading time, weather, market strip, "Why this
   matters" on major stories, quote of the day, "On this day", genre extras (scores/fixtures,
   movie/music releases, AI tool of the day, game deals). Each extra has a source in
-  "Data sources"; anything without one is not built.
+  "Data sources"; anything without one is not built. The AI tool of the day appears only when
+  a verified AI story is clearly a tool launch (tagged ai-tools plus model-releases or agents,
+  and not funding/policy/safety/ethics); otherwise the card is omitted.
 - **Delivery slots:** 30-minute slots from 06:00 to 09:00 IST. Default 07:00.
 - **User data collected:** name, email, city, genres, delivery slot, frequency (daily / weekdays),
   optional followed keywords, edition preference (india / global / mixed — adjusts how strongly
