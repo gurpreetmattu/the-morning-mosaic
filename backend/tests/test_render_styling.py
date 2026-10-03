@@ -100,3 +100,10 @@ def test_the_cover_lists_each_genre_linked_to_its_section_and_escaped() -> None:
 
 def test_pdf_pages_let_stories_split_instead_of_leaving_gaps() -> None:
     assert "break-inside: auto !important" in _html()
+
+
+def test_a_photo_is_kept_on_the_same_page_as_its_credit() -> None:
+    html = _html()
+
+    assert "section img + span" in html
+    assert "break-before: avoid" in html

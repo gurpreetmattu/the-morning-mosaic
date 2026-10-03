@@ -65,6 +65,9 @@ _PAGE_CSS = (
   /* A tall hotlinked photo is an unsplittable block: if it does not fit, it and the
      heading kept with it jump to the next page, leaving the previous one part empty. */
   section img {{ width: 100% !important; height: 55mm !important; object-fit: cover; }}
+  /* The credit is legally part of the photo: never split them across pages. */
+  section img {{ break-after: avoid; page-break-after: avoid; }}
+  section img + span {{ break-before: avoid; page-break-before: avoid; }}
   section h2 {{ break-after: avoid; page-break-after: avoid; }}
   section h2 + p {{ break-after: avoid; page-break-after: avoid; }}
 """
