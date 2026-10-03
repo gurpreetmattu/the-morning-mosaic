@@ -6,7 +6,7 @@ from datetime import date
 
 from app.render import PALETTE
 from app.render.notices import failure_notice, paused_notice
-from app.render.pdf import cover_html, page_html
+from app.render.pdf import ContentsEntry, cover_html, page_html
 
 LINKS = {
     "first_name": "Asha",
@@ -61,3 +61,22 @@ def test_pdf_pages_are_a4_and_use_the_email_paper() -> None:
     assert f"background: {PALETTE['paper_raised']}" in html
     assert "#ffffff" not in html
     assert "hello" in html
+
+
+def test_the_cover_lists_each_genre_with_its_page_and_escapes_it() -> None:
+    html = cover_html(
+        first_name="Asha",
+        edition_date=date(2026, 10, 5),
+        edition_number=5,
+        contents=[ContentsEntry(title="Across India", blurb="A & B", page=2)],
+    )
+
+    assert "In this edition" in html
+    assert "Across India" in html
+    assert "A &amp; B" in html
+
+
+def test_pdf_pages_let_stories_split_instead_of_leaving_gaps() -> None:
+    html = page_html("<article>hello</article>")
+
+    assert "break-inside: auto !important" in html

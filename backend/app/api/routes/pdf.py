@@ -34,7 +34,7 @@ from app.email.tokens import TokenError
 from app.models.editions import Edition, EditionRevision, EditionSection
 from app.models.enums import SectionStatus
 from app.models.users import User, UserGenre
-from app.render.pdf import PdfAssembler
+from app.render.pdf import ContentsEntry, PdfAssembler, pdf_page_count
 from app.render.pdf import weasyprint_renderer as render_pdf_html
 from app.storage import ObjectStorage, get_object_storage
 
@@ -83,7 +83,8 @@ def assemble_reader_pdf(
     if not subscribed:
         return None
 
-    ordered_genres = [g.key for g in load_genres().genres if g.key in subscribed]
+    genre_settings = {g.key: g for g in load_genres().genres if g.key in subscribed}
+    ordered_genres = list(genre_settings)
     sections = {
         row.genre: row
         for row in session.scalars(
@@ -94,13 +95,26 @@ def assemble_reader_pdf(
         )
     }
 
+    present = [genre for genre in ordered_genres if genre in sections]
     pages_rendered = [
         _rendered_section(storage, assembler, revision_id=revision.id, section=sections[genre])
-        for genre in ordered_genres
-        if genre in sections
+        for genre in present
     ]
     if not pages_rendered:
         return None
+
+    # The cover is page 1, so the first genre starts on page 2.
+    contents: list[ContentsEntry] = []
+    next_page = 2
+    for genre, rendered in zip(present, pages_rendered, strict=True):
+        contents.append(
+            ContentsEntry(
+                title=genre_settings[genre].section_title,
+                blurb=genre_settings[genre].blurb,
+                page=next_page,
+            )
+        )
+        next_page += pdf_page_count(rendered)
 
     edition = session.get(Edition, revision.edition_id)
     assert edition is not None
@@ -108,6 +122,7 @@ def assemble_reader_pdf(
         first_name=user.name.split()[0] if user.name.strip() else "there",
         edition_date=edition.edition_date,
         edition_number=edition.edition_number,
+        contents=contents,
     )
     return assembler.assemble(cover=cover, sections=pages_rendered)
 

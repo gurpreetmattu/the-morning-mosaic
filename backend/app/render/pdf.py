@@ -51,6 +51,16 @@ _PAGE_CSS = (
   }}
   html, body {{ margin: 0; padding: 0; height: 100%; }}
   body {{ font-family: {serif}; color: {ink}; background: {paper}; }}
+  /* Section fragments are inline-styled for a 600px email: screen-sized type
+     and stories that refuse to split across pages. On A4 that leaves pages
+     a third empty, so print overrides both (hence !important). */
+  article {{ break-inside: auto !important; page-break-inside: auto !important;
+             margin-bottom: 14px !important; padding-bottom: 12px !important; }}
+  article h3 {{ font-size: 17px !important; line-height: 1.25 !important;
+                break-after: avoid; page-break-after: avoid; }}
+  article p {{ font-size: 12.5px !important; line-height: 1.5 !important;
+               orphans: 3; widows: 3; }}
+  article p:last-child {{ break-before: avoid; }}
 """
 ).format(
     brand=BRAND,
@@ -81,7 +91,15 @@ _COVER = """<!doctype html>
   .title .front {{ position: relative; color: {ink}; }}
   .tagline {{ text-align: center; padding: 0 20px 12px; border-bottom: 4px double {ink};
               font: italic 15px {serif}; color: {ink_soft}; margin: 0 20px; }}
-  .curated {{ text-align: center; margin-top: 56px; }}
+  .curated {{ text-align: center; margin-top: 44px; }}
+  .contents {{ margin: 56px 40px 0; }}
+  .contents h2 {{ font: bold 12px {sans}; letter-spacing: 0.14em; text-transform: uppercase;
+                  margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid {ink}; }}
+  .contents .row {{ display: flex; justify-content: space-between; align-items: baseline;
+                    padding: 9px 0; border-bottom: 1px dotted {ink}; }}
+  .contents .name {{ font: bold 17px {serif}; }}
+  .contents .blurb {{ font: italic 12px {serif}; color: {ink_soft}; margin: 2px 0 0; }}
+  .contents .page {{ font: 14px {mono}; color: {ink_soft}; }}
   .curated span {{ display: inline-block; padding: 6px 12px; border: 2px solid {ink};
                    font: bold 12px {sans}; letter-spacing: 0.14em; text-transform: uppercase; }}
 </style></head>
@@ -92,6 +110,7 @@ _COVER = """<!doctype html>
   </div>
   <p class="tagline">{tagline}</p>
   <div class="curated"><span>Curated for {first_name}</span></div>
+  {contents}
 </div></body></html>"""
 
 
@@ -107,8 +126,40 @@ def date_label(edition_date: date) -> str:
     return f"{edition_date:%A}, {edition_date.day} {edition_date:%B} {edition_date.year}"
 
 
-def cover_html(*, first_name: str, edition_date: date, edition_number: int) -> str:
+@dataclass(frozen=True)
+class ContentsEntry:
+    title: str
+    blurb: str
+    page: int
+
+
+def _contents_html(entries: Sequence[ContentsEntry]) -> str:
+    if not entries:
+        return ""
+    rows = "".join(
+        f'<div class="row"><div><div class="name">{escape(e.title)}</div>'
+        f'<p class="blurb">{escape(e.blurb)}</p></div>'
+        f'<div class="page">{e.page}</div></div>'
+        for e in entries
+    )
+    return f'<div class="contents"><h2>In this edition</h2>{rows}</div>'
+
+
+def pdf_page_count(pdf: bytes) -> int:
+    from pypdf import PdfReader
+
+    return len(PdfReader(BytesIO(pdf)).pages)
+
+
+def cover_html(
+    *,
+    first_name: str,
+    edition_date: date,
+    edition_number: int,
+    contents: Sequence[ContentsEntry] = (),
+) -> str:
     return _COVER.format(
+        contents=_contents_html(contents),
         css=_PAGE_CSS,
         ink=PALETTE["ink"],
         ink_soft=PALETTE["ink_soft"],
@@ -156,9 +207,19 @@ class PdfAssembler:
     def render_section(self, section_html: str) -> bytes:
         return self.render_html(page_html(section_html))
 
-    def render_cover(self, *, first_name: str, edition_date: date, edition_number: int) -> bytes:
+    def render_cover(
+        self,
+        *,
+        first_name: str,
+        edition_date: date,
+        edition_number: int,
+        contents: Sequence[ContentsEntry] = (),
+    ) -> bytes:
         html = cover_html(
-            first_name=first_name, edition_date=edition_date, edition_number=edition_number
+            first_name=first_name,
+            edition_date=edition_date,
+            edition_number=edition_number,
+            contents=contents,
         )
         return self.render_html(html)
 

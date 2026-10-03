@@ -497,6 +497,9 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
         double rule, boxed "Curated for"). Rendered for real in the backend image
         and checked. Still open: no weather box on the cover, and white-paper
         print-friendliness was traded away for matching the email.
+        Follow-up: stories were unsplittable at screen-size type, leaving pages a
+        third empty; print CSS now shrinks type and lets stories break, and the
+        cover lists genres with page numbers.
       - No dark-mode variant for email (would need a `<style>` block; the
         section HTML forbids one) - clients that auto-invert get explicit
         backgrounds on every container.
