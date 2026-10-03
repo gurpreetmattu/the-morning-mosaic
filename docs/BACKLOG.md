@@ -623,6 +623,46 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 
 ## Done
 
+- [x] **First untouched-quota night with every fix live (2026-10-03).** Build 04:15-04:21
+      (5.6 min), late updates 05:35 and 07:05 (4.6/4.8 min), delivery 07:00 sent 1 (revision 2;
+      revision 3 appeared 07:10, after the slot). Revision 3 = ai 7, india 6, sports 9,
+      technology 7, business 0 (quiet). Cloudflare did 109 fact-check calls with ZERO failures
+      (fresh quota), Gemini 29 quota 429s, Ranker 29 Groq 429s + 31 invalid-JSON answers;
+      paid-plan price of the whole day would have been $0.40. So the free tiers CAN carry the
+      5-genre scope when nothing else spends their quota. Business stays empty with model
+      clustering working: 69 of 71 clusters are single-outlet (strict corroboration) and the two
+      pooled stories died at the Writer - a SOURCES problem (4 outlets, 20 of 80 items too old).
+- [ ] **Findings from the first Saturday/weekend email in Gmail (2026-10-03), worst first.**
+      Verified working live: the quiet-day note ("Business & Markets: A quiet news day..."),
+      one-number weather, no duplicate stories between sections, Today in 60 seconds, scores and
+      fixtures, images with credits, footer links, longer reads and quiz blocks render.
+      1. **The weekend quiz can print wrong answers.** Five questions "Which of these actually
+         happened in <genre> this week?" whose distractors are OTHER true stories from the same
+         week, so several options are correct: Q1 (technology) lists Sony PS5 upscaling, Gemini
+         4 Argon, the Trump/Grok story and ChatGPT shopping - all real, answer key says B; Q2
+         offers 'Virtual Try-On' and 'New Shopping Features' (the same event, two headlines) as
+         different options; Q3 'in ai' includes Sony's AI upscaling. Genre names print lowercase
+         ('in ai'). CLAUDE.md: "a missing item is acceptable; a wrong one is not". Needs a
+         redesign (answer and distractors both verifiable from the data - e.g. 'which outlet
+         reported X' against outlets that did not cite it, or numeric facts from verified
+         sentences with off-by-N distractors) or switching off until then.
+      2. **'AI tool of the day' is a Sling TV story** ('Sling TV Discontinues Its Short-Term
+         Sling Pass...'). `ai_tool_from_candidates` takes the section's top story whatever it is
+         about. Must be gated on the story actually being about an AI tool/product (topic tag),
+         otherwise omitted.
+      3. **The AI section is mostly not about AI** (Sling TV, TechCrunch Disrupt discount
+         passes): its only sources are general tech feeds. Needs AI-specific feeds or a
+         relevance filter on the Writer's topic tags.
+      4. **US football still leaks into Sport:** 'Chicago Bears ... has not named a starting
+         quarterback' (Hindustan Times path /sports/football/, not /us-sports/) and, in longer
+         reads, the older Bears injury story stored before the exclusion existed. A path
+         exclusion is not enough; needs a title/URL term filter or an India-relevance rule.
+      5. **The weekend block repeats the week's stories already shown above** (e.g. 'OpenAI
+         Introduces Virtual Try-On' in both Technology and Longer reads) and the 'longer reads'
+         are the normal short summaries, not the extended ones CLAUDE.md describes. The
+         one-per-event dedup does not cover the weekend block.
+      Still unchecked: Gmail MOBILE, Outlook, dark mode.
+
 - [x] **Fixed: the four defects found in the first real email (2026-10-02).** Layout in Gmail
       desktop was otherwise good (masthead, dateline, boxes, extras, sources, image credit,
       footer links all correct). Fixes, each pinned by tests (877 pass):
