@@ -505,7 +505,8 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
         now ONE document, so genres flow on from one another and the cover's page
         numbers come from WeasyPrint's `target-counter`. Trade-off: the per-genre
         render cache is gone, so a reader's first download lays out their whole
-        edition (cached per reader after that).
+        edition (cached per reader after that). Section photos are capped at 55mm
+        in print so a tall one cannot push its section to a fresh page.
       - No dark-mode variant for email (would need a `<style>` block; the
         section HTML forbids one) - clients that auto-invert get explicit
         backgrounds on every container.

@@ -62,6 +62,9 @@ _PAGE_CSS = (
   article p:last-child {{ break-before: avoid; }}
   /* "Why this matters" is the bordered paragraph; keep it with the summary. */
   article p[style*="border-left"] {{ break-before: avoid; page-break-before: avoid; }}
+  /* A tall hotlinked photo is an unsplittable block: if it does not fit, it and the
+     heading kept with it jump to the next page, leaving the previous one part empty. */
+  section img {{ width: 100% !important; height: 55mm !important; object-fit: cover; }}
   section h2 {{ break-after: avoid; page-break-after: avoid; }}
   section h2 + p {{ break-after: avoid; page-break-after: avoid; }}
 """
