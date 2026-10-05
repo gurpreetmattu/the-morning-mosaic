@@ -39,6 +39,7 @@ from app.db.engine import dispose_engine, session_scope
 from app.db.persist import persist_genre_stories, persist_image
 from app.db.publish import PublishError, publish_revision
 from app.jobs.locking import job_lock
+from app.jobs.runs import fail_run
 from app.llm.client import LlmClient
 from app.llm.langfuse_recorder import build_call_recorder
 from app.logging_config import configure_logging
@@ -411,39 +412,45 @@ def main(argv: list[str] | None = None) -> int:
                     LlmClient(recorder=recorder_bundle.recorder) as llm,
                 ):
                     orchestrator = build_orchestrator(llm, fetcher)
-                    with session_scope() as session:
-                        report = run_build(
-                            session,
-                            edition_date=edition_date,
-                            deadline=deadline,
-                            orchestrator=orchestrator,
-                            renderer=SectionRenderer(),
-                            genres=args.genres,
-                            now=started,
-                            run_id=run_id,
-                            extras_fetcher=fetcher,
-                            image_finder_llm=llm,
-                            unsplash_api_key=(
-                                settings.unsplash_access_key.get_secret_value()
-                                if settings.unsplash_access_key
-                                else None
-                            ),
-                            pexels_api_key=(
-                                settings.pexels_api_key.get_secret_value()
-                                if settings.pexels_api_key
-                                else None
-                            ),
-                            tmdb_api_key=(
-                                settings.tmdb_api_key.get_secret_value()
-                                if settings.tmdb_api_key
-                                else None
-                            ),
-                            sports_api_key=(
-                                settings.sports_api_key.get_secret_value()
-                                if settings.sports_api_key
-                                else None
-                            ),
-                        )
+                    try:
+                        with session_scope() as session:
+                            report = run_build(
+                                session,
+                                edition_date=edition_date,
+                                deadline=deadline,
+                                orchestrator=orchestrator,
+                                renderer=SectionRenderer(),
+                                genres=args.genres,
+                                now=started,
+                                run_id=run_id,
+                                extras_fetcher=fetcher,
+                                image_finder_llm=llm,
+                                unsplash_api_key=(
+                                    settings.unsplash_access_key.get_secret_value()
+                                    if settings.unsplash_access_key
+                                    else None
+                                ),
+                                pexels_api_key=(
+                                    settings.pexels_api_key.get_secret_value()
+                                    if settings.pexels_api_key
+                                    else None
+                                ),
+                                tmdb_api_key=(
+                                    settings.tmdb_api_key.get_secret_value()
+                                    if settings.tmdb_api_key
+                                    else None
+                                ),
+                                sports_api_key=(
+                                    settings.sports_api_key.get_secret_value()
+                                    if settings.sports_api_key
+                                    else None
+                                ),
+                            )
+                    except Exception as exc:
+                        # The session has already rolled back; record the death on a fresh one.
+                        with session_scope() as failed:
+                            fail_run(failed, run_id, exc)
+                        raise
             finally:
                 recorder_bundle.flush()
     finally:

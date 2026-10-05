@@ -370,3 +370,55 @@ def test_a_deadline_miss_logs_the_greppable_alert_message(
         late_update(session, ("a", "b", "c"), clock=lambda: DEADLINE + timedelta(minutes=1))
 
     assert "build_deadline_missed" in caplog.text
+
+
+# ------------------------------------------------- no transaction held across the LLM phase
+
+
+def test_the_database_transaction_is_ended_before_the_models_run(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """2026-10-05: the 05:35 late update held a transaction open while the LLM work ran
+    (7 min), and Neon killed the idle-in-transaction connection at the next write. The
+    session must commit after its reads and BEFORE `orchestrator.build()`.
+
+    The run row is committed first (commit 1); the reads that follow open a new
+    transaction; a second commit must land before the build starts."""
+    first_revision(session, "a", "b")
+    events: list[str] = []
+    real_commit = session.commit
+
+    def spying_commit() -> None:
+        events.append("commit")
+        real_commit()
+
+    monkeypatch.setattr(session, "commit", spying_commit)
+
+    class Probing(Orchestrator):
+        def build(
+            self,
+            *,
+            edition_date: date,
+            deadline: datetime,
+            genres: list[GenreKey] | None = None,
+            now: datetime | None = None,
+        ) -> EditionBuild:
+            events.append("build")
+            return super().build(
+                edition_date=edition_date, deadline=deadline, genres=genres, now=now
+            )
+
+    probe = Probing(
+        collector=FakeCollector(("a", "b", "c")),
+        ranker=FakeRanker(),
+        verify=verify_all,
+        genres=load_genres(),
+        editions=launch_on(date(2026, 10, 1)),
+        max_workers=1,
+        clock=lambda: NOW,
+    )
+
+    late_update(session, ("a", "b", "c"), orchestrator=probe)
+
+    before_build = events[: events.index("build")]
+    assert before_build.count("commit") >= 2, events

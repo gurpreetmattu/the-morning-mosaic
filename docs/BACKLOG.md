@@ -32,6 +32,21 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 1. Blockers — need a decision or an account from the owner
 
+- [ ] **LAUNCH BLOCKER: every other edition fails because Cloudflare's "daily" allowance acts
+      like a rolling 24 h window (measured 2026-10-05).** Successful Cloudflare fact-check calls
+      per run: Sat build 37 + late updates 36 + 36 = 109 (allowance ~100) -> **Sun 04:15 build
+      got 0 of 75 and the whole 2026-10-04 edition was lost** (build failed "no usable section",
+      both late updates and all 7 delivery runs had no revision, the 09:05 failure notice
+      went out) -> Mon build 30 + late updates 41 + 41 = 112 -> Tue 04:15 build is expected to
+      starve again. A window that resets at 05:30 IST does not fit the data (Saturday's 04:15
+      build worked right after Friday's all-day exhaustion); a rolling 24 h window does. The
+      morning's two late updates spend the allowance the NEXT build needs. Options, cheapest
+      first: (1) stop the 07:05 late update (build ~35 + one late update ~40 = ~75 calls/24 h,
+      under the cap); (2) stop both; (3) let late updates skip Cloudflare; (4) move the pinned
+      Fact-checker off Cloudflare onto Groq's separate per-model daily buckets, with a retry
+      that actually waits out the per-minute window (needs evals); (5) a paid tier. Cloudflare
+      also failed Sunday's Groq fallback: gpt-oss-20b did 6 ok calls and 60 per-minute 429s
+      because the client gives up after a few seconds.
 - [ ] **LAUNCH BLOCKER: free-tier LLM capacity cannot carry one daily build
       (measured 2026-10-01).** First real prod build (edition 2026-10-01, 16 min)
       produced 4 stories; 8 of 10 genres fell to "quiet news day". Cause, from
@@ -635,6 +650,27 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 ---
 
 ## Done
+
+- [x] **A late update that took more than ~6 minutes crashed (2026-10-05 05:35).** Neon killed
+      the connection with `IdleInTransactionSessionTimeout`: `run_late_update` read the previous
+      revision, then held that transaction open, idle, through the whole LLM phase (7 min that
+      day; usual runs of 4.5-5 min were already close to the limit). The build job already
+      committed before its LLM phase (see its comment); the late update now does too. A
+      regression test fails without the fix (1 commit before the build instead of 2). Also: a
+      run that dies with an unexpected exception is now marked FAILED with the error
+      (`app/jobs/runs.py: fail_run`, wired into both job entry points), instead of staying
+      `running` for ever - the old stale rows (e.g. 2026-10-01, 2026-10-05) are not cleaned up
+      retroactively. 900 tests pass.
+- [x] **First failed edition and the failure path in production (2026-10-04 Sunday).** The
+      build failed (Cloudflare exhausted, see section 1), nothing was published, the subscriber
+      got the 09:05 "no edition today" apology, Cloud Monitoring emailed the admin about the
+      failed late-update execution (and a `verified_story_count_drop` alert on 2026-10-03).
+      The Monday 2026-10-05 build recovered: ai 3, india 4, technology 5 at 07:00 (business and
+      sport quiet), 07:10 revision: ai 5, business 2, india 4, sports 4, technology 8.
+- [ ] **Relevance problems seen in the Monday email (2026-10-05):** Technology carried an iPhone
+      call-quality how-to and an album review (Engadget/Verge mixed content); AI carried a Fitbit
+      leak. The feeds are general; needs a relevance filter on topic tags or tighter feeds.
+      Also still open: US football leak variants, weekend block repeats, Business sources.
 
 - [x] **First untouched-quota night with every fix live (2026-10-03).** Build 04:15-04:21
       (5.6 min), late updates 05:35 and 07:05 (4.6/4.8 min), delivery 07:00 sent 1 (revision 2;

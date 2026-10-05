@@ -39,6 +39,7 @@ from app.db.persist import persist_new_stories
 from app.db.publish import PublishError, latest_revision, publish_revision
 from app.jobs.build import build_orchestrator
 from app.jobs.locking import job_lock
+from app.jobs.runs import fail_run
 from app.llm.client import LlmClient
 from app.llm.langfuse_recorder import build_call_recorder
 from app.logging_config import configure_logging
@@ -111,6 +112,12 @@ def run_late_update(
 
     edition = session.get(Edition, previous.edition_id)
     assert edition is not None
+    # End the transaction the reads above opened BEFORE the minutes-long LLM phase.
+    # Otherwise the session sits idle-in-transaction for the whole phase and Neon kills
+    # the connection once it passes its limit (~6 min): the 2026-10-05 05:35 run took
+    # 7 min and crashed at the first write after it. `previous` and `edition` stay
+    # usable after the commit (expire_on_commit=False).
+    session.commit()
 
     build = orchestrator.build(
         edition_date=edition_date, deadline=deadline, genres=genres, now=started
@@ -284,6 +291,11 @@ def main(argv: list[str] | None = None) -> int:
                         genres=args.genres,
                         run_id=run_id,
                     )
+            except Exception as exc:
+                # The session has already rolled back; record the death on a fresh one.
+                with session_scope() as failed:
+                    fail_run(failed, run_id, exc)
+                raise
             finally:
                 recorder_bundle.flush()
     finally:
