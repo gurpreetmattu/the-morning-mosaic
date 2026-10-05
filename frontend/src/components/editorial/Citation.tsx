@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 /**
  * Citation marker + source popover (DESIGN.md 8.8). A real button; the
@@ -20,7 +20,21 @@ export function Citation({
 }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLSpanElement>(null);
+  const popover = useRef<HTMLSpanElement>(null);
   const id = useId();
+
+  // Nudge the card sideways if it would run off either edge of a narrow screen.
+  useLayoutEffect(() => {
+    const el = popover.current;
+    if (!open || !el) return;
+    el.style.transform = "";
+    const { left, right } = el.getBoundingClientRect();
+    const margin = 8;
+    const overflowRight = right - (document.documentElement.clientWidth - margin);
+    const overflowLeft = margin - left;
+    if (overflowRight > 0) el.style.transform = `translateX(${-overflowRight}px)`;
+    else if (overflowLeft > 0) el.style.transform = `translateX(${overflowLeft}px)`;
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -50,10 +64,11 @@ export function Citation({
       </button>
       {open && (
         <span
+          ref={popover}
           id={id}
           role="dialog"
           aria-label={`Source ${n}`}
-          className="font-gothic absolute start-0 top-full z-20 mt-1 block w-64 border-2 border-ink bg-paper-raised p-3 text-start text-sm font-normal shadow-[var(--block-1)]"
+          className="font-gothic absolute start-0 top-full z-20 mt-1 block w-64 max-w-[calc(100vw-1rem)] border-2 border-ink bg-paper-raised p-3 text-start text-sm font-normal shadow-[var(--block-1)]"
         >
           <span className="kicker block text-ink">{source}</span>
           <span className="font-figures block text-ink-soft">{time}</span>

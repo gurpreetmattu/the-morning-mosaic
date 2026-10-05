@@ -2,7 +2,7 @@ import { Notice, PageTitle } from "@/components/ui";
 import { serverGet } from "@/lib/server-api";
 import type { SiteStatus } from "@/lib/types";
 
-export const metadata = { title: "Status — The Morning Mosaic" };
+export const metadata = { title: "Status" };
 
 export default async function StatusPage() {
   const status = await serverGet<SiteStatus>("/api/status");
@@ -30,12 +30,18 @@ export default async function StatusPage() {
       )}
 
       {status?.updated_at && (
-        <p className="mt-4 text-sm text-muted">
-          Last updated: {new Date(status.updated_at).toLocaleString("en-IN")}.
+        <p className="mt-4 text-sm text-ink-soft">
+          Last updated:{" "}
+          {new Intl.DateTimeFormat("en-IN", {
+            timeZone: "Asia/Kolkata",
+            dateStyle: "medium",
+            timeStyle: "short",
+          }).format(new Date(status.updated_at))}{" "}
+          IST.
         </p>
       )}
 
-      <p className="mt-6 text-sm text-muted">
+      <p className="mt-6 text-sm text-ink-soft">
         A missed newsletter, specifically, is never silent: if your edition doesn&rsquo;t arrive on
         a day it should, we send a short apology email instead — this page is for everything else,
         like the website itself being slow or unreachable.

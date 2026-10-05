@@ -460,6 +460,37 @@ finder (6) is the last one closed — see its own Done entry.)
 
 ### Website redesign — DESIGN.md "Retro Broadsheet"
 
+- [ ] **Frontend review, rounds 1 and 2 (2026-10-05).** Fixed: stale
+  dateline/footer year (`LiveDate`), quiz sentence on the landing page, readable
+  API errors, Turnstile reset/expiry/load failure, `/preferences` and `/admin`
+  treating an outage as "signed out", public Admin footer link, noindex on
+  private pages, archive photos blocked by the CSP (`img-src` now lists the
+  Wikimedia, Unsplash and Pexels hosts), `/editions/[date]` date validation
+  and backend 5xx shown as a 404, fetch timeouts, status page in IST, and
+  preferences feedback (notice scrolled into view, pause/resume and
+  post-delete messages, zero-genre and no-city save blocked, keyword cap
+  stated, pause keeps unsaved edits). Round 3 fixed: city list scrolls to the highlighted row (plus Home/End,
+  ArrowUp opens), citation popover stays on screen, robots.txt, sitemap.xml
+  (origin taken from the request host), title template, Open Graph/Twitter
+  text, per-edition titles, HSTS and Permissions-Policy. Still open: draft
+  banner and hardcoded fallback contact email on the legal pages (needs owner
+  review); no share-preview image (needs artwork, then `metadataBase`);
+  publisher image hosts (if ever enabled) need adding to the CSP; the CSP still
+  allows inline scripts. Round 4 fixed: admin Approve/Suppress/Withdraw now ask
+  for a second click, every admin action reports success, admin times show in
+  IST, and the legal, status and admin pages use the site's styling.
+
+
+- [ ] **Retire the invented sample once real editions exist.** Done so far:
+  site links go to `/editions/latest`, and the landing hero shows the newest
+  real edition via `GET /api/latest-edition` (`LatestPreview`), falling back to
+  the stamped `EditionPreview` before launch or if the backend is down. The two
+  new backend tests in `test_api.py` have not been run (no test database here).
+  Remaining after the first real edition is live and checked: delete
+  `fixtures/sample-edition.json`, `/sample`, `EditionPreview`, the `Citation`
+  `sample` prop, and the fallback in `HeroPreview`.
+
+
 Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 - [~] **3. Landing page** built (route groups `(landing)` / `(site)`; sections per
       §9.1). Still open on it: the annotated anatomy diagram (currently a

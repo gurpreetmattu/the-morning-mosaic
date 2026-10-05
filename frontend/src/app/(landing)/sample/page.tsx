@@ -3,7 +3,7 @@ import sample from "../../../../fixtures/sample-edition.json";
 import { Citation } from "@/components/editorial/Citation";
 import { RubberStamp } from "@/components/editorial/RubberStamp";
 
-export const metadata = { title: "Sample edition – The Morning Mosaic" };
+export const metadata = { title: "Sample edition" };
 
 const source = (n: number) => sample.sources.find((s) => s.n === n)!;
 

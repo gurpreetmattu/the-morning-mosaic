@@ -51,16 +51,12 @@ describe("ArchiveIndexPage", () => {
     );
   });
 
-  it("points to the sample edition when nothing is published yet", async () => {
+  it("shows a friendly note when nothing is published yet", async () => {
     stubArchive({ editions: [], has_more: false });
 
     await render_();
 
     expect(screen.getByText(/The presses are warming up/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "see a sample edition" })).toHaveAttribute(
-      "href",
-      "/sample",
-    );
   });
 
   it("says the archive is unavailable when the backend is down", async () => {

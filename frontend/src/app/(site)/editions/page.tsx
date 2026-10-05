@@ -4,7 +4,7 @@ import { Lede, Notice, PageTitle } from "@/components/ui";
 import { serverGet } from "@/lib/server-api";
 import type { ArchivePage } from "@/lib/types";
 
-export const metadata = { title: "Archive – The Morning Mosaic" };
+export const metadata = { title: "Archive" };
 
 // Edition dates are IST calendar dates; noon avoids any day-boundary drift.
 const asDate = (isoDate: string) => new Date(`${isoDate}T12:00:00+05:30`);
@@ -44,13 +44,7 @@ export default async function ArchiveIndexPage({
 
       {page === null && <Notice kind="error">The archive is unavailable right now.</Notice>}
       {editions !== null && editions.length === 0 && (
-        <Notice kind="info">
-          No editions yet. The presses are warming up. In the meantime,{" "}
-          <Link href="/sample" className="underline">
-            see a sample edition
-          </Link>
-          .
-        </Notice>
+        <Notice kind="info">No editions yet. The presses are warming up.</Notice>
       )}
 
       {[...byMonth.entries()].map(([month, items]) => (

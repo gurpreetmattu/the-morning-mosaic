@@ -161,3 +161,15 @@ export interface SiteStatus {
   message: string | null;
   updated_at: string | null;
 }
+
+export interface LatestHighlight {
+  genre: string;
+  headline: string;
+  one_liner: string;
+}
+
+export interface LatestHighlights {
+  edition_date: string;
+  edition_number: number;
+  items: LatestHighlight[];
+}

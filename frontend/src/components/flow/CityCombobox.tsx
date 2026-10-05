@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { CityOption } from "@/lib/types";
 
 const MAX_RESULTS = 8;
@@ -40,6 +40,12 @@ export function CityCombobox({
     return pool.slice(0, MAX_RESULTS);
   }, [cities, query]);
 
+  // The list scrolls (it is taller than its max height), so keep the highlighted row in view.
+  useEffect(() => {
+    if (open)
+      document.getElementById(`${base}-opt-${active}`)?.scrollIntoView?.({ block: "nearest" });
+  }, [open, active, base]);
+
   function choose(city: CityOption) {
     setQuery(label(city));
     onChange(city.id);
@@ -53,10 +59,17 @@ export function CityCombobox({
       setActive((a) => Math.min(a + 1, results.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
+      setOpen(true);
       setActive((a) => Math.max(a - 1, 0));
     } else if (e.key === "Enter" && open && results[active]) {
       e.preventDefault(); // choosing a city must not submit the form
       choose(results[active]);
+    } else if (e.key === "Home" && open) {
+      e.preventDefault();
+      setActive(0);
+    } else if (e.key === "End" && open) {
+      e.preventDefault();
+      setActive(Math.max(results.length - 1, 0));
     } else if (e.key === "Escape" && open) {
       e.preventDefault();
       setOpen(false);

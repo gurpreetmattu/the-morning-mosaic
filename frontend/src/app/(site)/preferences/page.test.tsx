@@ -37,6 +37,20 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("PreferencesPage, server trouble", () => {
+  it("offers a retry instead of the sign-in form when the backend fails", async () => {
+    mockFetch({
+      "/api/me": { status: 500, body: {} },
+      "/api/config": { body: CONFIG },
+    });
+    render(<PreferencesPage />);
+
+    expect(await screen.findByText(/couldn.t load your subscription/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+  });
+});
+
 describe("PreferencesPage, signed out", () => {
   it("asks for an email instead of showing the dashboard", async () => {
     mockFetch({
@@ -123,10 +137,26 @@ describe("PreferencesPage, signed in", () => {
     }));
     await user.click(screen.getByRole("button", { name: "Pause delivery" }));
 
-    expect(await screen.findByText(/status: paused/)).toBeInTheDocument();
+    expect(await screen.findByText("Delivery paused.")).toBeInTheDocument();
+    expect(screen.getByText(/· Paused/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Resume delivery" })).toBeInTheDocument();
     const pauseCall = fetchMock.mock.calls.find(([path]) => path === "/api/me/pause");
     expect(pauseCall).toBeDefined();
+  });
+
+  it("refuses to save with no genres or no city, without calling the backend", async () => {
+    const { fetchMock } = mockFetch({
+      "/api/me": { body: { ...ME, genres: [] } },
+      "/api/config": { body: CONFIG },
+    });
+    render(<PreferencesPage />);
+    const user = userEvent.setup();
+
+    await screen.findByText(/Signed in as/);
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText("Choose at least one genre.")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
   });
 
   it("asks for confirmation before deleting the account", async () => {

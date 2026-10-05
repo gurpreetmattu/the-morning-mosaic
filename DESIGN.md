@@ -330,7 +330,7 @@ Each subscribe step header is a ticket: perforated left edge, "ADMIT ONE" micro-
 ### 8.7 Edition preview (hero component)
 - A faithful mini-front-page on newsprint: nameplate, dateline, 60-second summary box, two sample story blocks from different genres (each with its own spot ink and citation markers), weather ear, market strip.
 - Framed as a sheet of paper: `--block-2` shadow, faint fold crease, grain texture, slight -1° tilt on `lg`+ (straightens on hover/focus).
-- A red rubber stamp "SAMPLE" (rotated -6°, `--press-red`, 3px double border) sits across a corner. It must remain visible in every state; it is never removed on the marketing site.
+- A red rubber stamp "SAMPLE" (rotated -6°, `--press-red`, 3px double border) sits across a corner. It must remain visible in every state while the preview is invented. Once a real edition is published, the hero shows that edition instead (`LatestPreview`, no stamp); the stamped preview is only the pre-launch fallback.
 - Hovering/tapping a citation marker opens the citation popover; a "PDF" tab shows the A4 layout thumbnail.
 - Content from `fixtures/sample-edition.json`, always labelled Sample. Never presented as today's real news.
 
@@ -392,7 +392,7 @@ Section order (top to bottom):
 
 1. **Dateline bar + Nameplate with ears** (masthead reveal on first visit per session).
 2. **Stop-press strip** (optional, one line, Press Red flag): "Now printing: the morning edition, set to your interests." Static, not a marquee.
-3. **Hero**: H1 (`--fs-display`, Abril Fatface): "The morning paper, set to your interests." Supporting line. Primary CTA *Start my edition*, secondary *See a sample edition*. Beside/below: the **Edition preview** (§8.7) with its SAMPLE stamp. Small line under CTAs: "Free. 6–9 AM IST. Unsubscribe in one click."
+3. **Hero**: H1 (`--fs-display`, Abril Fatface): "The morning paper, set to your interests." Supporting line. Primary CTA *Start my edition*, secondary *Read the latest edition*. Beside/below: the **Edition preview** (§8.7): the newest real edition, or before launch the stamped SAMPLE preview. Small line under CTAs: "Free. 6–9 AM IST. Unsubscribe in one click."
 4. **How it works** as three ticket-stub columns: 1 Pick your genres, 2 Choose city and time, 3 Read your edition every morning. Optional telegram-style flourish in the small heading only ("PICK · CHOOSE · READ").
 5. **The stamp sheet**: heading "Ten genres. Your mix." All 10 genre stamps laid out as a sheet of postage stamps with a perforated border; selecting here carries the choice into `/subscribe` via query string (nothing stored yet).
 6. **What's inside an edition**: an annotated anatomy diagram of the edition (nameplate, weather, market strip, 60-second summary, stories, extras, PDF, weekend recap) with numbered callouts styled as "specimen plates". Annotated diagram on desktop, numbered list on phone.

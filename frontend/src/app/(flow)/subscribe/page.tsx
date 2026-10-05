@@ -74,6 +74,7 @@ export default function SubscribePage() {
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [consented, setConsented] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | undefined>(undefined);
+  const [turnstileReset, setTurnstileReset] = useState(0);
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<StatusMessage | null>(null);
@@ -201,6 +202,9 @@ export default function SubscribePage() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
+      // The token is spent whether or not the signup went through.
+      setTurnstileToken(undefined);
+      setTurnstileReset((n) => n + 1);
       setSubmitting(false);
     }
   }
@@ -458,7 +462,10 @@ export default function SubscribePage() {
                 </span>
               </label>
 
-              <TurnstileWidget onToken={setTurnstileToken} />
+              <TurnstileWidget
+                onToken={(t) => setTurnstileToken(t || undefined)}
+                resetKey={turnstileReset}
+              />
             </div>
           )}
         </div>

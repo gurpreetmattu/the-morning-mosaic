@@ -104,6 +104,10 @@ describe("AdminPage, signed in", () => {
     await screen.findByRole("button", { name: "Approve" });
     fetchMock.mockImplementationOnce(async () => ({ ok: true, status: 200, text: async () => "" }));
     await user.click(screen.getByRole("button", { name: "Approve" }));
+    // Nothing is sent until the second, explicit click.
+    expect(fetchMock.mock.calls.some(([path]) => String(path).includes("/approve"))).toBe(false);
+    expect(screen.getByText(/Send apology emails to/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
 
     const approveCall = fetchMock.mock.calls.find(([path]) =>
       String(path).includes("/admin/api/notices/2026-10-05/approve"),
@@ -121,6 +125,10 @@ describe("AdminPage, signed in", () => {
     await user.type(screen.getByLabelText("Reason"), "Facts changed after publication.");
     fetchMock.mockImplementationOnce(async () => ({ ok: true, status: 200, text: async () => "" }));
     await user.click(screen.getByRole("button", { name: "Withdraw" }));
+    expect(
+      fetchMock.mock.calls.some(([path]) => String(path).includes("/stories/story-123/withdraw")),
+    ).toBe(false);
+    await user.click(screen.getByRole("button", { name: "Confirm withdrawal" }));
 
     const withdrawCall = fetchMock.mock.calls.find(([path]) =>
       String(path).includes("/admin/api/stories/story-123/withdraw"),
@@ -133,6 +141,24 @@ describe("AdminPage, signed in", () => {
     expect(
       (screen.getByLabelText("Story ID", { selector: "#story-id" }) as HTMLInputElement).value,
     ).toBe("");
+    expect(await screen.findByText(/Story withdrawn/)).toBeInTheDocument();
+  });
+
+  it("lets the admin cancel a withdrawal before anything is sent", async () => {
+    const { fetchMock } = mockFetch(dashboardRoutes());
+    render(<AdminPage />);
+    const user = userEvent.setup();
+
+    await screen.findByText("Admin dashboard");
+    await user.type(screen.getByLabelText("Story ID", { selector: "#story-id" }), "story-123");
+    await user.type(screen.getByLabelText("Reason"), "Mistaken click.");
+    await user.click(screen.getByRole("button", { name: "Withdraw" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(
+      fetchMock.mock.calls.some(([path]) => String(path).includes("/stories/story-123/withdraw")),
+    ).toBe(false);
+    expect(screen.getByRole("button", { name: "Withdraw" })).toBeInTheDocument();
   });
 
   it("submits a correction with its description", async () => {

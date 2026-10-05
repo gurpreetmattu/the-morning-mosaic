@@ -12,14 +12,14 @@ export default function NotFound() {
         This page went missing.
       </h1>
       <p className="mt-4 text-lg text-ink-soft">
-        Here&rsquo;s the front page, and a sample edition if you&rsquo;d like to see what we do.
+        Here&rsquo;s the front page, and the latest edition if you&rsquo;d like to see what we do.
       </p>
       <p className="font-gothic mt-6 flex flex-wrap gap-6 font-semibold">
         <Link href="/" className="underline">
           Back to the front page &rarr;
         </Link>
-        <Link href="/sample" className="underline">
-          See a sample edition &rarr;
+        <Link href="/editions/latest" className="underline">
+          Read the latest edition &rarr;
         </Link>
       </p>
     </PageFrame>

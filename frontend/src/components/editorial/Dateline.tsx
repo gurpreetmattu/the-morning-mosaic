@@ -1,4 +1,4 @@
-import { formatLongDate } from "./format";
+import { LiveDate } from "./LiveDate";
 
 /** Thin strip above the nameplate (DESIGN.md 8.1). Edition number is omitted when unknown. */
 export function Dateline({
@@ -16,7 +16,7 @@ export function Dateline({
       <div
         className={`mx-auto flex flex-wrap items-center justify-between gap-x-4 px-4 py-1 sm:px-6 ${width}`}
       >
-        <time className={animate ? "reveal-type" : undefined}>{formatLongDate()}</time>
+        <LiveDate className={animate ? "reveal-type" : undefined} />
         <span className="hidden sm:inline">
           Morning Edition &middot; Vol. I{editionNumber ? ` · No. ${editionNumber}` : ""}
         </span>

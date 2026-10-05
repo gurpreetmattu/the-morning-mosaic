@@ -1,13 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { LiveDate } from "@/components/editorial/LiveDate";
 import { ThemeToggle } from "@/components/editorial/ThemeToggle";
 import { BRAND, TAGLINE } from "@/content/brand";
 import { fontVariables } from "../styles/fonts";
 
 export const metadata: Metadata = {
-  title: BRAND,
+  title: { default: BRAND, template: `%s – ${BRAND}` },
   description: TAGLINE,
+  applicationName: BRAND,
+  openGraph: {
+    type: "website",
+    siteName: BRAND,
+    title: BRAND,
+    description: TAGLINE,
+    locale: "en_IN",
+  },
+  twitter: { card: "summary", title: BRAND, description: TAGLINE },
 };
 
 // Runs before first paint. (1) Applies the reader's saved Morning/Late choice, so there is
@@ -34,7 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <footer className="border-t-4 border-ink bg-paper-sunk">
           <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-4 px-4 py-6 text-sm text-ink-soft sm:px-6">
             <p className="max-w-[60ch]">
-              &copy; {new Date().getFullYear()} {BRAND}. Set in Abril Fatface, Old Standard TT and
+              &copy; <LiveDate kind="year" /> {BRAND}. Set in Abril Fatface, Old Standard TT and
               Libre Caslon. Delivered every morning.
             </p>
             <nav aria-label="Footer" className="font-gothic flex flex-wrap items-center gap-4">
@@ -46,9 +56,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               </Link>
               <Link href="/status" className="hover:underline">
                 Status
-              </Link>
-              <Link href="/admin" className="hover:underline">
-                Admin
               </Link>
               <ThemeToggle />
             </nav>

@@ -4,7 +4,7 @@ import { PageTitle } from "@/components/ui";
 import { serverGet } from "@/lib/server-api";
 import type { SiteConfig } from "@/lib/types";
 
-export const metadata = { title: "How we report – The Morning Mosaic" };
+export const metadata = { title: "How we report" };
 
 const FALLBACK_CONTACT = "gurpreetsinghmattu2002@gmail.com";
 
@@ -146,8 +146,8 @@ export default async function HowWeReportPage() {
       </p>
 
       <p className="mt-10 flex flex-wrap gap-4">
-        <Link href="/sample" className="font-gothic font-semibold underline">
-          See a sample edition &rarr;
+        <Link href="/editions/latest" className="font-gothic font-semibold underline">
+          Read the latest edition &rarr;
         </Link>
         <Link href="/subscribe" className="font-gothic font-semibold underline">
           Start my edition &rarr;

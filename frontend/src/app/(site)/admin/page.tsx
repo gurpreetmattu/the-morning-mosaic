@@ -16,15 +16,37 @@ import { Button, Field, Lede, Notice, PageTitle, textInputClasses } from "@/comp
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     apiGet<{ email: string }>("/admin/api/me")
       .then(() => setSignedIn(true))
-      .catch(() => setSignedIn(false))
+      .catch((err) => {
+        // 401/403 mean "sign in"; anything else is an outage, not a sign-out.
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          setSignedIn(false);
+        } else {
+          setLoadError(true);
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <p role="status" className="font-gothic text-ink-soft">
+        Loading&hellip;
+      </p>
+    );
+  }
+  if (loadError) {
+    return (
+      <div>
+        <PageTitle>Admin</PageTitle>
+        <Notice kind="error">Couldn&rsquo;t reach the server. Reload to try again.</Notice>
+      </div>
+    );
+  }
   return signedIn ? <Dashboard /> : <LoginRequest />;
 }
 
@@ -88,6 +110,11 @@ function Dashboard() {
   const [corrections, setCorrections] = useState<CorrectionSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  // A destructive action waits here for a second, explicit click.
+  const [confirming, setConfirming] = useState<
+    { kind: "withdraw" } | { kind: "notice"; date: string; action: "approve" | "suppress" } | null
+  >(null);
   const [storyId, setStoryId] = useState("");
   const [reason, setReason] = useState("");
   const [correctionStoryId, setCorrectionStoryId] = useState("");
@@ -132,8 +159,15 @@ function Dashboard() {
   async function decide(editionDate: string, action: "approve" | "suppress") {
     setBusy(true);
     setError(null);
+    setDone(null);
+    setConfirming(null);
     try {
       await adminPost(`/admin/api/notices/${editionDate}/${action}`);
+      setDone(
+        action === "approve"
+          ? `Failure notices for ${editionDate} approved.`
+          : `Failure notices for ${editionDate} suppressed.`,
+      );
       await refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "That failed.");
@@ -142,12 +176,14 @@ function Dashboard() {
     }
   }
 
-  async function withdraw(event: React.FormEvent) {
-    event.preventDefault();
+  async function withdraw() {
     setBusy(true);
     setError(null);
+    setDone(null);
+    setConfirming(null);
     try {
-      await adminPost(`/admin/api/stories/${storyId}/withdraw`, { reason });
+      await adminPost(`/admin/api/stories/${storyId.trim()}/withdraw`, { reason });
+      setDone("Story withdrawn. A new revision without it has been published.");
       setStoryId("");
       setReason("");
       await refresh();
@@ -162,8 +198,10 @@ function Dashboard() {
     event.preventDefault();
     setBusy(true);
     setError(null);
+    setDone(null);
     try {
-      await adminPost(`/admin/api/stories/${correctionStoryId}/correct`, { description });
+      await adminPost(`/admin/api/stories/${correctionStoryId.trim()}/correct`, { description });
+      setDone("Correction recorded.");
       setCorrectionStoryId("");
       setDescription("");
       await refresh();
@@ -178,6 +216,7 @@ function Dashboard() {
     event.preventDefault();
     setBusy(true);
     setError(null);
+    setDone(null);
     try {
       const updated = await adminPost<SiteStatus>("/admin/api/status", {
         degraded: statusDegraded,
@@ -185,6 +224,9 @@ function Dashboard() {
       });
       setSiteStatus(updated);
       setStatusMessage(updated.message ?? "");
+      setDone(
+        updated.degraded ? "Public status set to degraded." : "Public status set to operational.",
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Updating the status failed.");
     } finally {
@@ -207,10 +249,11 @@ function Dashboard() {
       </div>
 
       {error && <Notice kind="error">{error}</Notice>}
+      {done && <Notice kind="success">{done}</Notice>}
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold">Site status</h2>
-        <p className="mb-3 text-sm text-muted">
+        <h2 className="font-head mb-3 text-xl">Site status</h2>
+        <p className="mb-3 text-sm text-ink-soft">
           What <code>/status</code> shows the public. No automated monitoring drives this yet — flip
           it manually during a real incident, and clear it once it&rsquo;s resolved.
         </p>
@@ -218,17 +261,18 @@ function Dashboard() {
           <p className="mb-3 text-sm">
             Currently:{" "}
             {siteStatus.degraded ? (
-              <span className="font-semibold text-red-700">degraded</span>
+              <span className="font-semibold text-danger">degraded</span>
             ) : (
-              <span className="font-semibold text-green-700">operational</span>
+              <span className="font-semibold text-success">operational</span>
             )}
             {siteStatus.updated_at &&
-              ` (since ${new Date(siteStatus.updated_at).toLocaleString()})`}
+              ` (since ${new Date(siteStatus.updated_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST)`}
           </p>
         )}
         <form onSubmit={saveStatus} className="max-w-md">
-          <label className="mb-3 flex items-center gap-2 text-sm">
+          <label className="font-gothic mb-3 flex min-h-11 items-center gap-3 text-sm">
             <input
+              className="stamp-check"
               type="checkbox"
               checked={statusDegraded}
               onChange={(e) => setStatusDegraded(e.target.checked)}
@@ -252,67 +296,103 @@ function Dashboard() {
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold">Recent job runs</h2>
+        <h2 className="font-head mb-3 text-xl">Recent job runs</h2>
         {runs.length === 0 ? (
-          <p className="text-sm text-muted">No runs recorded.</p>
+          <p className="text-sm text-ink-soft">No runs recorded.</p>
         ) : (
           <Table
-            headers={["Job", "Edition", "Status", "Started"]}
+            headers={["Job", "Edition", "Status", "Started (IST)"]}
             rows={runs.map((run) => [
               run.job,
               run.edition_date ?? "—",
               run.status,
-              new Date(run.started_at).toLocaleString(),
+              new Date(run.started_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
             ])}
           />
         )}
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold">Deliveries stuck in sending</h2>
+        <h2 className="font-head mb-3 text-xl">Deliveries stuck in sending</h2>
         {stuck.length === 0 ? (
-          <p className="text-sm text-muted">None flagged.</p>
+          <p className="text-sm text-ink-soft">None flagged.</p>
         ) : (
           <Table
-            headers={["Edition", "Type", "Attempts", "Claimed"]}
+            headers={["Edition", "Type", "Attempts", "Claimed (IST)"]}
             rows={stuck.map((row) => [
               row.edition_date,
               row.type,
               String(row.attempts),
-              row.claimed_at ? new Date(row.claimed_at).toLocaleString() : "—",
+              row.claimed_at
+                ? new Date(row.claimed_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+                : "—",
             ])}
           />
         )}
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold">Failure-notice batches</h2>
+        <h2 className="font-head mb-3 text-xl">Failure-notice batches</h2>
         {notices.length === 0 ? (
-          <p className="text-sm text-muted">None recorded.</p>
+          <p className="text-sm text-ink-soft">None recorded.</p>
         ) : (
           <ul className="space-y-2">
             {notices.map((batch) => (
               <li
                 key={batch.edition_date}
-                className="flex flex-wrap items-center justify-between gap-2 rounded border border-rule px-3 py-2 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 border-2 border-ink bg-paper-raised px-3 py-2 text-sm"
               >
                 <span>
                   {batch.edition_date} — {batch.status} ({batch.recipient_count} recipients)
                 </span>
-                {batch.status === "held" && (
-                  <span className="flex gap-2">
-                    <Button disabled={busy} onClick={() => decide(batch.edition_date, "approve")}>
-                      Approve
-                    </Button>
-                    <Button
-                      variant="danger"
-                      disabled={busy}
-                      onClick={() => decide(batch.edition_date, "suppress")}
-                    >
-                      Suppress
-                    </Button>
-                  </span>
-                )}
+                {batch.status === "held" &&
+                  (confirming?.kind === "notice" && confirming.date === batch.edition_date ? (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>
+                        {confirming.action === "approve"
+                          ? `Send apology emails to ${batch.recipient_count} readers?`
+                          : "Suppress these notices? They will not be sent."}
+                      </span>
+                      <Button
+                        variant={confirming.action === "approve" ? "primary" : "danger"}
+                        disabled={busy}
+                        onClick={() => decide(batch.edition_date, confirming.action)}
+                      >
+                        Confirm
+                      </Button>
+                      <Button variant="secondary" onClick={() => setConfirming(null)}>
+                        Cancel
+                      </Button>
+                    </span>
+                  ) : (
+                    <span className="flex gap-2">
+                      <Button
+                        disabled={busy}
+                        onClick={() =>
+                          setConfirming({
+                            kind: "notice",
+                            date: batch.edition_date,
+                            action: "approve",
+                          })
+                        }
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="danger"
+                        disabled={busy}
+                        onClick={() =>
+                          setConfirming({
+                            kind: "notice",
+                            date: batch.edition_date,
+                            action: "suppress",
+                          })
+                        }
+                      >
+                        Suppress
+                      </Button>
+                    </span>
+                  ))}
               </li>
             ))}
           </ul>
@@ -320,8 +400,14 @@ function Dashboard() {
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold">Withdraw a story</h2>
-        <form onSubmit={withdraw} className="max-w-md">
+        <h2 className="font-head mb-3 text-xl">Withdraw a story</h2>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            setConfirming({ kind: "withdraw" });
+          }}
+          className="max-w-md"
+        >
           <Field htmlFor="story-id" label="Story ID">
             <input
               id="story-id"
@@ -340,16 +426,33 @@ function Dashboard() {
               className={textInputClasses("mt-1")}
             />
           </Field>
-          <Button type="submit" variant="danger" disabled={busy}>
-            Withdraw
-          </Button>
+          {confirming?.kind === "withdraw" ? (
+            <div className="border-2 border-dashed border-press-red p-3">
+              <p className="mb-3 text-sm">
+                Withdraw this story now? Readers not yet sent today&rsquo;s edition will get a
+                revision without it. Readers who already have it are handled as a correction.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" variant="danger" disabled={busy} onClick={withdraw}>
+                  Confirm withdrawal
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => setConfirming(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button type="submit" variant="danger" disabled={busy}>
+              Withdraw
+            </Button>
+          )}
         </form>
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold">Recent withdrawals</h2>
+        <h2 className="font-head mb-3 text-xl">Recent withdrawals</h2>
         {withdrawals.length === 0 ? (
-          <p className="text-sm text-muted">None yet.</p>
+          <p className="text-sm text-ink-soft">None yet.</p>
         ) : (
           <Table
             headers={["Headline", "Genre", "Edition", "Reason"]}
@@ -359,8 +462,8 @@ function Dashboard() {
       </section>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold">Correct a story</h2>
-        <p className="mb-3 text-sm text-muted">
+        <h2 className="font-head mb-3 text-xl">Correct a story</h2>
+        <p className="mb-3 text-sm text-ink-soft">
           Shown alongside the story in the archive, and in the next edition for readers who received
           it — never edits the story itself.
         </p>
@@ -390,9 +493,9 @@ function Dashboard() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Recent corrections</h2>
+        <h2 className="font-head mb-3 text-xl">Recent corrections</h2>
         {corrections.length === 0 ? (
-          <p className="text-sm text-muted">None yet.</p>
+          <p className="text-sm text-ink-soft">None yet.</p>
         ) : (
           <Table
             headers={["Headline", "Genre", "Edition", "Description", "Announced"]}
@@ -415,7 +518,7 @@ function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left text-sm">
         <thead>
-          <tr className="border-b border-rule text-muted">
+          <tr className="border-b-2 border-ink text-ink-soft">
             {headers.map((header) => (
               <th key={header} className="py-2 pr-4 font-semibold">
                 {header}
@@ -424,8 +527,8 @@ function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.join("|")} className="border-b border-rule/50">
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="border-b border-dotted border-ink">
               {row.map((cell, cellIndex) => (
                 <td key={cellIndex} className="py-2 pr-4">
                   {cell}

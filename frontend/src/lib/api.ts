@@ -2,16 +2,29 @@
 // so the browser only ever talks to this frontend's own origin — see
 // next.config.ts for why that matters for cookies.
 
+/**
+ * A sentence a reader can act on. The backend answers with `message` (our own routes) or
+ * FastAPI's `detail` (a string for HTTPException, a list of field errors for a 422); the list
+ * is never shown, since its wording is for developers.
+ */
+function messageFor(status: number, body: unknown): string {
+  if (body && typeof body === "object") {
+    const { message, detail } = body as { message?: unknown; detail?: unknown };
+    if (typeof message === "string" && message) return message;
+    if (typeof detail === "string" && detail) return detail;
+  }
+  if (status === 422) return "Please check the details you entered and try again.";
+  if (status === 429) return "Too many attempts. Please wait a few minutes and try again.";
+  if (status >= 500) return "Something went wrong on our side. Please try again in a moment.";
+  return "That didn't work. Please try again.";
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly body: unknown;
 
   constructor(status: number, body: unknown) {
-    const message =
-      body && typeof body === "object" && "message" in body
-        ? String((body as { message?: unknown }).message)
-        : `Request failed with status ${status}`;
-    super(message);
+    super(messageFor(status, body));
     this.status = status;
     this.body = body;
   }

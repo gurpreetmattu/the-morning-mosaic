@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 const SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
@@ -9,8 +9,14 @@ declare global {
     turnstile?: {
       render: (
         container: HTMLElement,
-        options: { sitekey: string; callback: (token: string) => void },
+        options: {
+          sitekey: string;
+          callback: (token: string) => void;
+          "expired-callback": () => void;
+          "error-callback": () => void;
+        },
       ) => string;
+      reset: (widgetId: string) => void;
       remove: (widgetId: string) => void;
     };
   }
@@ -41,10 +47,25 @@ function loadTurnstileScript(): Promise<void> {
  * outside prod, refuse in prod" (app/api/security.py:verify_turnstile), so a
  * dev environment with no Cloudflare account still has a working signup form.
  */
-export function TurnstileWidget({ onToken }: { onToken: (token: string) => void }) {
+export function TurnstileWidget({
+  onToken,
+  resetKey = 0,
+}: {
+  /** Called with a fresh token, or "" once the token expired or the check failed. */
+  onToken: (token: string) => void;
+  /** Change this after each submit: a Turnstile token works once and expires in minutes. */
+  resetKey?: number;
+}) {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const containerId = useId();
   const widgetId = useRef<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    if (resetKey > 0 && widgetId.current && window.turnstile) {
+      window.turnstile.reset(widgetId.current);
+    }
+  }, [resetKey]);
 
   useEffect(() => {
     if (!siteKey) return;
@@ -58,12 +79,14 @@ export function TurnstileWidget({ onToken }: { onToken: (token: string) => void 
         widgetId.current = window.turnstile.render(container, {
           sitekey: siteKey,
           callback: onToken,
+          "expired-callback": () => onToken(""),
+          "error-callback": () => onToken(""),
         });
       })
       .catch(() => {
-        // A signup with no token still reaches the backend, which then
-        // refuses it (or skips the check outside prod) — no need to surface
-        // a separate frontend error for a third-party script failing to load.
+        // Let a later render retry the script, and tell the reader why signup will be refused.
+        scriptPromise = null;
+        if (!cancelled) setLoadFailed(true);
       });
 
     return () => {
@@ -76,5 +99,15 @@ export function TurnstileWidget({ onToken }: { onToken: (token: string) => void 
   }, [siteKey, containerId]);
 
   if (!siteKey) return null;
-  return <div id={containerId} className="mb-4" />;
+  return (
+    <>
+      <div id={containerId} className="mb-4" />
+      {loadFailed && (
+        <p role="alert" className="font-gothic mb-4 text-sm text-danger">
+          The spam check couldn&rsquo;t load. Check your connection or any content blocker, then
+          reload this page.
+        </p>
+      )}
+    </>
+  );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, apiGet, publicPost, readerPatch, readerPost } from "@/lib/api";
 import type { MeResponse, PreferencesUpdate, SiteConfig, StatusMessage } from "@/lib/types";
 import { GenreCard } from "@/components/editorial/GenreCard";
@@ -21,6 +21,15 @@ const FREQUENCY_OPTIONS = [
   { value: "weekdays", label: "Weekdays only" },
 ];
 
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  paused: "Paused",
+  pending: "Waiting for your confirmation",
+  waitlisted: "On the waitlist",
+  unsubscribed: "Unsubscribed",
+  bounced: "Emails to this address are bouncing",
+};
+
 function slotLabel(slot: string): string {
   return slot.slice(0, 5);
 }
@@ -35,30 +44,76 @@ function parseKeywords(input: string): string[] {
 
 export default function PreferencesPage() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [config, setConfig] = useState<SiteConfig | null>(null);
+  const [signedOutNote, setSignedOutNote] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([
       apiGet<MeResponse>("/api/me").catch((err) => {
+        // Only a 401 means "not signed in"; anything else is a failure to load.
         if (err instanceof ApiError && err.status === 401) return null;
         throw err;
       }),
       apiGet<SiteConfig>("/api/config"),
     ])
       .then(([meResult, configResult]) => {
+        if (cancelled) return;
         setMe(meResult);
         setConfig(configResult);
+        setLoadError(false);
       })
-      .finally(() => setLoading(false));
-  }, []);
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [attempt]);
 
-  if (loading) return null;
-  if (!me) return <LoginRequest />;
-  return <Dashboard me={me} config={config} onSignedOut={() => setMe(null)} />;
+  if (loading) {
+    return (
+      <p role="status" className="font-gothic text-ink-soft">
+        Loading your subscription&hellip;
+      </p>
+    );
+  }
+  if (loadError) {
+    return (
+      <div>
+        <PageTitle>Manage your subscription</PageTitle>
+        <Notice kind="error">We couldn&rsquo;t load your subscription. Please try again.</Notice>
+        <Button
+          onClick={() => {
+            setLoading(true);
+            setAttempt((n) => n + 1);
+          }}
+        >
+          Try again
+        </Button>
+      </div>
+    );
+  }
+  if (!me) return <LoginRequest note={signedOutNote} />;
+  return (
+    <Dashboard
+      me={me}
+      config={config}
+      onSignedOut={(note) => {
+        setSignedOutNote(note);
+        setMe(null);
+      }}
+    />
+  );
 }
 
-function LoginRequest() {
+function LoginRequest({ note }: { note?: string | null }) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState<StatusMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +145,7 @@ function LoginRequest() {
     <div>
       <PageTitle>Manage your subscription</PageTitle>
       <Lede>Enter your email and we&rsquo;ll send you a sign-in link.</Lede>
+      {note && <Notice kind="success">{note}</Notice>}
       {error && <Notice kind="error">{error}</Notice>}
       <form onSubmit={handleSubmit}>
         <Field htmlFor="login-email" label="Email">
@@ -117,22 +173,44 @@ function Dashboard({
 }: {
   me: MeResponse;
   config: SiteConfig | null;
-  onSignedOut: () => void;
+  onSignedOut: (note: string) => void;
 }) {
   const [me, setMe] = useState(initialMe);
   const [keywordInput, setKeywordInput] = useState(initialMe.keywords.join(", "));
   const [status, setStatus] = useState<{ kind: "error" | "success"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const noticeRef = useRef<HTMLDivElement>(null);
+
+  // The notice sits at the top while the buttons that cause it are at the bottom: on a phone the
+  // result would otherwise appear off-screen.
+  useEffect(() => {
+    if (status) noticeRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [status]);
 
   async function save(update: PreferencesUpdate) {
+    if (me.genres.length === 0) {
+      setStatus({ kind: "error", text: "Choose at least one genre." });
+      return;
+    }
+    if (!me.city_id) {
+      setStatus({ kind: "error", text: "Pick a city from the list." });
+      return;
+    }
+    const typedKeywords = keywordInput.split(",").filter((word) => word.trim()).length;
     setBusy(true);
     setStatus(null);
     try {
       const updated = await readerPatch<MeResponse>("/api/me", update);
       setMe(updated);
       setKeywordInput(updated.keywords.join(", "));
-      setStatus({ kind: "success", text: "Saved." });
+      setStatus({
+        kind: "success",
+        text:
+          typedKeywords > MAX_KEYWORDS
+            ? `Saved. Only the first ${MAX_KEYWORDS} keywords were kept.`
+            : "Saved.",
+      });
     } catch (err) {
       setStatus({ kind: "error", text: err instanceof ApiError ? err.message : "Save failed." });
     } finally {
@@ -146,7 +224,12 @@ function Dashboard({
     try {
       const path = me.status === "paused" ? "/api/me/resume" : "/api/me/pause";
       const updated = await readerPost<MeResponse>(path);
-      setMe(updated);
+      // Only the status changes: edits the reader hasn't saved yet stay on screen.
+      setMe((current) => ({ ...current, status: updated.status }));
+      setStatus({
+        kind: "success",
+        text: updated.status === "paused" ? "Delivery paused." : "Delivery resumed.",
+      });
     } catch (err) {
       setStatus({ kind: "error", text: err instanceof ApiError ? err.message : "That failed." });
     } finally {
@@ -156,14 +239,14 @@ function Dashboard({
 
   async function signOut() {
     await readerPost("/api/logout").catch(() => undefined);
-    onSignedOut();
+    onSignedOut("You've been signed out.");
   }
 
   async function deleteAccount() {
     setBusy(true);
     try {
       await readerPost("/api/me/delete");
-      onSignedOut();
+      onSignedOut("Your account and personal data have been deleted.");
     } catch (err) {
       setStatus({ kind: "error", text: err instanceof ApiError ? err.message : "That failed." });
       setBusy(false);
@@ -179,10 +262,10 @@ function Dashboard({
     <div>
       <PageTitle>Your subscription</PageTitle>
       <Lede>
-        Signed in as {me.email} · status: {me.status}
+        Signed in as {me.email} · {STATUS_LABELS[me.status] ?? me.status}
       </Lede>
 
-      {status && <Notice kind={status.kind}>{status.text}</Notice>}
+      <div ref={noticeRef}>{status && <Notice kind={status.kind}>{status.text}</Notice>}</div>
 
       <fieldset className="mb-8">
         <legend className="kicker mb-3 text-ink">Genres</legend>
@@ -294,7 +377,7 @@ function Dashboard({
               Delete my account
             </Button>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm">This removes your personal data permanently.</span>
               <Button variant="danger" disabled={busy} onClick={deleteAccount}>
                 Confirm delete

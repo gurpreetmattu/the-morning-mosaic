@@ -6,8 +6,8 @@ const source = (n: number) => sample.sources.find((s) => s.n === n)!;
 
 /**
  * Hero component (DESIGN.md 8.7): a mini front page built from
- * fixtures/sample-edition.json, always labelled Sample. The SAMPLE stamp is
- * never removed on the marketing site.
+ * fixtures/sample-edition.json, always labelled Sample. Only shown before the
+ * first real edition is published (see HeroPreview); the stamp is never removed here.
  */
 export function EditionPreview() {
   return (

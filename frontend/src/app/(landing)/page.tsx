@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Citation } from "@/components/editorial/Citation";
-import { EditionPreview } from "@/components/editorial/EditionPreview";
+import { HeroPreview } from "@/components/editorial/HeroPreview";
 import { RubberStamp } from "@/components/editorial/RubberStamp";
 import { StampSheet } from "@/components/editorial/StampSheet";
 import { StickyCta } from "@/components/editorial/StickyCta";
 import { SUPPORTING_LINE, TAGLINE } from "@/content/brand";
 import { LIVE_GENRE_COUNT_WORD } from "@/content/genres";
+
+// Revalidated so the hero shows the newest edition and the dateline stays current.
+export const revalidate = 300;
 
 const primaryCta =
   "font-gothic inline-block min-h-12 border-2 border-ink bg-ink px-6 py-3 text-base font-bold tracking-[0.06em] text-paper uppercase shadow-[var(--block-1)] transition-transform hover:-translate-x-px hover:-translate-y-px active:translate-x-[3px] active:translate-y-[3px] active:shadow-none";
@@ -106,15 +109,15 @@ export default function HomePage() {
               <Link href="/subscribe" className={primaryCta}>
                 Start my edition
               </Link>
-              <Link href="/sample" className={secondaryCta}>
-                See a sample edition
+              <Link href="/editions/latest" className={secondaryCta}>
+                Read the latest edition
               </Link>
             </div>
             <p className="font-typewriter mt-4 text-sm text-ink-soft">
               Free. 6&ndash;9 AM IST. Unsubscribe in one click.
             </p>
           </div>
-          <EditionPreview />
+          <HeroPreview />
         </div>
       </section>
 
@@ -218,7 +221,7 @@ export default function HomePage() {
             <h3 className="font-head text-xl">Weekend editions</h3>
             <p className="mt-2 text-ink-soft">
               Saturday adds longer reads on the week&rsquo;s biggest stories. Sunday adds a weekly
-              recap of what we published. Each comes with a short quiz.
+              recap of what we published.
             </p>
           </article>
           <article className="border-2 border-ink bg-paper-raised p-6 shadow-[var(--block-1)]">

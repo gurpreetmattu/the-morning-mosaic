@@ -32,13 +32,24 @@ describe("ApiError", () => {
     expect(error.status).toBe(400);
   });
 
-  it("falls back to a generic message when the body has none", () => {
-    const error = new ApiError(500, { detail: "boom" });
-    expect(error.message).toBe("Request failed with status 500");
+  it("uses FastAPI's string detail", () => {
+    expect(new ApiError(401, { detail: "Sign in required." }).message).toBe("Sign in required.");
   });
 
-  it("falls back when the body isn't an object at all", () => {
-    const error = new ApiError(502, "upstream unavailable");
-    expect(error.message).toBe("Request failed with status 502");
+  it("never shows a validation error list", () => {
+    const error = new ApiError(422, { detail: [{ loc: ["body", "email"], msg: "bad" }] });
+    expect(error.message).toBe("Please check the details you entered and try again.");
+  });
+
+  it("explains rate limiting", () => {
+    expect(new ApiError(429, null).message).toBe(
+      "Too many attempts. Please wait a few minutes and try again.",
+    );
+  });
+
+  it("falls back to a generic message for server errors and non-object bodies", () => {
+    const generic = "Something went wrong on our side. Please try again in a moment.";
+    expect(new ApiError(500, {}).message).toBe(generic);
+    expect(new ApiError(502, "upstream unavailable").message).toBe(generic);
   });
 });

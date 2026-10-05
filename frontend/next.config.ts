@@ -22,12 +22,20 @@ import type { NextConfig } from "next";
 // `unsafe-eval` is dev-only, for React Refresh's use of eval — the production
 // build never needs it.
 const CLOUDFLARE_CHALLENGES = "https://challenges.cloudflare.com";
+// Edition photos are hotlinked from the licensed providers the image finder uses
+// (backend/app/agents/image_finder.py), never rehosted. The archive renders the same
+// section HTML as the email, so it needs these hosts.
+const IMAGE_HOSTS = [
+  "https://upload.wikimedia.org",
+  "https://images.unsplash.com",
+  "https://images.pexels.com",
+].join(" ");
 const isDev = process.env.NODE_ENV !== "production";
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ""}${CLOUDFLARE_CHALLENGES}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
+  `img-src 'self' data: ${IMAGE_HOSTS}`,
   "font-src 'self' data:",
   `connect-src 'self' ${CLOUDFLARE_CHALLENGES}`,
   `frame-src ${CLOUDFLARE_CHALLENGES}`,
@@ -61,6 +69,13 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Cloud Run serves HTTPS only; tell browsers never to try plain HTTP.
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+          // Nothing here uses the camera, microphone, location or payments.
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+          },
           { key: "Content-Security-Policy", value: contentSecurityPolicy },
         ],
       },
