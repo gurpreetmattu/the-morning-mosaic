@@ -41,6 +41,8 @@ resource "google_cloud_scheduler_job" "single" {
   region    = var.region
   schedule  = each.value.cron
   time_zone = "Asia/Kolkata"
+  # Keys listed in var.paused_schedules stay defined but do not fire.
+  paused = contains(var.paused_schedules, each.key)
 
   http_target {
     http_method = "POST"

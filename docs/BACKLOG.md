@@ -32,6 +32,15 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 1. Blockers — need a decision or an account from the owner
 
+- [x] **Mitigation applied 2026-10-05 ~16:30 IST: the 07:05 late update is PAUSED** (option 1
+      below). `paused_schedules = ["late-update-2"]` in `infra/terraform.tfvars` (new variable
+      `paused_schedules`, honoured in `infra/cloud_scheduler.tf`); verified in GCP
+      (`mosaic-late-update-2` PAUSED, 13 triggers enabled). Resume by emptying the list and
+      applying. Expected: Tue 2026-10-06 build probably still starves (Monday's 112 calls are in
+      the window), then Wed onward ~75 calls/24 h. **Check Tuesday and Wednesday with
+      `python -m app.buildreport`; if Wednesday's build still starves, the rolling-window
+      theory is wrong or the late update also has to go.** The real fix (Fact-checker off
+      Cloudflare, with evals) is still open.
 - [ ] **LAUNCH BLOCKER: every other edition fails because Cloudflare's "daily" allowance acts
       like a rolling 24 h window (measured 2026-10-05).** Successful Cloudflare fact-check calls
       per run: Sat build 37 + late updates 36 + 36 = 109 (allowance ~100) -> **Sun 04:15 build

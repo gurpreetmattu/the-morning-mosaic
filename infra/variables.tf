@@ -164,3 +164,9 @@ variable "job_timeout_seconds" {
   type        = number
   default     = 600
 }
+
+variable "paused_schedules" {
+  description = "Keys of the single (non-delivery) Cloud Scheduler triggers to keep paused, e.g. [\"late-update-2\"]. 2026-10-05: the 07:05 late update is paused because the morning's late updates spend the Cloudflare allowance the next 04:15 build needs (see docs/BACKLOG.md, section 1)."
+  type        = list(string)
+  default     = []
+}
