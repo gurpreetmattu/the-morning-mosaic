@@ -24,7 +24,7 @@ from app.clock import now_utc, to_ist
 from app.db.publish import latest_revision
 from app.models.content import Correction, Story
 from app.models.editions import Edition, EditionSection
-from app.models.enums import SectionStatus
+from app.models.enums import SectionStatus, StoryStatus
 
 router = APIRouter()
 
@@ -83,6 +83,26 @@ class ArchivePage(BaseModel):
     has_more: bool
 
 
+class LatestHighlight(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    genre: str
+    headline: str
+    one_liner: str
+
+
+class LatestHighlights(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    edition_date: date
+    edition_number: int
+    items: list[LatestHighlight]
+
+
+# The landing page shows a handful of real headlines, not a whole edition.
+MAX_HIGHLIGHTS = 3
+
+
 def is_public(edition_date: date, *, now: datetime | None = None) -> bool:
     """True once the edition has finished being delivered."""
     moment = to_ist(now or now_utc())
@@ -134,6 +154,62 @@ def list_editions(
             for edition in rows[:capped]
         ],
         has_more=len(rows) > capped,
+    )
+
+
+@router.get("/api/latest-edition", response_model=LatestHighlights)
+def latest_highlights(session: Annotated[Session, Depends(db_session)]) -> LatestHighlights:
+    """The newest public edition's top verified story per genre, for the landing page.
+
+    Only stories that are still verified, have a verified one-liner, and carry
+    no correction are offered, and only from genres whose section published
+    normally. When in doubt a story is left out: a short list is fine, a wrong
+    one is not. 404 until the first edition is public.
+    """
+    edition = session.scalar(
+        select(Edition)
+        .where(Edition.edition_date <= _latest_public_date())
+        .order_by(Edition.edition_date.desc())
+        .limit(1)
+    )
+    revision = latest_revision(session, edition.edition_date) if edition else None
+    if edition is None or revision is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No edition yet.")
+
+    ok_genres = set(
+        session.scalars(
+            select(EditionSection.genre).where(
+                EditionSection.revision_id == revision.id,
+                EditionSection.status == SectionStatus.OK,
+            )
+        )
+    )
+    corrected = select(Correction.story_id)
+    stories = session.scalars(
+        select(Story)
+        .where(
+            Story.edition_date == edition.edition_date,
+            Story.status == StoryStatus.VERIFIED,
+            Story.one_liner.is_not(None),
+            Story.genre.in_(ok_genres),
+            Story.id.not_in(corrected),
+        )
+        .order_by(Story.pool_rank, Story.genre)
+    )
+
+    items: list[LatestHighlight] = []
+    seen: set[str] = set()
+    for story in stories:
+        if story.genre in seen or not story.one_liner:
+            continue
+        seen.add(story.genre)
+        items.append(
+            LatestHighlight(genre=story.genre, headline=story.headline, one_liner=story.one_liner)
+        )
+        if len(items) == MAX_HIGHLIGHTS:
+            break
+    return LatestHighlights(
+        edition_date=edition.edition_date, edition_number=edition.edition_number, items=items
     )
 
 

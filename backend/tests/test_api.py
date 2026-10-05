@@ -609,6 +609,42 @@ class TestArchive:
 
         assert body["corrections"] == []
 
+    def test_latest_edition_offers_verified_one_liners(
+        self, client: TestClient, session: Session
+    ) -> None:
+        story = publish(session)
+        story.one_liner = "Ministers approved the freight corridor."
+        session.flush()
+
+        response = client.get("/api/latest-edition")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["edition_number"] == 5
+        assert body["items"] == [
+            {
+                "genre": "india",
+                "headline": story.headline,
+                "one_liner": "Ministers approved the freight corridor.",
+            }
+        ]
+
+    def test_latest_edition_leaves_out_corrected_and_one_liner_less_stories(
+        self, client: TestClient, session: Session
+    ) -> None:
+        story = publish(session)
+        # No one-liner: nothing to show.
+        assert client.get("/api/latest-edition").json()["items"] == []
+
+        story.one_liner = "Ministers approved the freight corridor."
+        session.add(Correction(story_id=story.id, description="Wrong figure.", corrected_at=NOW))
+        session.flush()
+
+        assert client.get("/api/latest-edition").json()["items"] == []
+
+    def test_latest_edition_is_404_before_the_first_edition(self, client: TestClient) -> None:
+        assert client.get("/api/latest-edition").status_code == 404
+
     def test_the_listing_shows_published_editions(
         self, client: TestClient, session: Session
     ) -> None:
