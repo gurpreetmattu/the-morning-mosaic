@@ -39,7 +39,8 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       scanning, push protection and private vulnerability reporting (SECURITY.md relies on the
       last). (d) Delete `infra/errored.tfstate` (305 KB, ignored by git, may hold secret values)
       once its state is reconciled. (e) Add topics and a homepage URL.
-- [ ] **Pin workflow actions to commit SHAs** once Dependabot is running, so it keeps them fresh.
+- [ ] **Pin workflow actions to commit SHAs.** Dependabot is running now (it bumped checkout to v7
+      and setup-uv to v7 on 2026-10-05), so pinning is safe: it will keep the SHAs fresh.
 
 - [x] **Mitigation applied 2026-10-05 ~16:30 IST: the 07:05 late update is PAUSED** (option 1
       below). `paused_schedules = ["late-update-2"]` in `infra/terraform.tfvars` (new variable
@@ -705,6 +706,9 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
       Dependabot (uv, npm, actions, terraform, docker). CI and nightly workflows now declare
       `permissions: contents: read`. `.gitignore` covers scratch dirs and local tool state.
       Audit found no secrets in history; `.env`, `terraform.tfvars` and tfstate are untracked.
+      First Dependabot round (2026-10-05): merged the actions, Python and npm minor/patch groups
+      (the npm one carries Next.js 16.3.8 security fixes); major bumps (eslint 10, TypeScript 7,
+      Node 26, google provider 8) are ignored in `dependabot.yml` until a planned migration.
       Still owner actions, in section 1 below: licence, branch protection, secret scanning,
       deleting `infra/errored.tfstate`.
 
