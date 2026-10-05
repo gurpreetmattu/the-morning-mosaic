@@ -7,6 +7,10 @@ updates:
       python-minor-patch:
         update-types: [minor, patch]
     open-pull-requests-limit: 5
+    # Major bumps break the toolchain (eslint 10, TS 7) or runtime; do them deliberately.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /frontend
@@ -15,6 +19,10 @@ updates:
       npm-minor-patch:
         update-types: [minor, patch]
     open-pull-requests-limit: 5
+    # Major bumps break the toolchain (eslint 10, TS 7) or runtime; do them deliberately.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -26,11 +34,23 @@ updates:
   - package-ecosystem: terraform
     directory: /infra
     schedule: { interval: monthly }
+    # Major bumps break the toolchain (eslint 10, TS 7) or runtime; do them deliberately.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: /backend
     schedule: { interval: monthly }
+    # Major bumps break the toolchain (eslint 10, TS 7) or runtime; do them deliberately.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: /frontend
     schedule: { interval: monthly }
+    # Major bumps break the toolchain (eslint 10, TS 7) or runtime; do them deliberately.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
