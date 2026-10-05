@@ -1,0 +1,24 @@
+name: Feature request
+description: Propose an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+  - type: textarea
+    id: grounding
+    attributes:
+      label: Sources and grounding
+      description: >-
+        For new content or extras: where does the data come from, and do its terms allow display
+        in a newsletter? Anything without a reliable source is not built.

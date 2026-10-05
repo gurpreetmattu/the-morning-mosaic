@@ -1,0 +1,33 @@
+name: Bug report
+description: Something is broken or a newsletter was wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste subscriber emails, names, or tokens. For security issues use
+        **Security → Report a vulnerability** instead of this form.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the edition date and genre if a story or section was wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce or relevant logs
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Pipeline / agents, Delivery / email, PDF, Frontend, API, Infra, Docs]
+    validations:
+      required: true

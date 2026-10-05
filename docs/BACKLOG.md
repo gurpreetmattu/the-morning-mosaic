@@ -32,6 +32,15 @@ Add anything discovered mid-task rather than leaving it in a chat message.
 
 ## 1. Blockers — need a decision or an account from the owner
 
+- [ ] **GitHub repo settings (owner).** (a) Pick a licence, or keep the repo private and
+      unlicensed (the default; all rights reserved). (b) Branch protection on `main`: require
+      the CI jobs (backend, frontend, e2e, terraform, evals) and one review, no force-push;
+      private repos need a paid plan for this, or make the repo public first. (c) Enable secret
+      scanning, push protection and private vulnerability reporting (SECURITY.md relies on the
+      last). (d) Delete `infra/errored.tfstate` (305 KB, ignored by git, may hold secret values)
+      once its state is reconciled. (e) Add topics and a homepage URL.
+- [ ] **Pin workflow actions to commit SHAs** once Dependabot is running, so it keeps them fresh.
+
 - [x] **Mitigation applied 2026-10-05 ~16:30 IST: the 07:05 late update is PAUSED** (option 1
       below). `paused_schedules = ["late-update-2"]` in `infra/terraform.tfvars` (new variable
       `paused_schedules`, honoured in `infra/cloud_scheduler.tf`); verified in GCP
@@ -659,6 +668,14 @@ Steps 1–2 of DESIGN.md §21 are done (see Done). Remaining, in order:
 ---
 
 ## Done
+
+- [x] **Repository hygiene pass (2026-10-05).** Added root `README.md`, `CONTRIBUTING.md`,
+      `SECURITY.md`, `.editorconfig`, `.github/` CODEOWNERS, PR and issue templates, and
+      Dependabot (uv, npm, actions, terraform, docker). CI and nightly workflows now declare
+      `permissions: contents: read`. `.gitignore` covers scratch dirs and local tool state.
+      Audit found no secrets in history; `.env`, `terraform.tfvars` and tfstate are untracked.
+      Still owner actions, in section 1 below: licence, branch protection, secret scanning,
+      deleting `infra/errored.tfstate`.
 
 - [x] **A late update that took more than ~6 minutes crashed (2026-10-05 05:35).** Neon killed
       the connection with `IdleInTransactionSessionTimeout`: `run_late_update` read the previous

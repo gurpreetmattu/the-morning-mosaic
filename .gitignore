@@ -37,6 +37,12 @@ mailsink/
 *.pdf
 *.log
 
+# Scratch directories and local tool state
+pdfwork_scratch*/
+.claude/settings.local.json
+test-results/
+playwright-report/
+
 # Editors and OS
 .vscode/
 .idea/

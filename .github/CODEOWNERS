@@ -1,0 +1,14 @@
+# Later patterns take precedence. Review is requested automatically.
+*                       @gurpreetmattu
+
+# Rules that protect the "every fact is sourced" guarantee
+/config/                @gurpreetmattu
+/backend/app/llm/       @gurpreetmattu
+/backend/app/agents/    @gurpreetmattu
+/evals/                 @gurpreetmattu
+
+# Anything that can send mail, spend money, or change production
+/backend/app/email/     @gurpreetmattu
+/backend/app/jobs/      @gurpreetmattu
+/infra/                 @gurpreetmattu
+/.github/               @gurpreetmattu
