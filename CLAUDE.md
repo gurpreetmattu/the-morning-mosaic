@@ -234,7 +234,9 @@ newsletter and record provider + terms link in config.
   build failure/deadline miss, send failures, quota nearing limit, and sharp drops in verified
   story counts, a held failure-notice batch, and bounce-processing errors.
 - **CI/CD:** GitHub Actions — lint, type-check, tests, and a small eval set on PRs; full evals
-  nightly; deploy on merge to main.
+  nightly; on merge to main the deploy workflow shows the Terraform plan, and production is
+  deployed only by a manual run of it with a typed confirmation (GitHub Environments with
+  required reviewers are unavailable for private repos on this plan).
 
 ## Data model (core tables)
 - Users and subscriptions: users (status, slot, frequency, city_id), cities, user_genres,

@@ -1,22 +1,38 @@
 name: Deploy
 
-# CLAUDE.md: "deploy on merge to main." Builds and pushes both images to
-# Artifact Registry, then applies Terraform.
+# A push to main builds nothing and changes nothing in production: it runs `terraform plan`
+# against the live infrastructure and puts the result on the run page (the "Summary" tab), so
+# you can read what a deploy WOULD change.
 #
-# There is no GCP project yet (docs/BACKLOG.md's biggest set of blockers),
-# so `gate` below always evaluates false today and every other job is
-# skipped — this workflow is written and ready, not yet live. It starts
-# doing anything the moment a repository variable named GCP_PROJECT_ID is
-# set; until then a push to main runs CI (ci.yml) and nothing else.
+# Deploying is a manual step: Actions -> Deploy -> Run workflow, on main, and type `deploy` in
+# the confirm box. That run builds both images, tags them with the commit, plans again and
+# then applies. Whoever can run workflows on this repository is the approver; nobody else
+# can start a deploy, and a mistyped or empty confirm box does nothing.
 #
-# Authentication is Workload Identity Federation, not a downloaded service
-# account key: nothing here is a long-lived credential sitting in GitHub's
-# secret store to leak.
+# GitHub Environments with required reviewers would be the usual way to do this, but they are
+# not available for private repositories on this plan (the API refuses: "billing plan"). If
+# the plan changes, move `terraform-apply` behind an environment instead of the confirm box.
+#
+# It does nothing until the repository variable GCP_PROJECT_ID is set (`gate`).
+#
+# Authentication is Workload Identity Federation, not a downloaded service account key:
+# nothing here is a long-lived credential sitting in GitHub's secret store to leak. Google
+# only accepts the token from this repository's main branch (infra/bootstrap).
+#
+# Everything Terraform needs that is not set below comes from infra/prod.auto.tfvars, which is
+# committed (the gitignored terraform.tfvars does not exist in CI). That file carries base_url
+# and paused_schedules; without it an apply would reset BASE_URL to the placeholder and
+# un-pause schedules held paused on purpose.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'deploy' to build, tag with this commit and apply to production"
+        required: true
+        default: ""
 
 concurrency:
   group: deploy-production
@@ -29,19 +45,41 @@ permissions:
 env:
   REGION: asia-south1
   IMAGE_TAG: ${{ github.sha }}
+  # Read by Terraform as variables in the plan and apply jobs.
+  TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
+  TF_VAR_region: asia-south1
+  TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+  TF_VAR_admin_email: ${{ vars.ADMIN_EMAIL }}
+  TF_VAR_llm_gateway_url: ${{ vars.LLM_GATEWAY_URL }}
+  TF_VAR_llm_secondary_url: ${{ vars.LLM_SECONDARY_URL }}
+  TF_VAR_turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
+  TF_VAR_backend_image: asia-south1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/the-morning-mosaic/backend:${{ github.sha }}
+  TF_VAR_web_image: asia-south1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/the-morning-mosaic/web:${{ github.sha }}
 
 jobs:
   gate:
     runs-on: ubuntu-latest
     outputs:
       ready: ${{ steps.check.outputs.ready }}
+      deploying: ${{ steps.check.outputs.deploying }}
     steps:
       - id: check
-        run: echo "ready=${{ vars.GCP_PROJECT_ID != '' }}" >> "$GITHUB_OUTPUT"
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          echo "ready=${{ vars.GCP_PROJECT_ID != '' }}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$CONFIRM" = "deploy" ]; then
+            echo "deploying=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploying=false" >> "$GITHUB_OUTPUT"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::warning::Confirm box was not 'deploy', so this run only shows the plan."
+            fi
+          fi
 
   build-and-push:
     needs: gate
-    if: needs.gate.outputs.ready == 'true'
+    if: needs.gate.outputs.ready == 'true' && needs.gate.outputs.deploying == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -71,9 +109,13 @@ jobs:
             -t "$image" frontend
           docker push "$image"
 
-  terraform-apply:
+  # Runs on every push and on every manual run. Read-only: it changes nothing.
+  terraform-plan:
     needs: [gate, build-and-push]
-    if: needs.gate.outputs.ready == 'true'
+    # build-and-push is skipped on a plain push, which must not skip the plan with it.
+    if: >-
+      !cancelled() && needs.gate.outputs.ready == 'true' &&
+      (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -95,20 +137,49 @@ jobs:
       - name: terraform init
         run: terraform init -backend-config="bucket=${{ vars.GCP_PROJECT_ID }}-tfstate"
 
-      # Everything not passed below comes from infra/prod.auto.tfvars, which Terraform loads
-      # by itself and which is committed (the gitignored terraform.tfvars is not in CI).
-      # That file carries base_url and paused_schedules; without it this apply would reset
-      # BASE_URL to the placeholder and un-pause the schedules held paused on purpose.
-      # Only the values below are repository variables: emails, LLM URLs, the Turnstile key.
-      - name: terraform apply
+      - name: terraform plan
         run: |
-          terraform apply -auto-approve \
-            -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
-            -var="region=${{ env.REGION }}" \
-            -var="sender_email=${{ vars.SENDER_EMAIL }}" \
-            -var="admin_email=${{ vars.ADMIN_EMAIL }}" \
-            -var="llm_gateway_url=${{ vars.LLM_GATEWAY_URL }}" \
-            -var="llm_secondary_url=${{ vars.LLM_SECONDARY_URL }}" \
-            -var="turnstile_site_key=${{ vars.TURNSTILE_SITE_KEY }}" \
-            -var="backend_image=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/the-morning-mosaic/backend:${{ env.IMAGE_TAG }}" \
-            -var="web_image=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/the-morning-mosaic/web:${{ env.IMAGE_TAG }}"
+          set -o pipefail
+          terraform plan -no-color -input=false -lock-timeout=5m | tee plan.txt
+          {
+            echo "## Terraform plan for production"
+            echo
+            echo "Commit \`${GITHUB_SHA::7}\`. To deploy it: Actions, Deploy, Run workflow, type \`deploy\`."
+            echo
+            grep -E '^(Plan:|No changes)' plan.txt || echo "(no summary line found - read the plan below)"
+            echo
+            echo "<details><summary>Full plan (last 400 lines)</summary>"
+            echo
+            echo '```'
+            tail -n 400 plan.txt
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Only after a person started the workflow by hand and typed `deploy`.
+  terraform-apply:
+    needs: [gate, terraform-plan]
+    if: needs.gate.outputs.deploying == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: terraform init
+        run: terraform init -backend-config="bucket=${{ vars.GCP_PROJECT_ID }}-tfstate"
+
+      - name: terraform apply
+        run: terraform apply -auto-approve -input=false -lock-timeout=5m

@@ -248,8 +248,10 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       workflow can be switched on:** the repo variables only. Workload Identity Federation
       was applied 2026-10-16 from `infra/bootstrap/` (pool `github`, provider locked to
       `gurpreetmattu/the-morning-mosaic` on `refs/heads/main`, service account `mosaic-deploy`);
-      see `infra/bootstrap/README.md` for the variable list. Then check the first automatic run's
-      `terraform plan` before trusting it: it has never run.
+      the repo variables were set and the first CI deploy ran and succeeded on 2026-10-16
+      (images, `BASE_URL` and the paused 07:05 schedule all verified after). Deploys now need a
+      manual run with a typed confirmation; a push only shows the plan. If the GitHub plan is
+      upgraded, move `terraform-apply` behind an Environment with required reviewers.
 
 ## 3. Provisional values that will cause harm if forgotten
 

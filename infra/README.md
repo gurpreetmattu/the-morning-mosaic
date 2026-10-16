@@ -93,6 +93,21 @@ gitignored `terraform.tfvars` locally and in repository variables in CI. Never p
 an email address in `prod.auto.tfvars`: the repository is public. To keep a schedule paused or
 change the public URL, edit that file, not `terraform.tfvars`.
 
+## Deploying from GitHub
+
+`.github/workflows/deploy.yml` needs the repository variables listed in
+`bootstrap/README.md` (set once, after applying `bootstrap/`).
+
+- **Every push to `main`** runs `terraform plan` only and writes it to the run's Summary tab.
+  Nothing in production changes. Read it to see what a deploy would do.
+- **To deploy:** GitHub -> Actions -> Deploy -> Run workflow (branch `main`) -> type `deploy`
+  in the confirm box. That run builds both images tagged with the commit, plans again and
+  applies. An empty or mistyped box runs the plan only.
+
+The confirm box is the approval step: only people who can run workflows can start a deploy.
+GitHub Environments with required reviewers would be the usual gate but are not available for
+private repositories on this plan.
+
 ## Secrets
 
 Terraform creates the Secret Manager **containers** in `secrets.tf` and
