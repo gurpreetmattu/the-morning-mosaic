@@ -1,6 +1,11 @@
 // en-IN formatting helpers; all dates are IST (CLAUDE.md: India only).
 const TZ = "Asia/Kolkata";
 
+/** The text for <LiveDate>: today's long date, or just the year. */
+export function liveDateText(kind: "long" | "year"): string {
+  return kind === "year" ? String(new Date().getFullYear()) : formatLongDate();
+}
+
 export function formatLongDate(date: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-IN", {
     timeZone: TZ,

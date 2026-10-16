@@ -10,6 +10,14 @@ afterEach(() => {
 });
 
 describe("SamplePage", () => {
+  it("has a way back to the front page", () => {
+    render(<SamplePage />);
+    expect(screen.getByRole("link", { name: /Back to the front page/ })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
   it("is clearly labelled as a sample and never as today's news", () => {
     render(<SamplePage />);
 

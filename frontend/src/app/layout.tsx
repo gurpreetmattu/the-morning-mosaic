@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { liveDateText } from "@/components/editorial/format";
 import { LiveDate } from "@/components/editorial/LiveDate";
 import { ThemeToggle } from "@/components/editorial/ThemeToggle";
 import { BRAND, TAGLINE } from "@/content/brand";
@@ -44,8 +45,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <footer className="border-t-4 border-ink bg-paper-sunk">
           <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-4 px-4 py-6 text-sm text-ink-soft sm:px-6">
             <p className="max-w-[60ch]">
-              &copy; <LiveDate kind="year" /> {BRAND}. Set in Abril Fatface, Old Standard TT and
-              Libre Caslon. Delivered every morning.
+              &copy; <LiveDate kind="year" initial={liveDateText("year")} /> {BRAND}. Set in Abril
+              Fatface, Old Standard TT and Libre Caslon. Delivered every morning.
             </p>
             <nav aria-label="Footer" className="font-gothic flex flex-wrap items-center gap-4">
               <Link href="/privacy" className="hover:underline">

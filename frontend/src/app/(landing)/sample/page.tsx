@@ -15,6 +15,11 @@ const source = (n: number) => sample.sources.find((s) => s.n === n)!;
 export default function SamplePage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <p className="no-print font-gothic mb-6 text-sm font-semibold">
+        <Link href="/" className="underline">
+          &larr; Back to the front page
+        </Link>
+      </p>
       <div className="no-print mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="kicker text-ink-soft">Web version</p>
