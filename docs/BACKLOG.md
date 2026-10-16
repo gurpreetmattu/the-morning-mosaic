@@ -491,13 +491,23 @@ finder (6) is the last one closed — see its own Done entry.)
   stated, pause keeps unsaved edits). Round 3 fixed: city list scrolls to the highlighted row (plus Home/End,
   ArrowUp opens), citation popover stays on screen, robots.txt, sitemap.xml
   (origin taken from the request host), title template, Open Graph/Twitter
-  text, per-edition titles, HSTS and Permissions-Policy. Still open: draft
-  banner and hardcoded fallback contact email on the legal pages (needs owner
-  review); no share-preview image (needs artwork, then `metadataBase`);
+  text, per-edition titles, HSTS and Permissions-Policy. Still open: the legal
+  pages need a lawyer's review (then set `POLICY_LEGALLY_REVIEWED = true` in
+  `frontend/src/content/legal.ts` to drop the notice); no share-preview image (needs artwork, then `metadataBase`);
   publisher image hosts (if ever enabled) need adding to the CSP; the CSP still
   allows inline scripts. Round 4 fixed: admin Approve/Suppress/Withdraw now ask
   for a second click, every admin action reports success, admin times show in
-  IST, and the legal, status and admin pages use the site's styling.
+  IST, and the legal, status and admin pages use the site's styling. Round 5 (2026-10-16),
+  legal pages: no hardcoded contact address any more (it comes only from `/api/config`,
+  i.e. `ADMIN_EMAIL`; if that fails the pages say so); Privacy now discloses cookies and
+  browser storage, that there are no analytics or ad trackers, and names the services that
+  handle data (Google Cloud and Gmail, Neon, Cloudflare Turnstile, OpenWeatherMap, AI
+  providers); Terms gain an Accuracy section and "not investment advice"; the review notice is
+  one flag; `config/policy.yaml` version bumped to 2026-10-16 because the text changed. Not
+  decided here and needing a lawyer: governing law, liability limits, retention of data for
+  unsubscribed users, and whether the grievance address should be a dedicated mailbox rather
+  than the admin email. Deploy the backend and web together so the version label and consent
+  record match the text.
 
 
 - [ ] **Retire the invented sample once real editions exist.** Done so far:

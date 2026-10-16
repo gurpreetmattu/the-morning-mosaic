@@ -17,7 +17,7 @@ const CONFIG: SiteConfig = {
   edition_preferences: ["india", "mixed", "global"],
   policy_operator_name: "The Morning Mosaic",
   policy_version: "2026-09-29",
-  policy_contact_email: "gurpreetsinghmattu2002@gmail.com",
+  policy_contact_email: "privacy@example.com",
 };
 
 const ME: MeResponse = {

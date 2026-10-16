@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { RubberStamp } from "@/components/editorial/RubberStamp";
 import { PageTitle } from "@/components/ui";
-import { serverGet } from "@/lib/server-api";
-import type { SiteConfig } from "@/lib/types";
+import { ContactAddress } from "@/components/editorial/Legal";
+import { getPolicyFacts } from "@/lib/policy";
 
 export const metadata = { title: "How we report" };
-
-const FALLBACK_CONTACT = "gurpreetsinghmattu2002@gmail.com";
 
 const PIPELINE = [
   ["Collect", "We fetch articles from a fixed list of publisher feeds and news services."],
@@ -30,8 +28,7 @@ function H2({ children }: { children: React.ReactNode }) {
 }
 
 export default async function HowWeReportPage() {
-  const config = await serverGet<SiteConfig>("/api/config");
-  const contact = config?.policy_contact_email ?? FALLBACK_CONTACT;
+  const { contactEmail } = await getPolicyFacts();
 
   return (
     <article className="max-w-[65ch]">
@@ -138,11 +135,7 @@ export default async function HowWeReportPage() {
 
       <H2>Contact</H2>
       <p>
-        Corrections and questions:{" "}
-        <a href={`mailto:${contact}`} className="underline">
-          {contact}
-        </a>
-        .
+        Corrections and questions: <ContactAddress email={contactEmail} />.
       </p>
 
       <p className="mt-10 flex flex-wrap gap-4">

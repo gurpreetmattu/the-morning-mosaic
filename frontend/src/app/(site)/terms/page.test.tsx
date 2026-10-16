@@ -16,25 +16,35 @@ afterEach(() => {
 
 const REAL_CONFIG = {
   policy_operator_name: "The Morning Mosaic",
-  policy_version: "2026-09-29",
-  policy_contact_email: "gurpreetsinghmattu2002@gmail.com",
+  policy_version: "2026-10-16",
+  policy_contact_email: "privacy@example.com",
 };
 
 describe("TermsPage", () => {
-  it("shows the real operator name, policy version, and contact email from /api/config", async () => {
+  it("shows the operator name, policy version and contact email from /api/config", async () => {
     stubConfigFetch(REAL_CONFIG);
 
     render(await TermsPage());
 
     expect(screen.getByText(/Applies to The Morning Mosaic/)).toBeInTheDocument();
-    expect(screen.getByText(/Last updated: 2026-09-29/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "gurpreetsinghmattu2002@gmail.com" })).toHaveAttribute(
+    expect(screen.getByText(/Last updated: 2026-10-16/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "privacy@example.com" })).toHaveAttribute(
       "href",
-      "mailto:gurpreetsinghmattu2002@gmail.com",
+      "mailto:privacy@example.com",
     );
   });
 
-  it("no longer shows any bracketed placeholder", async () => {
+  it("shows no address when the config fetch fails, and never a baked-in personal one", async () => {
+    stubConfigFetch(null, false);
+
+    const { container } = render(await TermsPage());
+
+    expect(screen.getByText(/contact address could not be loaded/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /@/ })).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/gurpreet/i);
+  });
+
+  it("has no bracketed placeholder text", async () => {
     stubConfigFetch(REAL_CONFIG);
 
     const { container } = render(await TermsPage());
@@ -42,11 +52,20 @@ describe("TermsPage", () => {
     expect(container.textContent).not.toMatch(/\[.*\]/);
   });
 
-  it("still discloses that the wording has not had legal review", async () => {
+  it("says plainly that it has not had legal review", async () => {
     stubConfigFetch(REAL_CONFIG);
 
     render(await TermsPage());
 
-    expect(screen.getByText(/has not yet had legal review/)).toBeInTheDocument();
+    expect(screen.getByText(/has not yet been reviewed by a lawyer/)).toBeInTheDocument();
+  });
+
+  it("states the limits of accuracy and that market figures are not investment advice", async () => {
+    stubConfigFetch(REAL_CONFIG);
+
+    render(await TermsPage());
+
+    expect(screen.getByRole("heading", { name: "Accuracy" })).toBeInTheDocument();
+    expect(screen.getByText(/not investment advice/)).toBeInTheDocument();
   });
 });

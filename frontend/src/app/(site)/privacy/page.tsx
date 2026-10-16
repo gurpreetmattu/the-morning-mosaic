@@ -1,57 +1,96 @@
 import Link from "next/link";
-import { Notice, PageTitle } from "@/components/ui";
-import { serverGet } from "@/lib/server-api";
-import type { SiteConfig } from "@/lib/types";
+import { ContactAddress, LegalHeading, LegalReviewNotice } from "@/components/editorial/Legal";
+import { PageTitle } from "@/components/ui";
+import { getPolicyFacts } from "@/lib/policy";
 
 export const metadata = { title: "Privacy policy" };
 
-const FALLBACK_CONTACT = "gurpreetsinghmattu2002@gmail.com";
-
 export default async function PrivacyPage() {
-  const config = await serverGet<SiteConfig>("/api/config");
-  const operatorName = config?.policy_operator_name ?? "The Morning Mosaic";
-  const version = config?.policy_version ?? "unavailable";
-  const contactEmail = config?.policy_contact_email ?? FALLBACK_CONTACT;
+  const { operatorName, version, contactEmail } = await getPolicyFacts();
 
   return (
     <article className="max-w-[65ch]">
-      <PageTitle>Privacy Policy</PageTitle>
-      <Notice kind="info">
-        Draft — this wording has not yet had legal review. The facts on this page (who operates this
-        service, the version date, and the contact address) are real; the phrasing is not final.
-      </Notice>
+      <PageTitle>Privacy policy</PageTitle>
+      <LegalReviewNotice />
 
       <p className="font-typewriter mb-4 text-sm text-ink-soft">
-        Last updated: {version}. Applies to {operatorName}.
+        {version ? `Last updated: ${version}. ` : ""}Applies to {operatorName}.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">What we collect</h2>
+      <LegalHeading>What we collect</LegalHeading>
       <p className="mb-4">
         When you sign up, we collect your name, email address, city, chosen genres, delivery time,
         frequency, optional followed keywords, edition preference, your consent record (timestamp
-        and policy version), and confirmation that you are 18 or older. We collect nothing else.
-        Reading feedback (thumbs up or down on a story) is linked to your account so we can improve
-        what we send you.
+        and policy version), and confirmation that you are 18 or older. We collect nothing else from
+        you. Reading feedback (thumbs up or down on a story) is linked to your account so we can
+        improve what we send you.
+      </p>
+      <p className="mb-4">
+        Like any website, our hosting records standard request details, such as your IP address and
+        the time of the visit, in server logs. We use them to run and secure the service.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">How we use it</h2>
+      <LegalHeading>How we use it</LegalHeading>
       <p className="mb-4">
         Your data drives which stories appear in your edition and when it arrives. We never send
         your name, email, city, or any other personal data to the AI models that write and check our
-        stories — personalisation happens entirely in our own code, by selecting and ordering
-        stories that were already written and verified. Raw article text we fetch for processing is
-        kept for 30 days and then purged; the sentences we publish, their sources, and their
-        citations are kept permanently as an audit trail.
+        stories. Personalisation happens entirely in our own code, by selecting and ordering stories
+        that were already written and verified. Raw article text we fetch for processing is kept for
+        30 days and then purged; the sentences we publish, their sources, and their citations are
+        kept permanently as an audit trail. We do not sell your data, and we do not show
+        advertising.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">Who we share it with</h2>
+      <LegalHeading>Cookies and what we store on your device</LegalHeading>
+      <p className="mb-4">We do not use analytics or advertising trackers. What we do store:</p>
+      <ul className="mb-4 list-disc space-y-2 ps-6">
+        <li>
+          <strong>When you sign in</strong> with an emailed link, two cookies: a session cookie that
+          keeps you signed in for up to 30 days or until you sign out, and a security cookie that
+          protects your changes from forged requests. We set no cookies if you only browse.
+        </li>
+        <li>
+          <strong>Your light or dark choice</strong>, in your browser&rsquo;s local storage, until
+          you clear it.
+        </li>
+        <li>
+          <strong>While you fill in the signup form</strong>, your genre, city, time and keyword
+          choices, in session storage, so a refresh does not lose them. They are gone when you close
+          the tab. Your name and email are never stored this way.
+        </li>
+        <li>
+          The signup bot check is run by Cloudflare and may set its own cookies; see
+          Cloudflare&rsquo;s policy for those.
+        </li>
+      </ul>
+
+      <LegalHeading>Who handles it for us</LegalHeading>
       <p className="mb-4">
-        We use third-party services to operate: an email provider to deliver your newsletter, a
-        database host, and a bot-check on signup. None of them receive more of your data than is
-        necessary to perform that function, and none may use it for their own purposes.
+        We use these services to operate. Each receives only what it needs for its job:
       </p>
+      <ul className="mb-4 list-disc space-y-2 ps-6">
+        <li>
+          <strong>Google</strong>: Google Cloud hosts the website and keeps the PDF copies of
+          editions (in Mumbai), and Gmail sends your emails.
+        </li>
+        <li>
+          <strong>Neon</strong>: our database, where your account details are stored.
+        </li>
+        <li>
+          <strong>Cloudflare Turnstile</strong>: the bot check on signup. It sees your IP address
+          and browser details to tell people from bots.
+        </li>
+        <li>
+          <strong>OpenWeatherMap</strong>: weather for your city. It receives the city&rsquo;s
+          coordinates only, never who you are.
+        </li>
+        <li>
+          <strong>AI model providers</strong>: they receive article text only, never anything about
+          you.
+        </li>
+      </ul>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">Your rights</h2>
+      <LegalHeading>Your rights</LegalHeading>
       <p className="mb-4">
         Under India&rsquo;s Digital Personal Data Protection Act, you can access, export, or delete
         your data at any time from{" "}
@@ -63,16 +102,13 @@ export default async function PrivacyPage() {
         link that takes effect immediately.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">Grievances</h2>
+      <LegalHeading>Grievances</LegalHeading>
       <p className="mb-4">
-        For a privacy complaint or grievance, contact the {operatorName} privacy team at{" "}
-        <a href={`mailto:${contactEmail}`} className="underline">
-          {contactEmail}
-        </a>
-        . We aim to respond within 30 days.
+        For a privacy complaint or grievance, contact the {operatorName} privacy team:{" "}
+        <ContactAddress email={contactEmail} />. We aim to respond within 30 days.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">Changes</h2>
+      <LegalHeading>Changes</LegalHeading>
       <p>
         If this policy changes, the version you consented to is recorded against your account, and a
         material change will be reflected here with an updated date.

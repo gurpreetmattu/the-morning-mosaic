@@ -1,38 +1,30 @@
 import Link from "next/link";
-import { Notice, PageTitle } from "@/components/ui";
-import { serverGet } from "@/lib/server-api";
-import type { SiteConfig } from "@/lib/types";
+import { ContactAddress, LegalHeading, LegalReviewNotice } from "@/components/editorial/Legal";
+import { PageTitle } from "@/components/ui";
+import { getPolicyFacts } from "@/lib/policy";
 
-export const metadata = { title: "Terms of Service" };
-
-const FALLBACK_CONTACT = "gurpreetsinghmattu2002@gmail.com";
+export const metadata = { title: "Terms of service" };
 
 export default async function TermsPage() {
-  const config = await serverGet<SiteConfig>("/api/config");
-  const operatorName = config?.policy_operator_name ?? "The Morning Mosaic";
-  const version = config?.policy_version ?? "unavailable";
-  const contactEmail = config?.policy_contact_email ?? FALLBACK_CONTACT;
+  const { operatorName, version, contactEmail } = await getPolicyFacts();
 
   return (
     <article className="max-w-[65ch]">
-      <PageTitle>Terms of Service</PageTitle>
-      <Notice kind="info">
-        Draft — this wording has not yet had legal review. The facts on this page (who operates this
-        service, the version date, and the contact address) are real; the phrasing is not final.
-      </Notice>
+      <PageTitle>Terms of service</PageTitle>
+      <LegalReviewNotice />
 
       <p className="font-typewriter mb-4 text-sm text-ink-soft">
-        Last updated: {version}. Applies to {operatorName}.
+        {version ? `Last updated: ${version}. ` : ""}Applies to {operatorName}.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">The service</h2>
+      <LegalHeading>The service</LegalHeading>
       <p className="mb-4">
         The Morning Mosaic sends one personalised, newspaper-styled email per subscriber per day,
         assembled from stories verified against fetched, credible sources. This service is available
         only to readers aged 18 and over, based in India.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">No guarantee of delivery</h2>
+      <LegalHeading>No guarantee of delivery</LegalHeading>
       <p className="mb-4">
         We aim to send every edition on time, but a failed build, an outage, or a technical problem
         can mean a day is missed. When that happens, and it is not the fault of your own mail
@@ -40,14 +32,23 @@ export default async function TermsPage() {
         is offered free of charge.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">Corrections</h2>
+      <LegalHeading>Accuracy</LegalHeading>
+      <p className="mb-4">
+        Stories are written with the help of AI from the sources they cite, and each claim is
+        checked against those sources before it is published. That makes errors unlikely, not
+        impossible: a source can be wrong, and a check can miss something. Every story links to its
+        sources so you can read them yourself. If you find a mistake, tell us at the address below.
+        Market figures in an edition are for information only and are not investment advice.
+      </p>
+
+      <LegalHeading>Corrections</LegalHeading>
       <p className="mb-4">
         If a published story is later found to be wrong, we mark it corrected in the public archive
         and note the correction in the next edition sent to affected readers. We do not otherwise
         edit what has already been published.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">Your account</h2>
+      <LegalHeading>Your account</LegalHeading>
       <p className="mb-4">
         You may change your preferences, pause delivery, or delete your account at any time from{" "}
         <Link href="/preferences" className="underline">
@@ -56,25 +57,22 @@ export default async function TermsPage() {
         . We may suspend or terminate an account used to abuse the signup process or the service.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">Content and sources</h2>
+      <LegalHeading>Content and sources</LegalHeading>
       <p className="mb-4">
         Every story links to the sources it was drawn from. We do not claim ownership of the
         underlying news; our summaries are original wording produced from those sources, with at
         most a short attributed quotation.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">Changes to these terms</h2>
-      <p>
+      <LegalHeading>Changes to these terms</LegalHeading>
+      <p className="mb-4">
         We may update these terms from time to time. Continued use of the service after a change
         takes effect constitutes acceptance of the updated terms.
       </p>
 
-      <h2 className="font-head mt-8 mb-2 text-xl">Contact</h2>
+      <LegalHeading>Contact</LegalHeading>
       <p>
-        Questions about these terms:{" "}
-        <a href={`mailto:${contactEmail}`} className="underline">
-          {contactEmail}
-        </a>
+        Questions about these terms, or a mistake to report: <ContactAddress email={contactEmail} />
         .
       </p>
     </article>
