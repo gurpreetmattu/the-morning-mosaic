@@ -461,6 +461,19 @@ finder (6) is the last one closed — see its own Done entry.)
 
 ### Website redesign — DESIGN.md "Retro Broadsheet"
 
+- [ ] **Cross-genre de-duplication: verify in production.** Built 2026-10-16:
+  `app/agents/crossgenre.py` plus a two-phase build (collect+rank for every genre,
+  then assign shared stories by `dedup_priority`, then verify). "Same story" = shared
+  article URL, headline similarity >= the Ranker's 0.5, or heavily overlapping text.
+  Late updates also avoid repeating stories already published in another genre
+  (`published_story_marks`). Unit and orchestrator tests pass; `published_story_marks`
+  and the late-update path are only covered by integration tests, which have not been
+  run (no test database). Known limits: if the genre that keeps a story then fails to
+  verify it, the story is lost from both genres; two outlets covering one event in
+  unrelated words will not match. Check `cross_genre_dropped` in `pipeline_runs.detail`
+  after the first builds, and tune `dedup_priority` (current order is a first guess).
+
+
 - [ ] **Frontend review, rounds 1 and 2 (2026-10-05).** Fixed: stale
   dateline/footer year (`LiveDate`), quiz sentence on the landing page, readable
   API errors, Turnstile reset/expiry/load failure, `/preferences` and `/admin`

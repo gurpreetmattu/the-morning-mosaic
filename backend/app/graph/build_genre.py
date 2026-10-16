@@ -22,6 +22,7 @@ hand-rolled sequence of early returns:
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, TypedDict, cast
 
@@ -205,27 +206,55 @@ def _after_verify_step(state: _State) -> str:
     return "finalize" if state.get("done_verifying") else "verify_step"
 
 
-def _build_graph() -> StateGraph[_State, None, _State, _State]:
+# The pipeline runs in two halves so the Orchestrator can look across genres in between: every
+# genre collects and ranks first, then shared stories are assigned to one genre
+# (app/agents/crossgenre.py), then each genre verifies what it kept. A single graph per genre
+# cannot do that, because genres run in parallel and none can see the others' pools.
+
+
+def _build_prepare_graph() -> StateGraph[_State, None, _State, _State]:
     graph: StateGraph[_State, None, _State, _State] = StateGraph(_State)
     graph.add_node("check_start_deadline", _check_start_deadline)
     graph.add_node("collect", _collect)
     graph.add_node("rank", _rank)
-    graph.add_node("verify_step", _verify_step)
-    graph.add_node("finalize", _finalize)
 
     graph.set_entry_point("check_start_deadline")
     graph.add_conditional_edges("check_start_deadline", _after_start_deadline)
     graph.add_conditional_edges("collect", _after_collect)
-    graph.add_edge("rank", "verify_step")
+    graph.add_edge("rank", END)
+    return graph
+
+
+def _build_verify_graph() -> StateGraph[_State, None, _State, _State]:
+    graph: StateGraph[_State, None, _State, _State] = StateGraph(_State)
+    graph.add_node("verify_step", _verify_step)
+    graph.add_node("finalize", _finalize)
+
+    graph.set_entry_point("verify_step")
     graph.add_conditional_edges("verify_step", _after_verify_step)
     graph.add_edge("finalize", END)
     return graph
 
 
-_COMPILED = _build_graph().compile()
+_PREPARE = _build_prepare_graph().compile()
+_VERIFY = _build_verify_graph().compile()
 
 
-def run(
+@dataclass(frozen=True)
+class Prepared:
+    """A genre after collect and rank, waiting to verify.
+
+    `outcome` is set when the genre already finished (missed the deadline before starting, or
+    had nothing to collect): there is then nothing to verify and no candidates to deduplicate.
+    """
+
+    genre: GenreKey
+    outcome: GenreOutcome | None
+    candidates: list[PooledStory]
+    _state: _State
+
+
+def prepare(
     *,
     collector: CollectorLike,
     ranker: RankerLike,
@@ -236,10 +265,10 @@ def run(
     now: datetime,
     pool_size: int,
     min_stories: int,
-) -> GenreOutcome:
-    final = cast(
+) -> Prepared:
+    state = cast(
         "_State",
-        _COMPILED.invoke(
+        _PREPARE.invoke(
             {
                 "collector": collector,
                 "ranker": ranker,
@@ -255,6 +284,54 @@ def run(
             }
         ),
     )
+    return Prepared(
+        genre=genre,
+        outcome=state.get("result"),
+        candidates=list(state.get("candidates", [])),
+        _state=state,
+    )
+
+
+def finish(
+    prepared: Prepared, *, candidates: list[PooledStory], cross_genre_dropped: int = 0
+) -> GenreOutcome:
+    """Verify `candidates` (the prepared pool after cross-genre deduplication)."""
+    if prepared.outcome is not None:
+        return prepared.outcome
+    diagnostics = prepared._state["diagnostics"].model_copy(
+        update={"cross_genre_dropped": cross_genre_dropped}
+    )
+    state = cast(
+        "_State",
+        {**prepared._state, "diagnostics": diagnostics, "candidates": candidates, "index": 0},
+    )
+    final = cast("_State", _VERIFY.invoke(state))
     result = final["result"]
-    assert result is not None  # every path through the graph sets it before END
+    assert result is not None  # _finalize always sets it
     return result
+
+
+def run(
+    *,
+    collector: CollectorLike,
+    ranker: RankerLike,
+    verify: VerifyFn,
+    clock: Callable[[], datetime],
+    genre: GenreKey,
+    deadline: datetime,
+    now: datetime,
+    pool_size: int,
+    min_stories: int,
+) -> GenreOutcome:
+    prepared = prepare(
+        collector=collector,
+        ranker=ranker,
+        verify=verify,
+        clock=clock,
+        genre=genre,
+        deadline=deadline,
+        now=now,
+        pool_size=pool_size,
+        min_stories=min_stories,
+    )
+    return finish(prepared, candidates=prepared.candidates)

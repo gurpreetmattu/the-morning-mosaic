@@ -35,7 +35,7 @@ from app.clock import edition_date_for, now_utc
 from app.config.schemas import GenreKey
 from app.config.settings import get_settings
 from app.db.engine import dispose_engine, session_scope
-from app.db.persist import persist_new_stories
+from app.db.persist import persist_new_stories, published_story_marks
 from app.db.publish import PublishError, latest_revision, publish_revision
 from app.jobs.build import build_orchestrator
 from app.jobs.locking import job_lock
@@ -117,10 +117,16 @@ def run_late_update(
     # the connection once it passes its limit (~6 min): the 2026-10-05 05:35 run took
     # 7 min and crashed at the first write after it. `previous` and `edition` stay
     # usable after the commit (expire_on_commit=False).
+    # Stories already out in any genre: a new candidate elsewhere must not repeat one.
+    published = published_story_marks(session, edition_date=edition_date)
     session.commit()
 
     build = orchestrator.build(
-        edition_date=edition_date, deadline=deadline, genres=genres, now=started
+        edition_date=edition_date,
+        deadline=deadline,
+        genres=genres,
+        now=started,
+        published=published,
     )
     report.genre_diagnostics = {
         outcome.genre: outcome.diagnostics.model_dump(mode="json") for outcome in build.genres

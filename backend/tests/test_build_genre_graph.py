@@ -100,8 +100,9 @@ class AlwaysVerifies:
         return VerificationOutcome(verified=verified(self.calls), attempts=1)
 
 
-def test_the_compiled_graph_is_a_real_langgraph_state_graph() -> None:
-    assert isinstance(build_genre._COMPILED, CompiledStateGraph)
+def test_both_halves_are_real_langgraph_state_graphs() -> None:
+    assert isinstance(build_genre._PREPARE, CompiledStateGraph)
+    assert isinstance(build_genre._VERIFY, CompiledStateGraph)
 
 
 def test_a_pool_at_the_maximum_configured_size_is_verified_in_full() -> None:

@@ -90,16 +90,21 @@ def _shingles(text: str, size: int = SYNDICATION_SHINGLE_SIZE) -> frozenset[tupl
     return frozenset(tuple(words[i : i + size]) for i in range(len(words) - size + 1))
 
 
+def text_overlap(left: str, right: str) -> float:
+    """Fraction of the shorter text's word-shingles that also appear in the other."""
+    left_shingles, right_shingles = _shingles(left), _shingles(right)
+    if not left_shingles or not right_shingles:
+        return 0.0
+    shared = len(left_shingles & right_shingles)
+    return shared / min(len(left_shingles), len(right_shingles))
+
+
 def syndication_overlap(left: CollectedArticle, right: CollectedArticle) -> float:
     """Fraction of the shorter article's word-shingles that also appear in
     the other. High overlap means one is a lightly rewritten copy of the
     other — syndicated wire copy, not independent reporting — which plain
     text equality (the Collector's content hash) does not catch."""
-    left_shingles, right_shingles = _shingles(left.text), _shingles(right.text)
-    if not left_shingles or not right_shingles:
-        return 0.0
-    shared = len(left_shingles & right_shingles)
-    return shared / min(len(left_shingles), len(right_shingles))
+    return text_overlap(left.text, right.text)
 
 
 def _stem(word: str) -> str:

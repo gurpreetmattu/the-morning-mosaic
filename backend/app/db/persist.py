@@ -15,13 +15,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from typing import cast
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
+from app.agents.crossgenre import ArticleMark, StoryMark
 from app.agents.image_finder import ImageResult
 from app.agents.schemas import DraftSentence, GenreOutcome, VerifiedStory
 from app.clock import now_utc
+from app.config.schemas import GenreKey
 from app.models.content import (
     Article,
     ArticlePassage,
@@ -128,6 +131,34 @@ def persist_new_stories(
 
     session.flush()
     return added
+
+
+def published_story_marks(session: Session, *, edition_date: date) -> list[StoryMark]:
+    """Every verified story stored for this edition, as what cross-genre matching compares.
+
+    URL and headline only: the raw text behind a stored story may already be purged, and a
+    shared source article or a near-identical headline is what the match rests on anyway.
+    Withdrawn and dropped stories are not included, so they cannot block a replacement.
+    """
+    stories = session.scalars(
+        select(Story)
+        .where(Story.edition_date == edition_date, Story.status == StoryStatus.VERIFIED)
+        .options(selectinload(Story.cluster).selectinload(StoryCluster.articles))
+    )
+    marks: list[StoryMark] = []
+    for story in stories:
+        articles: list[ArticleMark] = []
+        for link in story.cluster.articles:
+            article = link.article
+            articles.append(ArticleMark(url=article.url, title=article.title))
+            if article.canonical_url:
+                articles.append(ArticleMark(url=article.canonical_url, title=article.title))
+        marks.append(
+            StoryMark(
+                genre=cast("GenreKey", story.genre), label=story.headline, articles=tuple(articles)
+            )
+        )
+    return marks
 
 
 def _stored_content_hashes(session: Session, *, edition_date: date, genre: str) -> set[str]:

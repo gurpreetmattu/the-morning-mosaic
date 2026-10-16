@@ -247,6 +247,8 @@ class GenreDiagnostics(Base):
     requested_more_coverage: bool = False
     pooled: int = 0
     pool_drops: dict[str, int] = Field(default_factory=dict)
+    # Candidates removed because a higher-priority genre already carries the same story.
+    cross_genre_dropped: int = 0
     # Writer + Fact-checker. `write_cycles` counts every write-and-check round
     # across all attempted stories (a story gets up to 3).
     attempted: int = 0

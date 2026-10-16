@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.agents.crossgenre import StoryMark
 from app.agents.orchestrator import CollectorLike, Orchestrator, VerifyFn
 from app.agents.schemas import (
     Corroboration,
@@ -402,10 +404,15 @@ def test_the_database_transaction_is_ended_before_the_models_run(
             deadline: datetime,
             genres: list[GenreKey] | None = None,
             now: datetime | None = None,
+            published: Sequence[StoryMark] = (),
         ) -> EditionBuild:
             events.append("build")
             return super().build(
-                edition_date=edition_date, deadline=deadline, genres=genres, now=now
+                edition_date=edition_date,
+                deadline=deadline,
+                genres=genres,
+                now=now,
+                published=published,
             )
 
     probe = Probing(

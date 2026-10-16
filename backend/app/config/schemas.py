@@ -112,6 +112,9 @@ class Genre(ConfigBase):
 
 class GenresConfig(ConfigBase):
     genres: list[Genre]
+    # When two genres pool the same story, the one listed first keeps it. Genres not listed
+    # come after, in `genres` order. Most specific first, broadest last.
+    dedup_priority: list[GenreKey] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _check(self) -> GenresConfig:
@@ -124,7 +127,16 @@ class GenresConfig(ConfigBase):
             raise ValueError(f"missing genre definitions {missing}")
         if not any(genre.enabled for genre in self.genres):
             raise ValueError("at least one genre must be enabled")
+        repeated = _duplicates(list(self.dedup_priority))
+        if repeated:
+            raise ValueError(f"dedup_priority lists {repeated} more than once")
         return self
+
+    @property
+    def dedup_order(self) -> list[GenreKey]:
+        """Every genre, highest dedup priority first."""
+        listed = list(self.dedup_priority)
+        return listed + [genre.key for genre in self.genres if genre.key not in listed]
 
     def by_key(self) -> dict[GenreKey, Genre]:
         return {genre.key: genre for genre in self.genres}

@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
+from app.agents.crossgenre import ArticleMark, StoryMark
 from app.agents.orchestrator import FAILED_NOTE, QUIET_DAY_NOTE, Orchestrator
 from app.agents.schemas import (
     Corroboration,
@@ -26,13 +27,15 @@ DEADLINE = NOW + timedelta(hours=1)
 EDITION_DATE = date(2026, 10, 5)
 
 
-def article(index: int) -> CollectedArticle:
-    text = f"Passage body number {index} with enough words to be a citable passage."
+def article(index: int, genre: GenreKey = "india") -> CollectedArticle:
+    # Distinct per genre: genres that are not meant to share a story must not look like they do
+    # to the cross-genre check (shared URL, similar title or overlapping text).
+    text = " ".join(f"{genre}{index}w{k}" for k in range(14))
     return CollectedArticle(
         source_key="wire",
-        genre="india",
-        url=f"https://wire.example/{index}",
-        title=f"Story {index}",
+        genre=genre,
+        url=f"https://wire.example/{genre}/{index}",
+        title=f"{genre}{index} alpha{genre}{index}",
         published_at=NOW,
         fetched_at=NOW,
         text=text,
@@ -41,10 +44,10 @@ def article(index: int) -> CollectedArticle:
     )
 
 
-def pooled(index: int) -> PooledStory:
+def pooled(index: int, genre: GenreKey = "india") -> PooledStory:
     return PooledStory(
         event_label=f"event {index}",
-        articles=[article(index)],
+        articles=[article(index, genre)],
         corroboration=Corroboration.PRIMARY_OFFICIAL,
         hedged=False,
         score=10.0 - index,
@@ -72,7 +75,9 @@ class FakeCollector:
     def collect(self, genre: GenreKey, *, now: datetime | None = None) -> CollectionResult:
         if self.raises:
             raise RuntimeError("feed exploded")
-        return CollectionResult(genre=genre, articles=[article(i) for i in range(self.count)])
+        return CollectionResult(
+            genre=genre, articles=[article(i, genre) for i in range(self.count)]
+        )
 
 
 class FakeRanker:
@@ -83,7 +88,9 @@ class FakeRanker:
     def rank(self, collected: CollectionResult, *, now: datetime | None = None) -> StoryPool:
         if self.raises:
             raise RuntimeError("ranker exploded")
-        return StoryPool(genre=collected.genre, stories=[pooled(i) for i in range(self.count)])
+        return StoryPool(
+            genre=collected.genre, stories=[pooled(i, collected.genre) for i in range(self.count)]
+        )
 
 
 class FakeVerifier:
@@ -350,3 +357,88 @@ def test_genres_can_run_in_parallel() -> None:
 
     assert len(build.genres) == 10
     assert all(outcome.status is SectionStatus.OK for outcome in build.genres)
+
+
+# ------------------------------------------------------- one story, one genre
+
+
+SHARED_TEXT = " ".join(f"shared{k}" for k in range(14))
+
+
+def shared_story() -> PooledStory:
+    """The same launch, as pooled by two genres from the same article."""
+    shared = CollectedArticle(
+        source_key="wire",
+        genre="ai",
+        url="https://wire.example/shared-launch",
+        title="Shared launch",
+        published_at=NOW,
+        fetched_at=NOW,
+        text=SHARED_TEXT,
+        passages=[Passage(ordinal=1, text=SHARED_TEXT)],
+        content_hash="h-shared",
+    )
+    return PooledStory(
+        event_label="shared launch",
+        articles=[shared],
+        corroboration=Corroboration.PRIMARY_OFFICIAL,
+        hedged=False,
+        score=99.0,
+        rank=1,
+    )
+
+
+class SharingRanker(FakeRanker):
+    """Every genre pools its own stories; ai and technology also pool the shared one."""
+
+    def rank(self, collected: CollectionResult, *, now: datetime | None = None) -> StoryPool:
+        stories = [pooled(i, collected.genre) for i in range(3)]
+        if collected.genre in ("ai", "technology"):
+            stories.insert(0, shared_story())
+        return StoryPool(genre=collected.genre, stories=stories)
+
+
+def test_a_story_pooled_by_two_genres_is_published_in_only_one() -> None:
+    verifier = FakeVerifier()
+    build = orchestrator(ranker=SharingRanker(), verify=verifier).build(
+        edition_date=EDITION_DATE, deadline=DEADLINE, genres=["technology", "ai", "sports"], now=NOW
+    )
+
+    by_genre = {outcome.genre: outcome for outcome in build.genres}
+    # The build keeps the caller genre order, whatever order the work happened in.
+    assert [o.genre for o in build.genres] == ["technology", "ai", "sports"]
+    # ai outranks technology, so ai keeps it and technology loses exactly that one.
+    assert by_genre["ai"].diagnostics.cross_genre_dropped == 0
+    assert by_genre["technology"].diagnostics.cross_genre_dropped == 1
+    assert by_genre["ai"].verified_count == 4
+    assert by_genre["technology"].verified_count == 3
+    # No verification time was spent on the duplicate: 4 + 3 + 3.
+    assert verifier.calls == 10
+
+
+def test_the_losing_genre_still_publishes_its_other_stories() -> None:
+    build = orchestrator(ranker=SharingRanker()).build(
+        edition_date=EDITION_DATE, deadline=DEADLINE, genres=["technology", "ai"], now=NOW
+    )
+
+    technology = next(o for o in build.genres if o.genre == "technology")
+    assert technology.status is SectionStatus.OK
+
+
+def test_already_published_stories_are_respected_by_a_later_build() -> None:
+    published = StoryMark(
+        genre="ai",
+        label="x",
+        articles=(ArticleMark(url="https://wire.example/shared-launch", title="Shared launch"),),
+    )
+
+    build = orchestrator(ranker=SharingRanker()).build(
+        edition_date=EDITION_DATE,
+        deadline=DEADLINE,
+        genres=["technology"],
+        now=NOW,
+        published=[published],
+    )
+
+    assert build.genres[0].verified_count == 3
+    assert build.genres[0].diagnostics.cross_genre_dropped == 1

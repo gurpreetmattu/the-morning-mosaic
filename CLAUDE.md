@@ -28,7 +28,9 @@ releases, deals). If an item has no reliable source for the day, omit it.
   The other five stay fully defined with `enabled: false` in `config/genres.yaml`; flip that
   flag (and the matching list in `frontend/src/content/genres.ts`) to bring a genre back.
 - **Stories per genre:** up to 6 verified stories, target 4–6 (1–2 A4 pages). Keyword-matched
-  stories replace lower-ranked ones within that cap. If fewer than 2 verified stories exist, the
+  stories replace lower-ranked ones within that cap. A story appears in ONE genre per edition:
+  when two genres pool the same event, the genre listed first in `dedup_priority`
+  (`config/genres.yaml`) keeps it (`app/agents/crossgenre.py`, run between rank and verify). If fewer than 2 verified stories exist, the
   section shows a short "quiet news day" note instead.
 - **Format:** ONE email per user per day containing all their genres, each as its own themed
   section. Multipart email (responsive HTML + plain text) with a "Download PDF" link.

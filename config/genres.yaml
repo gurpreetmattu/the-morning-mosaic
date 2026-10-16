@@ -12,6 +12,21 @@
 # `corroboration: strict` = needs >=2 independent tier-1/2 sources, or one
 # primary official source (CLAUDE.md, "Corroboration").
 
+# When the same story is pooled by two genres, the genre listed first keeps it and the others
+# drop it (app/agents/crossgenre.py). Most specific first, broadest last. Genres not listed
+# follow in the order below.
+dedup_priority:
+  - ai
+  - sports
+  - gaming
+  - bollywood
+  - hollywood
+  - music
+  - business
+  - politics
+  - technology
+  - india
+
 genres:
   - key: india
     display_name: India
