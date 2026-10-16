@@ -239,14 +239,17 @@ Add anything discovered mid-task rather than leaving it in a chat message.
       wants the lock OBJECT'S NUMERIC GENERATION (`gcloud storage objects describe
       gs://the-morning-mosaic-tfstate/default.tflock --format='value(generation)'`), not the
       UUID in the lock file.
-- [ ] **`deploy.yml`'s terraform apply has no `terraform.tfvars` in CI**
-      (`*.tfvars` is gitignored), so it does not repeat `base_url`, despite its
-      own comment saying it repeats what's in tfvars/state. Every CI deploy would
-      reset `BASE_URL` to the variables.tf placeholder and break every email
-      link. Found 2026-10-01 while wiring the Turnstile key; not fixed (needs a
-      decision on a `BASE_URL` repository variable vs a committed non-secret
-      tfvars file). Same applies to any other tfvars-only value. Until fixed,
-      deploy by hand with `terraform apply` locally.
+- [x] **`deploy.yml`'s terraform apply had no `terraform.tfvars` in CI** - fixed
+      2026-10-16: non-secret settings that must survive every apply (`base_url`,
+      `paused_schedules`, `sender_name`, `llm_fallback_url`) now live in the committed
+      `infra/prod.auto.tfvars`, which Terraform loads by itself. Verified by planning without
+      `terraform.tfvars`: no real changes with the file; without it the plan resets `BASE_URL`
+      to the placeholder and un-pauses the 07:05 late update. **Still needed before the
+      workflow can be switched on:** the repo variables only. Workload Identity Federation
+      was applied 2026-10-16 from `infra/bootstrap/` (pool `github`, provider locked to
+      `gurpreetmattu/the-morning-mosaic` on `refs/heads/main`, service account `mosaic-deploy`);
+      see `infra/bootstrap/README.md` for the variable list. Then check the first automatic run's
+      `terraform plan` before trusting it: it has never run.
 
 ## 3. Provisional values that will cause harm if forgotten
 

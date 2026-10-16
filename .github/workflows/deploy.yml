@@ -95,11 +95,11 @@ jobs:
       - name: terraform init
         run: terraform init -backend-config="bucket=${{ vars.GCP_PROJECT_ID }}-tfstate"
 
-      # base_url is deliberately not set here: it starts on the placeholder
-      # from variables.tf until a human runs `terraform output web_url` and
-      # sets it for real once — see infra/README.md's "Apply, twice". This
-      # workflow just repeats whatever's already in terraform.tfvars/state
-      # with fresh images.
+      # Everything not passed below comes from infra/prod.auto.tfvars, which Terraform loads
+      # by itself and which is committed (the gitignored terraform.tfvars is not in CI).
+      # That file carries base_url and paused_schedules; without it this apply would reset
+      # BASE_URL to the placeholder and un-pause the schedules held paused on purpose.
+      # Only the values below are repository variables: emails, LLM URLs, the Turnstile key.
       - name: terraform apply
         run: |
           terraform apply -auto-approve \

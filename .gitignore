@@ -30,6 +30,8 @@ out/
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+# The one non-secret production file; see its header. Must be committed for CI deploys.
+!infra/prod.auto.tfvars
 crash.log
 
 # Local runtime artifacts

@@ -79,11 +79,19 @@ the `base_url` variable in `variables.tf`.
 ```
 terraform apply                     # creates everything; api's BASE_URL is a placeholder
 terraform output web_url            # read the real URL
-# set base_url = "<that>" in terraform.tfvars
+# set base_url = "<that>" in prod.auto.tfvars (committed, so CI deploys keep it)
 terraform apply                     # api now has the right BASE_URL
 ```
 
 Every apply after that is a normal, single-pass `terraform apply`.
+
+**`prod.auto.tfvars` vs `terraform.tfvars`.** Settings that are not secret and must survive
+every apply (`base_url`, `paused_schedules`, `sender_name`, `llm_fallback_url`) live in
+`infra/prod.auto.tfvars`, which is committed and which Terraform loads by itself, locally and
+in CI. Everything else (your emails, the LLM URLs, the Turnstile key, image tags) stays in the
+gitignored `terraform.tfvars` locally and in repository variables in CI. Never put a secret or
+an email address in `prod.auto.tfvars`: the repository is public. To keep a schedule paused or
+change the public URL, edit that file, not `terraform.tfvars`.
 
 ## Secrets
 
