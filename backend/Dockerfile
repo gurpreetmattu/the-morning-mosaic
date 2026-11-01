@@ -8,7 +8,7 @@
 # PDFs, which is unavailable on the maintainer's Windows dev machine (see
 # docs/BACKLOG.md) — this is the one place it can actually run.
 
-FROM python:3.12-slim AS base
+FROM python:3.15-slim AS base
 
 # GTK/Pango/Cairo for WeasyPrint, plus the DejaVu fonts so PDF pages render
 # with something other than tofu boxes. libpq5 is psycopg's runtime dependency
